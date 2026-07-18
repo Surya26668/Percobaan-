@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🚀 AI Project Maker — ULTIMATE Edition v2.1</title>
+  <title>🚀 AI Project Maker — ULTIMATE Edition v3.0</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
 
+    /* ── HEADER ─────────────────────────────────────────── */
     header{background:linear-gradient(135deg,#1e40af,#7c3aed,#ec4899);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;box-shadow:0 4px 20px rgba(0,0,0,.3)}
     header h1{font-size:1.4rem;font-weight:800;display:flex;align-items:center;gap:8px}
     header .version{font-size:.65rem;background:rgba(255,255,255,.2);padding:2px 8px;border-radius:6px;font-weight:700}
@@ -22,31 +23,32 @@
     .status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
     .status-dot.online{background:#4ade80;box-shadow:0 0 6px #4ade80}
     .status-dot.offline{background:#f87171;box-shadow:0 0 6px #f87171}
-    .status-dot.checking{background:#fbbf24;box-shadow:0 0 6px #fbbf24;animation:pulse 1s infinite}
+    .status-dot.checking{background:#fbbf24;animation:pulse 1s infinite}
 
+    /* ── LAYOUT ──────────────────────────────────────────── */
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-
     .container{display:grid;grid-template-columns:380px 1fr;height:calc(100vh - 74px)}
     @media(max-width:900px){.container{grid-template-columns:1fr;height:auto}}
 
+    /* ── SIDEBAR ─────────────────────────────────────────── */
     .sidebar{background:#1e293b;border-right:1px solid #334155;padding:18px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
-
     .mode-tabs{display:flex;gap:6px}
     .mode-tab{flex:1;padding:9px;border-radius:8px;border:2px solid #334155;background:transparent;color:#64748b;font-size:.8rem;font-weight:700;cursor:pointer;transition:.2s;text-align:center}
     .mode-tab.active{border-color:#6366f1;background:#1e1b4b;color:#818cf8}
     .mode-panel{display:none}
     .mode-panel.active{display:flex;flex-direction:column;gap:12px}
 
+    /* ── FORM ────────────────────────────────────────────── */
     label{display:block;font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
     input,textarea{width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;padding:9px 12px;font-size:.86rem;resize:vertical;transition:border-color .2s;font-family:inherit}
     input:focus,textarea:focus{outline:none;border-color:#6366f1}
     textarea{min-height:100px}
-
     .chip-label{font-size:.7rem;color:#475569;margin-bottom:5px;font-weight:600}
     .chip-list{display:flex;flex-wrap:wrap;gap:5px}
     .chip{background:#1e3a5f;border:1px solid #2563eb;color:#93c5fd;border-radius:999px;padding:3px 10px;font-size:.7rem;cursor:pointer;transition:.15s}
     .chip:hover{background:#2563eb;color:#fff;transform:translateY(-1px)}
 
+    /* ── BUTTONS ─────────────────────────────────────────── */
     .btn{width:100%;padding:11px;border-radius:9px;border:none;font-size:.9rem;font-weight:700;cursor:pointer;transition:opacity .2s,transform .1s}
     .btn:hover{opacity:.92;transform:translateY(-1px)}
     .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
@@ -57,15 +59,14 @@
     .btn-blue{background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff}
     .btn-yellow{background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff}
     .btn-sm{padding:6px 12px;font-size:.75rem;width:auto;border-radius:6px}
-
     .btn-group{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
     .btn-group-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px}
     .btn-group-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-top:8px}
 
+    /* ── PROJECT LIST ────────────────────────────────────── */
     .project-list-wrap{display:flex;flex-direction:column;gap:5px;max-height:220px;overflow-y:auto}
     .project-card{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:9px 11px;cursor:pointer;transition:.15s;position:relative}
-    .project-card:hover{border-color:#6366f1;background:#1e1b4b}
-    .project-card.selected{border-color:#6366f1;background:#1e1b4b}
+    .project-card:hover,.project-card.selected{border-color:#6366f1;background:#1e1b4b}
     .project-card .pname{font-size:.83rem;font-weight:700;color:#93c5fd;display:flex;align-items:center;gap:6px}
     .project-card .ptech{font-size:.7rem;color:#475569;margin-top:2px}
     .project-card .pfiles{font-size:.68rem;color:#334155;margin-top:1px}
@@ -73,6 +74,7 @@
     .project-card .del-btn{position:absolute;top:5px;right:5px;background:#dc2626;color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:.65rem;cursor:pointer;opacity:0;transition:.2s}
     .project-card:hover .del-btn{opacity:1}
 
+    /* ── MAIN PANEL / TABS ───────────────────────────────── */
     .main-panel{display:flex;flex-direction:column;overflow:hidden}
     .tabs{display:flex;background:#1e293b;border-bottom:1px solid #334155;overflow-x:auto}
     .tab{padding:12px 20px;font-size:.8rem;font-weight:600;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;transition:.2s;white-space:nowrap}
@@ -80,12 +82,12 @@
     .tab.active{color:#818cf8;border-bottom-color:#818cf8}
     .tab-badge{display:inline-block;background:#22c55e;color:#fff;border-radius:999px;font-size:.6rem;padding:1px 6px;margin-left:4px;font-weight:700}
     .tab-badge.live{background:#dc2626;animation:pulse 1.5s infinite}
-    .tab-badge.new{background:#f59e0b}
     .tab-content{flex:1;overflow-y:auto;display:none;padding:18px}
     .tab-content.active{display:block}
     .tab-content.preview-active{padding:0;overflow:hidden;display:none;flex-direction:column}
     .tab-content.preview-active.active{display:flex}
 
+    /* ── LOG PANEL ───────────────────────────────────────── */
     #log-panel,#run-log-panel{background:#020617;border-radius:10px;padding:14px;font-family:'Consolas','Courier New',monospace;font-size:.78rem;line-height:1.7;min-height:300px;white-space:pre-wrap;word-break:break-word}
     .log-loading{color:#facc15}
     .log-success{color:#4ade80}
@@ -94,53 +96,57 @@
     .log-fix{color:#a78bfa}
     .log-file{color:#38bdf8}
     .log-folder{color:#818cf8}
-    .log-run{color:#f0abfc}
     .log-done{color:#34d399;font-weight:bold}
     .log-info{color:#94a3b8}
     .log-lanjut{color:#22d3ee}
     .log-sys{color:#fbbf24;font-weight:bold}
-    .log-cache{color:#f0abfc}
 
-    /* ✅ CANCEL BUTTON FLOATING */
+    /* ── CANCEL BUTTON ───────────────────────────────────── */
     .cancel-floating{position:sticky;bottom:0;background:linear-gradient(180deg,transparent,#020617 30%);padding:20px 0 0;margin-top:15px;text-align:center}
     .cancel-floating .btn{max-width:280px;display:inline-block;box-shadow:0 4px 15px rgba(220,38,38,.4);animation:pulseBtn 2s infinite}
     @keyframes pulseBtn{0%,100%{box-shadow:0 4px 15px rgba(220,38,38,.4)}50%{box-shadow:0 4px 25px rgba(220,38,38,.7)}}
 
-    /* ✅ FILE PROGRESS CHECKLIST */
+    /* ── FILE PROGRESS ───────────────────────────────────── */
     .file-progress{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:14px;margin-bottom:12px}
-    .file-progress h3{font-size:.78rem;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em}
+    .file-progress h3{font-size:.78rem;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;justify-content:space-between}
     .file-progress-list{display:flex;flex-direction:column;gap:6px}
-    .file-progress-item{display:flex;align-items:center;gap:10px;padding:6px 10px;background:#0f172a;border-radius:6px;font-size:.78rem;transition:.15s}
+    .file-progress-item{display:flex;align-items:center;gap:10px;padding:6px 10px;background:#0f172a;border-radius:6px;font-size:.78rem;transition:.2s}
     .file-progress-item .icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
     .file-progress-item.pending{color:#64748b}
     .file-progress-item.loading{color:#fbbf24;background:linear-gradient(90deg,#1e293b,#422006)}
     .file-progress-item.done{color:#4ade80;background:linear-gradient(90deg,#0f172a,#052e16)}
+    .file-progress-item.fallback{color:#fb923c;background:linear-gradient(90deg,#0f172a,#431407)}
     .file-progress-item.failed{color:#f87171;background:linear-gradient(90deg,#0f172a,#450a0a)}
     .file-progress-item .time{margin-left:auto;font-size:.68rem;color:#64748b}
-    .spinner-mini{width:14px;height:14px;border:2px solid #334155;border-top-color:#fbbf24;border-radius:50%;animation:spin 0.8s linear infinite}
+    .spinner-mini{width:14px;height:14px;border:2px solid #334155;border-top-color:#fbbf24;border-radius:50%;animation:spin .8s linear infinite}
 
+    /* ── FILES TAB ───────────────────────────────────────── */
+    .log-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+    .log-toolbar h3{font-size:.85rem;color:#94a3b8}
     .file-tree{display:flex;flex-direction:column;gap:4px}
     .file-item{background:#1e293b;border:1px solid #334155;border-radius:8px;overflow:hidden}
     .file-header{padding:9px 13px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:.8rem;font-weight:600;color:#93c5fd;transition:background .15s}
     .file-header:hover{background:#273549}
     .file-size{margin-left:auto;font-size:.68rem;color:#475569;font-weight:400}
     .file-actions{display:flex;gap:4px;margin-left:6px}
-    .file-actions button{background:#334155;color:#fff;border:none;padding:3px 8px;border-radius:4px;font-size:.65rem;cursor:pointer}
+    .file-actions button{background:#334155;color:#fff;border:none;padding:3px 8px;border-radius:4px;font-size:.65rem;cursor:pointer;transition:.15s}
     .file-actions button:hover{background:#475569}
     .file-actions button.edit{background:#2563eb}
     .file-actions button.del{background:#dc2626}
     .file-code{display:none;background:#020617;padding:12px;font-family:'Consolas','Courier New',monospace;font-size:.76rem;color:#e2e8f0;overflow-x:auto;white-space:pre;border-top:1px solid #334155;max-height:400px;overflow-y:auto}
-    .file-editor{display:none;padding:0}
+    .file-editor{display:none}
     .file-editor textarea{background:#020617;color:#e2e8f0;font-family:monospace;font-size:.75rem;border:none;border-top:1px solid #334155;padding:12px;min-height:300px;border-radius:0;resize:vertical;width:100%}
     .file-editor .editor-actions{padding:8px;background:#1e293b;display:flex;gap:6px;justify-content:flex-end}
 
+    /* ── INFO CARDS ──────────────────────────────────────── */
     .info-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px;margin-bottom:12px}
     .info-card h3{font-size:.76rem;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;justify-content:space-between}
     .info-row{display:flex;gap:10px;margin-bottom:6px;align-items:flex-start}
-    .info-label{font-size:.76rem;color:#64748b;min-width:80px}
+    .info-label{font-size:.76rem;color:#64748b;min-width:80px;flex-shrink:0}
     .info-value{font-size:.8rem;color:#e2e8f0;word-break:break-all}
     .cmd-box{background:#020617;border-radius:6px;padding:8px 12px;font-family:'Consolas',monospace;font-size:.78rem;color:#4ade80;margin-top:8px;word-break:break-all}
 
+    /* ── BADGES ──────────────────────────────────────────── */
     .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.7rem;font-weight:700}
     .badge-loading{background:#422006;color:#fbbf24}
     .badge-done{background:#052e16;color:#4ade80}
@@ -149,47 +155,45 @@
     .badge-running{background:#052e16;color:#4ade80;animation:pulse 2s infinite}
     .badge-stopped{background:#1e293b;color:#94a3b8}
 
+    /* ── RUNNING CARD ────────────────────────────────────── */
     .running-card{background:linear-gradient(135deg,#052e16,#064e3b);border:1px solid #22c55e;border-radius:10px;padding:14px;margin-bottom:12px}
     .running-card .r-title{color:#4ade80;font-weight:700;font-size:.88rem;margin-bottom:8px;display:flex;align-items:center;gap:8px}
     .running-card .r-url{background:#020617;border-radius:6px;padding:10px 14px;font-family:monospace;color:#38bdf8;font-size:.82rem;word-break:break-all;text-decoration:none;display:block;margin-bottom:8px;border:1px solid #1e293b;transition:.2s}
     .running-card .r-url:hover{border-color:#38bdf8;background:#0c1220}
     .running-card .r-info{font-size:.72rem;color:#94a3b8;display:flex;gap:12px;flex-wrap:wrap}
 
+    /* ── KEY STATUS ──────────────────────────────────────── */
     .key-card{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:8px}
     .key-card.active-key{border-color:#22c55e;background:linear-gradient(135deg,#1e293b,#052e16)}
     .key-header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-    .key-dot{width:10px;height:10px;border-radius:50%;background:#334155;flex-shrink:0}
+    .key-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
     .key-dot.green{background:#22c55e;box-shadow:0 0 4px #22c55e}
     .key-dot.yellow{background:#f59e0b}
     .key-dot.red{background:#ef4444}
-    .key-info{flex:1}
     .key-info .kurl{font-size:.72rem;color:#64748b}
     .key-info .kmodel{font-size:.82rem;color:#93c5fd;font-weight:600}
     .key-info .khint{font-size:.7rem;color:#475569;font-family:monospace}
-    .key-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:.7rem;padding-top:8px;border-top:1px solid #334155}
+    .key-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding-top:8px;border-top:1px solid #334155}
     .key-metric{text-align:center;background:#0f172a;padding:6px;border-radius:4px}
     .key-metric .val{font-size:.9rem;font-weight:700}
     .key-metric .lbl{color:#64748b;font-size:.65rem}
     .val-ok{color:#4ade80}
-    .val-warn{color:#fbbf24}
     .val-err{color:#f87171}
     .val-info{color:#38bdf8}
 
-    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+    /* ── STATS ───────────────────────────────────────────── */
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
     .stat-card{background:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid #334155;border-radius:10px;padding:16px;text-align:center;transition:.2s}
     .stat-card:hover{border-color:#6366f1;transform:translateY(-2px)}
-    .stat-card .icon{font-size:1.6rem;margin-bottom:6px}
-    .stat-card .value{font-size:1.6rem;font-weight:800;color:#e2e8f0}
+    .stat-card .icon{font-size:1.5rem;margin-bottom:6px}
+    .stat-card .value{font-size:1.5rem;font-weight:800}
     .stat-card .label{font-size:.7rem;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-top:4px}
-    .stat-card.success{border-color:#22c55e}
-    .stat-card.success .value{color:#4ade80}
-    .stat-card.warn{border-color:#f59e0b}
-    .stat-card.warn .value{color:#fbbf24}
-    .stat-card.error{border-color:#ef4444}
-    .stat-card.error .value{color:#f87171}
-    .stat-card.info{border-color:#3b82f6}
-    .stat-card.info .value{color:#60a5fa}
+    .stat-card.success{border-color:#22c55e}.stat-card.success .value{color:#4ade80}
+    .stat-card.warn{border-color:#f59e0b}.stat-card.warn .value{color:#fbbf24}
+    .stat-card.error{border-color:#ef4444}.stat-card.error .value{color:#f87171}
+    .stat-card.info{border-color:#3b82f6}.stat-card.info .value{color:#60a5fa}
 
+    /* ── BACKUP ──────────────────────────────────────────── */
     .backup-card{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
     .backup-icon{width:40px;height:40px;background:#0f172a;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
     .backup-info{flex:1}
@@ -197,33 +201,38 @@
     .backup-info .bmeta{font-size:.7rem;color:#64748b;margin-top:2px}
     .backup-actions{display:flex;gap:4px}
 
+    /* ── TEST RESULT ─────────────────────────────────────── */
     .test-result{background:#020617;border-radius:8px;padding:12px;margin-top:10px;font-family:monospace;font-size:.76rem;max-height:300px;overflow-y:auto}
     .test-ok{color:#4ade80}
     .test-fail{color:#f87171}
 
+    /* ── PROGRESS BAR ────────────────────────────────────── */
     .progress-wrap{background:#334155;border-radius:999px;height:3px;overflow:hidden;margin-top:4px}
     .progress-bar{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6,#ec4899);border-radius:999px;transition:width .4s;background-size:200% 100%;animation:shimmer 2s linear infinite}
     @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
+    /* ── MISC ────────────────────────────────────────────── */
     .empty{text-align:center;color:#475569;padding:40px 20px}
     .empty .icon{font-size:2.5rem;margin-bottom:10px}
     .empty p{font-size:.85rem}
 
+    /* ── TOAST ───────────────────────────────────────────── */
     .toast{position:fixed;bottom:20px;right:20px;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px 18px;font-size:.82rem;z-index:9999;display:none;box-shadow:0 8px 24px rgba(0,0,0,.5);max-width:360px}
     .toast.show{display:block;animation:slideIn .3s ease}
     .toast.toast-ok{border-color:#22c55e;color:#4ade80}
     .toast.toast-err{border-color:#ef4444;color:#f87171}
     .toast.toast-info{border-color:#3b82f6;color:#60a5fa}
-
     @keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 
-    .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:9998;display:none;align-items:center;justify-content:center;padding:20px}
+    /* ── MODAL ───────────────────────────────────────────── */
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;display:none;align-items:center;justify-content:center;padding:20px}
     .modal-overlay.show{display:flex}
     .modal{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:24px;max-width:500px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,.5)}
     .modal h3{margin-bottom:14px;font-size:1.05rem;color:#e2e8f0}
     .modal p{font-size:.85rem;color:#94a3b8;margin-bottom:14px}
     .modal-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
 
+    /* ── PREVIEW ─────────────────────────────────────────── */
     .preview-toolbar{background:#1e293b;border-bottom:1px solid #334155;padding:9px 12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex-shrink:0}
     .preview-url{flex:1;background:#020617;border:1px solid #334155;border-radius:6px;padding:6px 12px;font-family:monospace;font-size:.76rem;color:#38bdf8;min-width:180px;outline:none}
     .preview-url:focus{border-color:#6366f1}
@@ -238,16 +247,14 @@
     .preview-iframe.tablet{max-width:768px;box-shadow:0 0 20px rgba(0,0,0,.3);border:2px solid #1e293b}
     .preview-loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#1e293b;color:#e2e8f0;padding:20px 30px;border-radius:10px;font-size:.85rem;display:flex;align-items:center;gap:12px;z-index:10}
     .preview-loading .spinner{width:20px;height:20px;border:3px solid #334155;border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite}
-    @keyframes spin{to{transform:rotate(360deg)}}
 
+    /* ── WS INDICATOR ────────────────────────────────────── */
+    @keyframes spin{to{transform:rotate(360deg)}}
     .ws-indicator{position:fixed;bottom:15px;left:15px;background:#1e293b;border:1px solid #334155;border-radius:20px;padding:5px 12px;font-size:.7rem;display:flex;align-items:center;gap:6px;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,.3)}
     .ws-indicator.connected{border-color:#22c55e;color:#4ade80}
     .ws-indicator.disconnected{border-color:#ef4444;color:#f87171}
 
-    /* ✅ HEARTBEAT INDICATOR */
-    .heartbeat-indicator{display:inline-block;padding:2px 8px;border-radius:6px;font-size:.7rem;background:#422006;color:#fbbf24;margin-left:6px;font-weight:600}
-    .heartbeat-indicator .dot{display:inline-block;width:6px;height:6px;background:#fbbf24;border-radius:50%;margin-right:4px;animation:pulse 1s infinite}
-
+    /* ── SCROLLBAR ───────────────────────────────────────── */
     ::-webkit-scrollbar{width:6px;height:6px}
     ::-webkit-scrollbar-track{background:#0f172a}
     ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
@@ -256,10 +263,13 @@
 </head>
 <body>
 
+<!-- ════════════════════════════════════════════════════════
+     HEADER
+════════════════════════════════════════════════════════ -->
 <header>
   <div>
-    <h1>🚀 AI Project Maker <span class="version">ULTIMATE v2.1</span></h1>
-    <p>Generate, kembangkan &amp; jalankan project · Cache · Backup · Cancel · Live Preview</p>
+    <h1>🚀 AI Project Maker <span class="version">ULTIMATE v3.0</span></h1>
+    <p>Generate · Kembangkan · Jalankan · Auto Fallback · Live Preview</p>
   </div>
   <div class="header-right">
     <span id="server-status">
@@ -273,13 +283,19 @@
   </div>
 </header>
 
+<!-- ════════════════════════════════════════════════════════
+     MAIN CONTAINER
+════════════════════════════════════════════════════════ -->
 <div class="container">
+
+  <!-- ── SIDEBAR ─────────────────────────────────────── -->
   <aside class="sidebar">
     <div class="mode-tabs">
-      <div class="mode-tab active" id="tab-mode-baru" data-mode="mode-baru">➕ Buat Baru</div>
-      <div class="mode-tab" id="tab-mode-lanjut" data-mode="mode-lanjut">🔄 Lanjutkan</div>
+      <div class="mode-tab active" data-mode="mode-baru">➕ Buat Baru</div>
+      <div class="mode-tab" data-mode="mode-lanjut">🔄 Lanjutkan</div>
     </div>
 
+    <!-- Panel Baru -->
     <div class="mode-panel active" id="mode-baru">
       <div>
         <label>📌 Nama Project</label>
@@ -299,6 +315,7 @@
       </div>
     </div>
 
+    <!-- Panel Lanjut -->
     <div class="mode-panel" id="mode-lanjut">
       <div>
         <label>📂 Pilih Project</label>
@@ -325,6 +342,7 @@
     </div>
   </aside>
 
+  <!-- ── MAIN PANEL ──────────────────────────────────── -->
   <div class="main-panel">
     <div class="tabs" id="main-tabs">
       <div class="tab active" data-tab="tab-log">📟 Log</div>
@@ -337,16 +355,31 @@
       <div class="tab" data-tab="tab-keys">🔑 Keys</div>
     </div>
 
+    <!-- Log -->
     <div class="tab-content active" id="tab-log">
+      <div class="log-toolbar">
+        <h3>📟 Live Log</h3>
+        <button class="btn btn-gray btn-sm" onclick="clearLogs()">🗑️ Clear</button>
+      </div>
       <div id="file-progress-wrapper"></div>
       <div id="log-panel"><span class="log-info">Belum ada proses. Isi form di kiri lalu klik Generate.</span></div>
     </div>
+
+    <!-- Files -->
     <div class="tab-content" id="tab-files">
-      <div id="file-list"><div class="empty"><div class="icon">📂</div><p>File muncul setelah project selesai.</p></div></div>
+      <div id="file-list">
+        <div class="empty"><div class="icon">📂</div><p>File muncul setelah project selesai.</p></div>
+      </div>
     </div>
+
+    <!-- Info -->
     <div class="tab-content" id="tab-info">
-      <div id="info-panel"><div class="empty"><div class="icon">📋</div><p>Info project muncul setelah proses dimulai.</p></div></div>
+      <div id="info-panel">
+        <div class="empty"><div class="icon">📋</div><p>Info project muncul setelah proses dimulai.</p></div>
+      </div>
     </div>
+
+    <!-- Preview -->
     <div class="tab-content preview-active" id="tab-preview">
       <div id="preview-panel" style="width:100%;height:100%;display:flex;flex-direction:column">
         <div class="empty" style="margin:auto">
@@ -355,28 +388,46 @@
         </div>
       </div>
     </div>
-    <div class="tab-content" id="tab-run">
-      <div id="run-panel"><div class="empty"><div class="icon">▶️</div><p>Klik RUN di tab Info untuk jalankan.</p></div></div>
-    </div>
-    <div class="tab-content" id="tab-stats">
-      <div id="stats-panel"><div class="empty"><div class="icon">📊</div><p>Loading statistics...</p></div></div>
-    </div>
-    <div class="tab-content" id="tab-backup">
-      <div id="backup-panel"><div class="empty"><div class="icon">💾</div><p>Loading backups...</p></div></div>
-    </div>
-    <div class="tab-content" id="tab-keys">
-      <div id="key-panel"><div class="empty"><div class="icon">🔑</div><p>Klik untuk melihat status.</p></div></div>
-    </div>
-  </div>
-</div>
 
+    <!-- Run -->
+    <div class="tab-content" id="tab-run">
+      <div id="run-panel">
+        <div class="empty"><div class="icon">▶️</div><p>Klik RUN di tab Info untuk jalankan.</p></div>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="tab-content" id="tab-stats">
+      <div id="stats-panel">
+        <div class="empty"><div class="icon">📊</div><p>Loading statistics...</p></div>
+      </div>
+    </div>
+
+    <!-- Backup -->
+    <div class="tab-content" id="tab-backup">
+      <div id="backup-panel">
+        <div class="empty"><div class="icon">💾</div><p>Loading backups...</p></div>
+      </div>
+    </div>
+
+    <!-- Keys -->
+    <div class="tab-content" id="tab-keys">
+      <div id="key-panel">
+        <div class="empty"><div class="icon">🔑</div><p>Klik untuk melihat status.</p></div>
+      </div>
+    </div>
+  </div><!-- /main-panel -->
+</div><!-- /container -->
+
+<!-- ── TOAST ──────────────────────────────────────────── -->
 <div class="toast" id="toast"></div>
 
+<!-- ── WS INDICATOR ──────────────────────────────────── -->
 <div class="ws-indicator disconnected" id="ws-indicator">
-  <span>🔌</span>
-  <span id="ws-status">Disconnected</span>
+  <span>🔌</span><span id="ws-status">Disconnected</span>
 </div>
 
+<!-- ── MODAL ──────────────────────────────────────────── -->
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal">
     <h3 id="modal-title">Konfirmasi</h3>
@@ -388,164 +439,148 @@
   </div>
 </div>
 
+<!-- ════════════════════════════════════════════════════════
+     JAVASCRIPT
+════════════════════════════════════════════════════════ -->
 <script>
 'use strict';
 
-// ================================================
-// CHIPS DATA
-// ================================================
+// ── CHIPS DATA ────────────────────────────────────────────
 const CHIPS_BARU = [
   {label:'📚 Perpustakaan', desc:'Sistem manajemen perpustakaan FastAPI SQLAlchemy SQLite, pinjam buku, denda, halaman HTML lengkap dengan Bootstrap 5', nama:'sistem_perpustakaan'},
-  {label:'🎓 Akademik', desc:'Sistem informasi akademik FastAPI dengan KRS online, input nilai, jadwal kuliah, absensi, dashboard, HTML Bootstrap', nama:'sistem_akademik'},
-  {label:'🤖 ML Prediksi', desc:'ML prediksi kelulusan mahasiswa scikit-learn pandas dengan web interface FastAPI dan HTML dashboard', nama:'ml_kelulusan'},
-  {label:'🛒 E-Commerce', desc:'REST API e-commerce kampus FastAPI dengan JWT auth, CRUD produk, keranjang, halaman HTML lengkap', nama:'ecommerce_kampus'},
-  {label:'📱 Absensi QR', desc:'Sistem absensi mahasiswa QR Code FastAPI, generate QR, scan, rekap, halaman HTML Bootstrap', nama:'absensi_qr'},
-  {label:'📊 Analisis Data', desc:'Analisis data nilai mahasiswa FastAPI matplotlib statistik export PDF dengan web interface', nama:'analisis_nilai'},
-  {label:'🖥️ Inventaris', desc:'Manajemen inventaris lab FastAPI SQLite CRUD perangkat peminjaman laporan HTML lengkap', nama:'inventaris_lab'},
-  {label:'💬 Chatbot', desc:'Chatbot FAQ kampus FastAPI dengan halaman web chat interaktif JavaScript', nama:'chatbot_kampus'},
+  {label:'🎓 Akademik',     desc:'Sistem informasi akademik FastAPI dengan KRS online, input nilai, jadwal kuliah, absensi, dashboard, HTML Bootstrap', nama:'sistem_akademik'},
+  {label:'🤖 ML Prediksi',  desc:'ML prediksi kelulusan mahasiswa scikit-learn pandas dengan web interface FastAPI dan HTML dashboard', nama:'ml_kelulusan'},
+  {label:'🛒 E-Commerce',   desc:'REST API e-commerce kampus FastAPI dengan JWT auth, CRUD produk, keranjang, halaman HTML lengkap', nama:'ecommerce_kampus'},
+  {label:'📱 Absensi QR',   desc:'Sistem absensi mahasiswa QR Code FastAPI, generate QR, scan, rekap, halaman HTML Bootstrap', nama:'absensi_qr'},
+  {label:'📊 Analisis Data',desc:'Analisis data nilai mahasiswa FastAPI matplotlib statistik export PDF dengan web interface', nama:'analisis_nilai'},
+  {label:'🖥️ Inventaris',   desc:'Manajemen inventaris lab FastAPI SQLite CRUD perangkat peminjaman laporan HTML lengkap', nama:'inventaris_lab'},
+  {label:'💬 Chatbot',      desc:'Chatbot FAQ kampus FastAPI dengan halaman web chat interaktif JavaScript', nama:'chatbot_kampus'},
 ];
-
 const CHIPS_LANJUT = [
   {label:'🎨 UI Lengkap', text:'Tambahkan halaman web HTML lengkap Bootstrap 5. Halaman home, list, form, dashboard. HTMLResponse dengan JS.'},
-  {label:'📄 Export PDF', text:'Tambahkan fitur export laporan PDF menggunakan reportlab'},
-  {label:'🔐 Auth JWT', text:'Tambahkan autentikasi JWT dengan login dan register endpoint'},
-  {label:'📊 Dashboard', text:'Tambahkan dashboard statistik dengan grafik Chart.js'},
-  {label:'📧 Email', text:'Tambahkan fitur notifikasi email menggunakan smtplib'},
-  {label:'📑 Pagination', text:'Tambahkan pagination dan filtering pada semua endpoint'},
-  {label:'🧪 Unit Test', text:'Tambahkan unit test lengkap menggunakan pytest'},
-  {label:'🐳 Docker', text:'Tambahkan Dockerfile dan docker-compose.yml'},
+  {label:'📄 Export PDF',  text:'Tambahkan fitur export laporan PDF menggunakan reportlab'},
+  {label:'🔐 Auth JWT',    text:'Tambahkan autentikasi JWT dengan login dan register endpoint'},
+  {label:'📊 Dashboard',   text:'Tambahkan dashboard statistik dengan grafik Chart.js'},
+  {label:'📧 Email',       text:'Tambahkan fitur notifikasi email menggunakan smtplib'},
+  {label:'📑 Pagination',  text:'Tambahkan pagination dan filtering pada semua endpoint'},
+  {label:'🧪 Unit Test',   text:'Tambahkan unit test lengkap menggunakan pytest'},
+  {label:'🐳 Docker',      text:'Tambahkan Dockerfile dan docker-compose.yml'},
 ];
 
-// ================================================
-// STATE
-// ================================================
-let currentProjectId   = null;
-let pollingInterval    = null;
-let runPollingInterval = null;
+// ── STATE ─────────────────────────────────────────────────
+let currentProjectId     = null;
+let pollingInterval      = null;
+let runPollingInterval   = null;
 let statsPollingInterval = null;
-let progressMode       = 'baru';
-let progressVal        = 5;
-let currentPreviewUrl  = null;
-let previewMode        = 'desktop';
-let ws                 = null;
-let wsReconnectTimer   = null;
-let isProcessing       = false;
-let fileProgressState  = {};    // {filename: 'pending'|'loading'|'done'|'failed'}
+let progressMode         = 'baru';
+let progressVal          = 5;
+let currentPreviewUrl    = null;
+let previewMode          = 'desktop';
+let ws                   = null;
+let wsReconnectTimer     = null;
+let isProcessing         = false;
+let fileProgressState    = {};   // { filename: 'loading' | {status:'done',chars,time} | 'failed' | 'fallback' }
 
-// ================================================
-// UTILS
-// ================================================
+// ── UTILS ─────────────────────────────────────────────────
 function esc(s) {
   const d = document.createElement('div');
-  d.textContent = String(s || '');
+  d.textContent = String(s ?? '');
   return d.innerHTML;
 }
 function escAttr(s) {
-  return String(s || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 function iconFile(path) {
-  const ext = (path || '').split('.').pop().toLowerCase();
-  const map = {py:'🐍', md:'📖', txt:'📄', json:'📦', html:'🌐',
-    css:'🎨', js:'⚡', ts:'⚡', yaml:'⚙️', yml:'⚙️', toml:'⚙️', sql:'🗄️', env:'🔒'};
-  return map[ext] || '📄';
+  const ext = (path||'').split('.').pop().toLowerCase();
+  return {py:'🐍',md:'📖',txt:'📄',json:'📦',html:'🌐',css:'🎨',
+    js:'⚡',ts:'⚡',yaml:'⚙️',yml:'⚙️',toml:'⚙️',sql:'🗄️',env:'🔒'}[ext] || '📄';
 }
 function fmtSize(b) {
-  if (!b || b < 1024) return (b || 0) + ' B';
-  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
-  return (b / 1048576).toFixed(1) + ' MB';
+  if (!b||b<1024) return (b||0)+' B';
+  if (b<1048576) return (b/1024).toFixed(1)+' KB';
+  return (b/1048576).toFixed(1)+' MB';
 }
 function fmtUptime(s) {
-  if (!s || s < 60) return s + 's';
-  if (s < 3600) return Math.floor(s/60) + 'm ' + (s%60) + 's';
-  return Math.floor(s/3600) + 'h ' + Math.floor((s%3600)/60) + 'm';
+  if (!s||s<60) return s+'s';
+  if (s<3600) return Math.floor(s/60)+'m '+(s%60)+'s';
+  return Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'m';
 }
 function fmtDate(ts) {
-  if (!ts) return '-';
-  const d = new Date(ts * 1000);
-  return d.toLocaleString('id-ID');
+  return ts ? new Date(ts*1000).toLocaleString('id-ID') : '-';
 }
 function showToast(msg, type) {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  const cls = type === 'ok' ? 'toast-ok' : type === 'info' ? 'toast-info' : 'toast-err';
-  t.className = 'toast show ' + cls;
-  setTimeout(() => { t.className = 'toast'; }, 4000);
+  t.className = 'toast show ' + (type==='ok'?'toast-ok':type==='info'?'toast-info':'toast-err');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.className = 'toast'; }, 4000);
 }
-
 function showModal(title, body, onConfirm) {
   document.getElementById('modal-title').textContent = title;
-  document.getElementById('modal-body').textContent = body;
+  document.getElementById('modal-body').textContent  = body;
   document.getElementById('modal-overlay').classList.add('show');
-  document.getElementById('modal-confirm').onclick = () => {
-    onConfirm();
-    closeModal();
-  };
+  document.getElementById('modal-confirm').onclick = () => { onConfirm(); closeModal(); };
 }
 function closeModal() {
   document.getElementById('modal-overlay').classList.remove('show');
 }
-document.getElementById('modal-overlay').addEventListener('click', function(e) {
-  if (e.target === this) closeModal();
-});
+document.getElementById('modal-overlay').addEventListener('click', e => { if (e.target===e.currentTarget) closeModal(); });
 
-// ================================================
-// WEBSOCKET
-// ================================================
+function clearLogs() {
+  document.getElementById('log-panel').innerHTML = '<span class="log-info">Logs cleared.</span>';
+  document.getElementById('file-progress-wrapper').innerHTML = '';
+  fileProgressState = {};
+}
+
+// ── WEBSOCKET ─────────────────────────────────────────────
 function connectWebSocket(projectId) {
   if (ws) { ws.close(); ws = null; }
   if (!projectId) return;
-  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const url = `${proto}//${window.location.host}/ws/${projectId}`;
-  try {
-    ws = new WebSocket(url);
-    ws.onopen = () => {
-      document.getElementById('ws-indicator').className = 'ws-indicator connected';
-      document.getElementById('ws-status').textContent = 'Live';
-      setInterval(() => { if (ws && ws.readyState === 1) ws.send('ping'); }, 30000);
-    };
-    ws.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        handleWsMessage(data);
-      } catch(err) {}
-    };
-    ws.onclose = () => {
-      document.getElementById('ws-indicator').className = 'ws-indicator disconnected';
-      document.getElementById('ws-status').textContent = 'Offline';
-      if (currentProjectId && isProcessing) {
-        clearTimeout(wsReconnectTimer);
-        wsReconnectTimer = setTimeout(() => connectWebSocket(currentProjectId), 3000);
-      }
-    };
-  } catch(e) { console.error(e); }
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}/ws/${projectId}`);
+  ws.onopen = () => {
+    document.getElementById('ws-indicator').className = 'ws-indicator connected';
+    document.getElementById('ws-status').textContent  = 'Live';
+    setInterval(() => { if (ws?.readyState === 1) ws.send('ping'); }, 30000);
+  };
+  ws.onmessage = e => {
+    try { handleWsMessage(JSON.parse(e.data)); } catch(_) {}
+  };
+  ws.onclose = () => {
+    document.getElementById('ws-indicator').className = 'ws-indicator disconnected';
+    document.getElementById('ws-status').textContent  = 'Offline';
+    if (currentProjectId && isProcessing) {
+      clearTimeout(wsReconnectTimer);
+      wsReconnectTimer = setTimeout(() => connectWebSocket(currentProjectId), 3000);
+    }
+  };
 }
 
 function handleWsMessage(data) {
   if (data.type === 'log') {
-    // Trigger re-render (polling akan tetap update)
     parseLogForFileProgress(data.message);
   } else if (data.type === 'runlog') {
     const panel = document.getElementById('run-log-panel');
     if (panel) {
-      const cls = getRunLogClass(data.line);
-      panel.innerHTML += `<div class="${cls}">${esc(data.line)}</div>`;
+      panel.innerHTML += `<div class="${getRunLogClass(data.line)}">${esc(data.line)}</div>`;
       panel.scrollTop = panel.scrollHeight;
     }
   } else if (data.type === 'status') {
-    if (data.status === 'done') showToast('✅ Selesai!', 'ok');
-    else if (data.status === 'error') showToast('❌ Error!', 'err');
-    else if (data.status === 'cancelled') showToast('🛑 Dibatalkan', 'info');
+    const msgMap = { done:'✅ Selesai!', error:'❌ Error!', cancelled:'🛑 Dibatalkan' };
+    const typeMap = { done:'ok', error:'err', cancelled:'info' };
+    if (msgMap[data.status]) showToast(msgMap[data.status], typeMap[data.status]);
   }
 }
 
 function getLogClass(line) {
-  const map = {'⏳':'log-loading','✅':'log-success','❌':'log-error',
-    '⚠️':'log-warning','🔧':'log-fix','📄':'log-file',
-    '📁':'log-folder','🧪':'log-run','🎉':'log-done',
-    'ℹ️':'log-info','🔄':'log-lanjut','✨':'log-cache'};
-  for (const [emoji, klass] of Object.entries(map)) {
-    if (line.includes(emoji)) return klass;
-  }
+  const checks = [
+    ['⏳','log-loading'],['✅','log-success'],['❌','log-error'],
+    ['⚠️','log-warning'],['🔧','log-fix'],['📄','log-file'],
+    ['📁','log-folder'],['🎉','log-done'],['ℹ️','log-info'],
+    ['🔄','log-lanjut'],['✨','log-cache'],['🧪','log-run'],
+  ];
+  for (const [emoji, cls] of checks) if (line.includes(emoji)) return cls;
   return 'log-info';
 }
 
@@ -553,112 +588,92 @@ function getRunLogClass(line) {
   if (line.startsWith('[SYSTEM]')) return 'log-sys';
   if (/error|traceback|exception|failed/i.test(line)) return 'log-error';
   if (/warning|warn/i.test(line)) return 'log-warning';
-  if (/success|ready|started|running|listening|application startup/i.test(line)) return 'log-success';
+  if (/success|ready|started|running|listening|startup complete/i.test(line)) return 'log-success';
   return 'log-info';
 }
 
-// ================================================
-// ✅ FILE PROGRESS PARSER
-// ================================================
+// ── FILE PROGRESS PARSER ──────────────────────────────────
 function parseLogForFileProgress(line) {
-  // Match pattern: [3/9] main.py...
+  // [3/9] main.py...
   const m1 = line.match(/\[(\d+)\/(\d+)\]\s+(\S+)\.\.\./);
-  if (m1) {
-    fileProgressState[m1[3]] = 'loading';
-    return;
-  }
-  // Match pattern: ✓ 4500 chars (12.3s)
+  if (m1) { fileProgressState[m1[3]] = 'loading'; return; }
+
+  // ✓ 4500 chars (12.3s)
   const m2 = line.match(/✓\s+(\d+)\s+chars\s+\(([\d.]+)s\)/);
   if (m2) {
-    // Cari file terakhir yang loading
-    for (const [file, status] of Object.entries(fileProgressState)) {
-      if (status === 'loading') {
-        fileProgressState[file] = {status: 'done', chars: m2[1], time: m2[2]};
-        break;
-      }
+    for (const [f, st] of Object.entries(fileProgressState)) {
+      if (st === 'loading') { fileProgressState[f] = {status:'done', chars:m2[1], time:m2[2]}; break; }
     }
     return;
   }
-  // Match pattern: ✗ Gagal
+
+  // 📝 Pakai fallback template / Pakai template fallback
+  if (line.includes('📝') || line.includes('fallback')) {
+    for (const [f, st] of Object.entries(fileProgressState)) {
+      if (st === 'loading') { fileProgressState[f] = {status:'fallback', chars:'FB', time:'0.0'}; break; }
+    }
+    return;
+  }
+
+  // ✗ Gagal
   if (line.includes('✗ Gagal')) {
-    for (const [file, status] of Object.entries(fileProgressState)) {
-      if (status === 'loading') {
-        fileProgressState[file] = 'failed';
-        break;
-      }
+    for (const [f, st] of Object.entries(fileProgressState)) {
+      if (st === 'loading') { fileProgressState[f] = 'failed'; break; }
     }
     return;
   }
-  // Match pattern: Struktur: 9 file — untuk init
-  const m3 = line.match(/Struktur:\s+(\d+)\s+file/);
-  if (m3) {
-    // Reset progress
-    fileProgressState = {};
-  }
+
+  // Struktur: 9 file → reset
+  if (/Struktur:\s+\d+\s+file/.test(line)) { fileProgressState = {}; }
 }
 
 function renderFileProgress(files) {
   const wrapper = document.getElementById('file-progress-wrapper');
-  if (!wrapper) return;
-
-  if (!files || Object.keys(files).length === 0) {
-    wrapper.innerHTML = '';
+  if (!wrapper || !files || !Object.keys(files).length) {
+    if (wrapper) wrapper.innerHTML = '';
     return;
   }
 
+  let doneCount = 0;
   const items = Object.entries(files).map(([file, state]) => {
     let iconHtml, itemClass, timeHtml = '';
-    if (state === 'pending') {
-      iconHtml = '⚪';
-      itemClass = 'pending';
-    } else if (state === 'loading') {
-      iconHtml = '<div class="spinner-mini"></div>';
-      itemClass = 'loading';
+    if (state === 'loading') {
+      iconHtml = '<div class="spinner-mini"></div>'; itemClass = 'loading';
     } else if (state === 'failed') {
-      iconHtml = '❌';
-      itemClass = 'failed';
+      iconHtml = '❌'; itemClass = 'failed';
     } else if (typeof state === 'object' && state.status === 'done') {
-      iconHtml = '✅';
-      itemClass = 'done';
+      iconHtml = '✅'; itemClass = 'done'; doneCount++;
       timeHtml = `<span class="time">${state.time}s · ${state.chars} chars</span>`;
+    } else if (typeof state === 'object' && state.status === 'fallback') {
+      iconHtml = '📝'; itemClass = 'fallback'; doneCount++;
+      timeHtml = `<span class="time">Fallback template</span>`;
     } else {
-      iconHtml = '⚪';
-      itemClass = 'pending';
+      iconHtml = '⚪'; itemClass = 'pending';
     }
-
-    return `
-      <div class="file-progress-item ${itemClass}">
-        <span class="icon">${iconHtml}</span>
-        <span>${iconFile(file)} ${esc(file)}</span>
-        ${timeHtml}
-      </div>
-    `;
+    return `<div class="file-progress-item ${itemClass}">
+      <span class="icon">${iconHtml}</span>
+      <span>${iconFile(file)} ${esc(file)}</span>
+      ${timeHtml}
+    </div>`;
   }).join('');
 
-  const doneCount = Object.values(files).filter(s => typeof s === 'object' && s.status === 'done').length;
   const total = Object.keys(files).length;
-
   wrapper.innerHTML = `
     <div class="file-progress">
       <h3>📦 Progress Generate File
         <span style="font-size:.7rem;color:#4ade80;font-weight:normal">${doneCount}/${total} selesai</span>
       </h3>
-      <div class="file-progress-list">
-        ${items}
-      </div>
-    </div>
-  `;
+      <div class="file-progress-list">${items}</div>
+    </div>`;
 }
 
-// ================================================
-// INIT CHIPS
-// ================================================
+// ── CHIPS ─────────────────────────────────────────────────
 function initChips() {
   const baruEl = document.getElementById('chips-baru');
   baruEl.innerHTML = CHIPS_BARU.map(c =>
     `<span class="chip" data-desc="${escAttr(c.desc)}" data-nama="${escAttr(c.nama)}">${c.label}</span>`
   ).join('');
-  baruEl.addEventListener('click', function(e) {
+  baruEl.addEventListener('click', e => {
     const chip = e.target.closest('.chip');
     if (!chip) return;
     document.getElementById('deskripsi').value = chip.dataset.desc;
@@ -669,17 +684,15 @@ function initChips() {
   lanjutEl.innerHTML = CHIPS_LANJUT.map(c =>
     `<span class="chip" data-text="${escAttr(c.text)}">${c.label}</span>`
   ).join('');
-  lanjutEl.addEventListener('click', function(e) {
+  lanjutEl.addEventListener('click', e => {
     const chip = e.target.closest('.chip');
     if (!chip) return;
     document.getElementById('permintaan').value = chip.dataset.text;
   });
 }
 
-// ================================================
-// MODE & TAB SWITCH
-// ================================================
-document.querySelector('.mode-tabs').addEventListener('click', function(e) {
+// ── MODE & TAB SWITCH ─────────────────────────────────────
+document.querySelector('.mode-tabs').addEventListener('click', e => {
   const tab = e.target.closest('.mode-tab');
   if (!tab) return;
   const modeId = tab.dataset.mode;
@@ -690,12 +703,10 @@ document.querySelector('.mode-tabs').addEventListener('click', function(e) {
   if (modeId === 'mode-lanjut') muatProjectList();
 });
 
-document.getElementById('main-tabs').addEventListener('click', function(e) {
+document.getElementById('main-tabs').addEventListener('click', e => {
   const tab = e.target.closest('.tab');
-  if (!tab) return;
-  switchToTab(tab.dataset.tab);
+  if (tab) switchToTab(tab.dataset.tab);
 });
-
 document.getElementById('btn-key-header').addEventListener('click', () => switchToTab('tab-keys'));
 document.getElementById('btn-test-ai').addEventListener('click', testAI);
 document.getElementById('btn-stats').addEventListener('click', () => switchToTab('tab-stats'));
@@ -704,101 +715,81 @@ document.getElementById('btn-backup').addEventListener('click', () => switchToTa
 function switchToTab(tabId) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById(tabId).classList.add('active');
-  document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
-  if (tabId === 'tab-keys') muatKeyStatus();
-  if (tabId === 'tab-run') mulaiRunPolling();
-  if (tabId === 'tab-preview' && currentPreviewUrl) refreshPreviewInfo();
-  if (tabId === 'tab-stats') mulaiStatsPolling();
-  if (tabId === 'tab-backup') muatBackups();
+  document.getElementById(tabId)?.classList.add('active');
+  document.querySelector(`[data-tab="${tabId}"]`)?.classList.add('active');
+  if (tabId === 'tab-keys')    muatKeyStatus();
+  if (tabId === 'tab-run')     mulaiRunPolling();
+  if (tabId === 'tab-preview') refreshPreviewInfo();
+  if (tabId === 'tab-stats')   mulaiStatsPolling();
+  if (tabId === 'tab-backup')  muatBackups();
 }
 
-// ================================================
-// SERVER STATUS
-// ================================================
+// ── SERVER STATUS ─────────────────────────────────────────
 async function cekServer() {
   const el = document.getElementById('server-status');
   try {
     const resp = await fetch('/key-status', { signal: AbortSignal.timeout(5000) });
     if (resp.ok) {
       const data = await resp.json();
-      const count = data.keys ? data.keys.length : 0;
-      el.innerHTML = `<span class="status-dot online"></span><span style="font-size:.75rem">${count} Key aktif</span>`;
-    } else {
-      el.innerHTML = '<span class="status-dot offline"></span><span style="font-size:.75rem">Server error</span>';
-    }
-  } catch(e) {
+      el.innerHTML = `<span class="status-dot online"></span><span style="font-size:.75rem">${(data.keys||[]).length} Key aktif</span>`;
+    } else throw new Error();
+  } catch(_) {
     el.innerHTML = '<span class="status-dot offline"></span><span style="font-size:.75rem">Offline</span>';
   }
 }
 
-// ================================================
-// TEST AI
-// ================================================
+// ── TEST AI ───────────────────────────────────────────────
 async function testAI() {
   switchToTab('tab-keys');
   const el = document.getElementById('key-panel');
   el.innerHTML = '<div class="empty"><p>🧪 Testing semua API Key...</p></div>';
   try {
-    const resp = await fetch('/test-ai');
-    const data = await resp.json();
+    const data = await fetch('/test-ai').then(r => r.json());
     const keys = data.keys || [];
-    let html = '<div class="info-card"><h3>🧪 Hasil Test AI</h3><div class="test-result">';
-    keys.forEach(k => {
-      if (k.status.includes('sukses')) {
-        html += `<div class="test-ok">✅ [${k.index}] ${esc(k.model)} → "${esc(k.reply)}"</div>`;
-      } else {
-        html += `<div class="test-fail">❌ [${k.index}] ${esc(k.model)} → ${esc(k.error)}</div>`;
-      }
-    });
-    html += '</div></div>';
-    el.innerHTML = html;
-    const sukses = keys.filter(k => k.status.includes('sukses')).length;
-    showToast(`Test: ${sukses}/${keys.length} OK`, sukses > 0 ? 'ok' : 'err');
+    const rows = keys.map(k => {
+      // v3.0 returns status '✅' or '❌'; v2.x uses text with 'sukses'
+      const ok = k.status === '✅' || k.status.includes('sukses');
+      return ok
+        ? `<div class="test-ok">✅ [${k.index}] ${esc(k.model)} → "${esc(k.reply)}"</div>`
+        : `<div class="test-fail">❌ [${k.index}] ${esc(k.model)} → ${esc(k.error||k.status)}</div>`;
+    }).join('');
+    el.innerHTML = `<div class="info-card"><h3>🧪 Hasil Test AI</h3><div class="test-result">${rows}</div></div>`;
+    const ok = keys.filter(k => k.status === '✅' || k.status.includes('sukses')).length;
+    showToast(`Test: ${ok}/${keys.length} OK`, ok > 0 ? 'ok' : 'err');
   } catch(e) {
-    el.innerHTML = `<div class="empty"><p>❌ Gagal: ${esc(String(e))}</p></div>`;
+    el.innerHTML = `<div class="empty"><p>❌ ${esc(String(e))}</p></div>`;
   }
 }
 
-// ================================================
-// LIST PROJECT
-// ================================================
+// ── PROJECT LIST ──────────────────────────────────────────
 async function muatProjectList() {
   const el = document.getElementById('project-list');
   el.innerHTML = '<div class="empty"><p>⏳ Memuat...</p></div>';
   try {
-    const resp = await fetch('/list-projects');
-    const data = await resp.json();
+    const data = await fetch('/list-projects').then(r => r.json());
     const list = data.projects || [];
-    if (list.length === 0) {
-      el.innerHTML = '<div class="empty"><p>Belum ada project.</p></div>';
-      return;
-    }
+    if (!list.length) { el.innerHTML = '<div class="empty"><p>Belum ada project.</p></div>'; return; }
+
     el.innerHTML = list.map(p => `
       <div class="project-card" data-nama="${escAttr(p.nama)}" title="${escAttr(p.deskripsi)}">
-        <button class="del-btn" data-del="${escAttr(p.nama)}" title="Hapus">🗑️</button>
+        <button class="del-btn" data-del="${escAttr(p.nama)}">🗑️</button>
         <div class="pname">
-          ${p.is_running ? '<span class="live-dot"></span>' : ''}
-          📁 ${esc(p.nama)}
+          ${p.is_running ? '<span class="live-dot"></span>' : ''}📁 ${esc(p.nama)}
         </div>
         <div class="ptech">${esc(p.tech_stack)} · ${esc(p.project_type||'script')}</div>
         <div class="pfiles">${p.file_count} file · ${esc(p.run_cmd)}</div>
-      </div>
-    `).join('');
+      </div>`).join('');
 
-    el.addEventListener('click', function(e) {
-      const delBtn = e.target.closest('.del-btn');
-      if (delBtn) {
+    el.addEventListener('click', e => {
+      const del = e.target.closest('.del-btn');
+      if (del) {
         e.stopPropagation();
-        const nama = delBtn.dataset.del;
-        showModal('Hapus Project?', `Yakin hapus "${nama}"? Akan di-backup otomatis.`,
-          async () => {
-            const r = await fetch(`/project/${encodeURIComponent(nama)}`, {method: 'DELETE'});
-            if (r.ok) {
-              showToast('✅ Dihapus (backup dibuat)', 'ok');
-              muatProjectList();
-            } else showToast('❌ Gagal', 'err');
-          });
+        const nama = del.dataset.del;
+        showModal('Hapus Project?', `Yakin hapus "${nama}"? Akan di-backup otomatis.`, async () => {
+          const r = await fetch(`/project/${encodeURIComponent(nama)}`, {method:'DELETE'});
+          if (r.ok) { showToast('✅ Dihapus (backup dibuat)', 'ok'); muatProjectList(); }
+          else showToast('❌ Gagal', 'err');
+        });
         return;
       }
       const card = e.target.closest('.project-card');
@@ -812,41 +803,33 @@ async function muatProjectList() {
   }
 }
 
-// ================================================
-// BUAT/LANJUT PROJECT
-// ================================================
-document.getElementById('btn-buat').addEventListener('click', async function() {
+// ── BUAT / LANJUT PROJECT ─────────────────────────────────
+document.getElementById('btn-buat').addEventListener('click', async () => {
   const deskripsi = document.getElementById('deskripsi').value.trim();
   const nama = document.getElementById('nama').value.trim();
   if (!deskripsi) { showToast('Masukkan deskripsi!', 'err'); return; }
-  if (!nama) { showToast('Masukkan nama!', 'err'); return; }
+  if (!nama)      { showToast('Masukkan nama!', 'err'); return; }
   progressMode = 'baru';
   resetUI('baru');
   const fd = new FormData();
   fd.append('deskripsi', deskripsi);
   fd.append('nama', nama);
   try {
-    const resp = await fetch('/buat-project', { method: 'POST', body: fd });
-    if (!resp.ok) {
-      const err = await resp.json();
-      throw new Error(err.error || 'HTTP ' + resp.status);
-    }
+    const resp = await fetch('/buat-project', {method:'POST', body:fd});
+    if (!resp.ok) { const e = await resp.json(); throw new Error(e.error||'HTTP '+resp.status); }
     const json = await resp.json();
     currentProjectId = json.project_id;
     isProcessing = true;
     connectWebSocket(currentProjectId);
     showToast(`🚀 "${json.nama}" dimulai!`, 'ok');
     mulaiPolling();
-  } catch(e) {
-    showToast('Gagal: ' + e, 'err');
-    resetBtn();
-  }
+  } catch(e) { showToast('Gagal: '+e, 'err'); resetBtn(); }
 });
 
-document.getElementById('btn-lanjut').addEventListener('click', async function() {
+document.getElementById('btn-lanjut').addEventListener('click', async () => {
   const nama = document.getElementById('nama-lanjut').value.trim();
   const permintaan = document.getElementById('permintaan').value.trim();
-  if (!nama) { showToast('Pilih project!', 'err'); return; }
+  if (!nama)       { showToast('Pilih project!', 'err'); return; }
   if (!permintaan) { showToast('Masukkan permintaan!', 'err'); return; }
   progressMode = 'lanjut';
   resetUI('lanjut');
@@ -854,21 +837,15 @@ document.getElementById('btn-lanjut').addEventListener('click', async function()
   fd.append('nama', nama);
   fd.append('permintaan', permintaan);
   try {
-    const resp = await fetch('/lanjut-project', { method: 'POST', body: fd });
-    if (!resp.ok) {
-      const err = await resp.json();
-      throw new Error(err.error || 'HTTP ' + resp.status);
-    }
+    const resp = await fetch('/lanjut-project', {method:'POST', body:fd});
+    if (!resp.ok) { const e = await resp.json(); throw new Error(e.error||'HTTP '+resp.status); }
     const json = await resp.json();
     currentProjectId = json.project_id;
     isProcessing = true;
     connectWebSocket(currentProjectId);
     showToast(`🔄 "${json.nama}" dikembangkan!`, 'ok');
     mulaiPolling();
-  } catch(e) {
-    showToast('Gagal: ' + e, 'err');
-    resetBtn();
-  }
+  } catch(e) { showToast('Gagal: '+e, 'err'); resetBtn(); }
 });
 
 function resetUI(mode) {
@@ -876,261 +853,209 @@ function resetUI(mode) {
   document.getElementById('file-progress-wrapper').innerHTML = '';
   document.getElementById('log-panel').innerHTML = '<div class="log-loading">⏳ Memulai proses...</div>';
   document.getElementById('file-list').innerHTML = '<div class="empty"><div class="icon">⏳</div><p>Menunggu...</p></div>';
-  document.getElementById('pw-' + mode).style.display = 'block';
-  document.getElementById('pb-' + mode).style.width = '5%';
-  document.getElementById(mode === 'baru' ? 'btn-buat' : 'btn-lanjut').disabled = true;
+  document.getElementById('pw-'+mode).style.display = 'block';
+  document.getElementById('pb-'+mode).style.width = '5%';
+  document.getElementById(mode==='baru'?'btn-buat':'btn-lanjut').disabled = true;
   progressVal = 5;
   switchToTab('tab-log');
 }
 function resetBtn() {
-  document.getElementById('btn-buat').disabled = false;
+  document.getElementById('btn-buat').disabled  = false;
   document.getElementById('btn-lanjut').disabled = false;
-  document.getElementById('pw-baru').style.display = 'none';
+  document.getElementById('pw-baru').style.display  = 'none';
   document.getElementById('pw-lanjut').style.display = 'none';
   isProcessing = false;
 }
 
-// ================================================
-// ✅ CANCEL PROJECT
-// ================================================
+// ── CANCEL ────────────────────────────────────────────────
 async function cancelProject() {
   if (!currentProjectId) return;
   showModal('Batalkan Proses?',
     'Yakin batalkan? Server akan berhenti setelah file yang sedang diproses selesai.',
     async () => {
+      const btn = document.querySelector('.cancel-floating .btn');
+      if (btn) { btn.disabled = true; btn.textContent = '🛑 Membatalkan...'; }
       try {
-        const r = await fetch('/cancel/' + currentProjectId, {method: 'POST'});
+        const r = await fetch('/cancel/'+currentProjectId, {method:'POST'});
         const d = await r.json();
-        if (d.success) {
-          showToast('🛑 Cancel dikirim — tunggu proses selesai', 'info');
-        } else {
-          showToast('❌ ' + (d.error || 'Failed'), 'err');
-        }
-      } catch(e) { showToast('❌ ' + e, 'err'); }
+        if (d.success) showToast('🛑 Cancel dikirim', 'info');
+        else { showToast('❌ '+(d.error||'Failed'), 'err'); if (btn) { btn.disabled=false; btn.textContent='🛑 Batalkan Proses'; } }
+      } catch(e) { showToast('❌ '+e, 'err'); }
     });
 }
 
-// ================================================
-// POLLING
-// ================================================
+// ── POLLING ───────────────────────────────────────────────
 function mulaiPolling() {
-  if (pollingInterval) clearInterval(pollingInterval);
+  clearInterval(pollingInterval);
   pollingInterval = setInterval(polling, 1500);
 }
 
 async function polling() {
   if (!currentProjectId) return;
   try {
-    const resp = await fetch('/status/' + currentProjectId);
+    const resp = await fetch('/status/'+currentProjectId);
     if (!resp.ok) return;
     const data = await resp.json();
 
-    // Parse logs untuk file progress
-    (data.logs || []).forEach(line => parseLogForFileProgress(line));
+    (data.logs||[]).forEach(parseLogForFileProgress);
     renderFileProgress(fileProgressState);
-    renderLog(data.logs || [], data.status === 'loading');
+    renderLog(data.logs||[], data.status==='loading');
     renderInfo(data);
 
-    const runBadge = document.getElementById('run-badge');
+    const runBadge  = document.getElementById('run-badge');
     const prevBadge = document.getElementById('preview-badge');
-    if (data.running && data.running.alive) {
-      runBadge.style.display = 'inline-block';
-      if (data.running.url) prevBadge.style.display = 'inline-block';
-    } else {
-      runBadge.style.display = 'none';
-      prevBadge.style.display = 'none';
-    }
+    const alive = data.running?.alive;
+    runBadge.style.display  = alive ? 'inline-block' : 'none';
+    prevBadge.style.display = (alive && data.running?.url) ? 'inline-block' : 'none';
 
     if (data.status === 'loading') {
       progressVal = Math.min(progressVal + 1.2, 88);
-      document.getElementById('pb-' + progressMode).style.width = progressVal + '%';
+      document.getElementById('pb-'+progressMode).style.width = progressVal+'%';
     }
 
-    if (data.status === 'done' || data.status === 'error' || data.status === 'cancelled') {
-      clearInterval(pollingInterval);
-      pollingInterval = null;
+    if (['done','error','cancelled'].includes(data.status)) {
+      clearInterval(pollingInterval); pollingInterval = null;
       isProcessing = false;
-      document.getElementById('pb-' + progressMode).style.width = '100%';
+      document.getElementById('pb-'+progressMode).style.width = '100%';
       resetBtn();
-      if (data.status === 'done') showToast('✅ Selesai!', 'ok');
-      else if (data.status === 'cancelled') showToast('🛑 Dibatalkan', 'info');
-      else showToast('❌ Gagal.', 'err');
+      const toastMap = { done:['✅ Selesai!','ok'], cancelled:['🛑 Dibatalkan','info'], error:['❌ Gagal.','err'] };
+      showToast(...(toastMap[data.status]||['Done','ok']));
       try {
-        const fresp = await fetch('/files/' + currentProjectId);
-        const fdata = await fresp.json();
-        renderFiles(fdata.files || []);
-      } catch(e) {}
-      setTimeout(() => {
-        document.getElementById('pw-' + progressMode).style.display = 'none';
-      }, 2500);
+        const fd = await fetch('/files/'+currentProjectId).then(r=>r.json());
+        renderFiles(fd.files||[]);
+      } catch(_) {}
+      setTimeout(() => { document.getElementById('pw-'+progressMode).style.display='none'; }, 2500);
     }
   } catch(e) { console.error(e); }
 }
 
-// ================================================
-// ✅ RENDER LOG dengan CANCEL BUTTON
-// ================================================
+// ── RENDER LOG ────────────────────────────────────────────
 function renderLog(logs, isLoading) {
   const panel = document.getElementById('log-panel');
-  if (!logs.length) {
-    panel.innerHTML = '<span class="log-info">Menunggu proses...</span>';
-    return;
-  }
-
-  let html = logs.map(line => `<div class="${getLogClass(line)}">${esc(line)}</div>`).join('');
-
-  // ✅ Tombol Cancel jika masih loading
+  if (!logs.length) { panel.innerHTML='<span class="log-info">Menunggu proses...</span>'; return; }
+  let html = logs.map(l=>`<div class="${getLogClass(l)}">${esc(l)}</div>`).join('');
   if (isLoading) {
-    html += `
-      <div class="cancel-floating">
-        <button class="btn btn-red" onclick="cancelProject()">
-          🛑 Batalkan Proses
-        </button>
-        <p style="font-size:.7rem;color:#64748b;margin-top:8px">
-          Cancel akan dieksekusi setelah file yang sedang diproses selesai
-        </p>
-      </div>
-    `;
+    html += `<div class="cancel-floating">
+      <button class="btn btn-red" onclick="cancelProject()">🛑 Batalkan Proses</button>
+      <p style="font-size:.7rem;color:#64748b;margin-top:8px">Cancel setelah file saat ini selesai</p>
+    </div>`;
   }
-
   panel.innerHTML = html;
   panel.scrollTop = panel.scrollHeight;
 }
 
-// ================================================
-// RENDER FILES
-// ================================================
+// ── RENDER FILES ──────────────────────────────────────────
 function renderFiles(files) {
   const el = document.getElementById('file-list');
-  if (!files || files.length === 0) {
+  if (!files?.length) {
     el.innerHTML = '<div class="empty"><div class="icon">📂</div><p>Belum ada file.</p></div>';
     return;
   }
-  el.innerHTML = '<div class="file-tree">' + files.map((f, i) => `
+  el.innerHTML = '<div class="file-tree">' + files.map((f,i) => `
     <div class="file-item">
-      <div class="file-header" data-idx="${i}" data-path="${escAttr(f.path)}">
+      <div class="file-header" data-idx="${i}">
         <span>${iconFile(f.path)}</span>
         <span>${esc(f.path)}</span>
         <span class="file-size">${fmtSize(f.size)}</span>
         <div class="file-actions">
-          <button class="edit" data-edit-idx="${i}" data-edit-path="${escAttr(f.path)}">✏️</button>
-          <button class="del" data-del-idx="${i}" data-del-path="${escAttr(f.path)}">🗑️</button>
+          <button class="edit" data-idx="${i}">✏️</button>
+          <button class="del" data-path="${escAttr(f.path)}">🗑️</button>
         </div>
       </div>
       <pre class="file-code" id="fcode-${i}">${esc(f.content)}</pre>
       <div class="file-editor" id="feditor-${i}">
-        <textarea id="fedit-textarea-${i}">${esc(f.content)}</textarea>
+        <textarea id="fedit-ta-${i}">${esc(f.content)}</textarea>
         <div class="editor-actions">
           <button class="btn btn-gray btn-sm" onclick="cancelEdit(${i})">Batal</button>
-          <button class="btn btn-green btn-sm" onclick="saveEdit(${i}, '${escAttr(f.path)}')">💾 Simpan</button>
+          <button class="btn btn-green btn-sm" onclick="saveEdit(${i},'${escAttr(f.path)}')">💾 Simpan</button>
         </div>
       </div>
-    </div>
-  `).join('') + '</div>';
+    </div>`).join('') + '</div>';
 
-  el.addEventListener('click', function(e) {
-    const editBtn = e.target.closest('button.edit');
-    const delBtn = e.target.closest('button.del');
-    if (editBtn) {
+  el.addEventListener('click', e => {
+    if (e.target.classList.contains('edit')) {
       e.stopPropagation();
-      const idx = editBtn.dataset.editIdx;
-      document.getElementById('fcode-' + idx).style.display = 'none';
-      document.getElementById('feditor-' + idx).style.display = 'block';
+      const idx = e.target.dataset.idx;
+      document.getElementById('fcode-'+idx).style.display = 'none';
+      document.getElementById('feditor-'+idx).style.display = 'block';
       return;
     }
-    if (delBtn) {
+    if (e.target.classList.contains('del')) {
       e.stopPropagation();
-      const path = delBtn.dataset.delPath;
+      const path = e.target.dataset.path;
       showModal('Hapus File?', `Yakin hapus "${path}"?`, async () => {
-        const r = await fetch(`/files/${currentProjectId}/delete?path=${encodeURIComponent(path)}`, {method: 'DELETE'});
-        if (r.ok) {
-          showToast('✅ Dihapus', 'ok');
-          const fresp = await fetch('/files/' + currentProjectId);
-          const fdata = await fresp.json();
-          renderFiles(fdata.files || []);
-        } else showToast('❌ Gagal', 'err');
+        const r = await fetch(`/files/${currentProjectId}/delete?path=${encodeURIComponent(path)}`,{method:'DELETE'});
+        if (r.ok) { showToast('✅ Dihapus','ok'); const d=await fetch('/files/'+currentProjectId).then(r=>r.json()); renderFiles(d.files||[]); }
+        else showToast('❌ Gagal','err');
       });
       return;
     }
-    const header = e.target.closest('.file-header');
-    if (!header) return;
-    const code = document.getElementById('fcode-' + header.dataset.idx);
-    if (code) code.style.display = code.style.display === 'block' ? 'none' : 'block';
+    const hdr = e.target.closest('.file-header');
+    if (hdr) { const c=document.getElementById('fcode-'+hdr.dataset.idx); if(c) c.style.display=c.style.display==='block'?'none':'block'; }
   });
 }
 
 function cancelEdit(idx) {
-  document.getElementById('feditor-' + idx).style.display = 'none';
-  document.getElementById('fcode-' + idx).style.display = 'block';
+  document.getElementById('feditor-'+idx).style.display = 'none';
+  document.getElementById('fcode-'+idx).style.display   = 'block';
 }
-
 async function saveEdit(idx, path) {
-  const content = document.getElementById('fedit-textarea-' + idx).value;
-  const fd = new FormData();
-  fd.append('path', path);
-  fd.append('content', content);
+  const content = document.getElementById('fedit-ta-'+idx).value;
+  const fd = new FormData(); fd.append('path',path); fd.append('content',content);
   try {
-    const r = await fetch(`/files/${currentProjectId}/save`, {method: 'POST', body: fd});
+    const r = await fetch(`/files/${currentProjectId}/save`,{method:'POST',body:fd});
     if (r.ok) {
-      showToast('✅ Disimpan (backup dibuat)', 'ok');
-      cancelEdit(idx);
-      const fresp = await fetch('/files/' + currentProjectId);
-      const fdata = await fresp.json();
-      renderFiles(fdata.files || []);
-    } else showToast('❌ Gagal', 'err');
-  } catch(e) { showToast('❌ ' + e, 'err'); }
+      showToast('✅ Disimpan (backup dibuat)','ok'); cancelEdit(idx);
+      const d = await fetch('/files/'+currentProjectId).then(r=>r.json());
+      renderFiles(d.files||[]);
+    } else showToast('❌ Gagal','err');
+  } catch(e) { showToast('❌ '+e,'err'); }
 }
 
-// ================================================
-// RENDER INFO
-// ================================================
+// ── RENDER INFO ───────────────────────────────────────────
 function renderInfo(data) {
   const el = document.getElementById('info-panel');
   const badgeMap = {
-    loading: ['badge-loading', '⏳ Diproses'],
-    done: ['badge-done', '✅ Selesai'],
-    error: ['badge-error', '❌ Gagal'],
-    cancelled: ['badge-cancelled', '🛑 Dibatalkan'],
+    loading: ['badge-loading','⏳ Diproses'],
+    done:    ['badge-done','✅ Selesai'],
+    error:   ['badge-error','❌ Gagal'],
+    cancelled:['badge-cancelled','🛑 Dibatalkan'],
   };
-  const b = badgeMap[data.status] || ['badge-loading', data.status];
-  const fileCount = (data.files || []).length;
+  const [badgeCls, badgeTxt] = badgeMap[data.status] || ['badge-loading', data.status];
 
   let runningHtml = '';
   if (data.status === 'done') {
-    if (data.running && data.running.alive) {
-      const url = data.running.url;
-      const isWeb = url && (data.running.type === 'fastapi' || data.running.type === 'flask');
+    if (data.running?.alive) {
+      const url   = data.running.url;
+      const isWeb = url && ['fastapi','flask'].includes(data.running.type);
       runningHtml = `
         <div class="running-card">
           <div class="r-title"><span class="badge badge-running">● RUNNING</span> Project berjalan</div>
-          ${isWeb ? `<a href="${escAttr(url)}" target="_blank" class="r-url">🌐 ${esc(url)}</a>` :
-            `<div style="color:#94a3b8;font-size:.8rem;margin-bottom:8px">Tipe CLI/Script — lihat tab ▶️ Run</div>`}
+          ${isWeb ? `<a href="${escAttr(url)}" target="_blank" class="r-url">🌐 ${esc(url)}</a>`
+                  : `<div style="color:#94a3b8;font-size:.8rem;margin-bottom:8px">Tipe CLI/Script — lihat tab ▶️ Run</div>`}
           <div class="r-info">
             <span>⏱️ <b>${fmtUptime(data.running.uptime)}</b></span>
             <span>🔌 <b>${data.running.port}</b></span>
             <span>📦 <b>${esc(data.running.type||'script')}</b></span>
           </div>
-          <div class="btn-group-4">
-            ${isWeb ? `<button class="btn btn-blue btn-sm" onclick="openPreview()">🖥️ Preview</button>` : `<button class="btn btn-blue btn-sm" onclick="switchToTab('tab-run')">📟 Log</button>`}
+          <div class="btn-group-4" style="margin-top:10px">
+            ${isWeb ? `<button class="btn btn-blue btn-sm" onclick="openPreview()">🖥️ Preview</button>`
+                    : `<button class="btn btn-blue btn-sm" onclick="switchToTab('tab-run')">📟 Log</button>`}
             <button class="btn btn-yellow btn-sm" onclick="restartProject()">🔄 Restart</button>
-            <button class="btn btn-red btn-sm" onclick="stopProject()">⏹️ Stop</button>
-            <button class="btn btn-gray btn-sm" onclick="downloadProject()">📥 ZIP</button>
+            <button class="btn btn-red btn-sm"    onclick="stopProject()">⏹️ Stop</button>
+            <button class="btn btn-gray btn-sm"   onclick="downloadProject()">📥 ZIP</button>
           </div>
-        </div>
-      `;
+        </div>`;
     } else {
       runningHtml = `
         <div class="info-card">
           <h3>🚀 Jalankan Project</h3>
-          <p style="font-size:.78rem;color:#94a3b8;margin-bottom:12px">
-            Preview otomatis terbuka setelah RUN.
-          </p>
+          <p style="font-size:.78rem;color:#94a3b8;margin-bottom:12px">Preview otomatis terbuka setelah RUN.</p>
           <div class="btn-group">
             <button class="btn btn-green" onclick="runProject()">▶️ RUN Project</button>
-            <button class="btn btn-gray" onclick="downloadProject()">📥 Download ZIP</button>
+            <button class="btn btn-gray"  onclick="downloadProject()">📥 Download ZIP</button>
           </div>
-        </div>
-      `;
+        </div>`;
     }
   }
 
@@ -1138,321 +1063,242 @@ function renderInfo(data) {
     ${runningHtml}
     <div class="info-card">
       <h3>📋 Info Project</h3>
-      <div class="info-row"><span class="info-label">Status</span><span><span class="badge ${b[0]}">${b[1]}</span></span></div>
-      <div class="info-row"><span class="info-label">Nama</span><span class="info-value">${esc(data.nama || '-')}</span></div>
-      <div class="info-row"><span class="info-label">Deskripsi</span><span class="info-value">${esc(data.desc || '-')}</span></div>
-      <div class="info-row"><span class="info-label">Tech Stack</span><span class="info-value">${esc(data.tech || '-')}</span></div>
-      <div class="info-row"><span class="info-label">Tipe</span><span class="info-value">${esc(data.project_type || 'script')}</span></div>
-      <div class="info-row"><span class="info-label">Files</span><span class="info-value">${fileCount} file</span></div>
-      <div class="info-row"><span class="info-label">Lokasi</span><span class="info-value">${esc(data.folder || '-')}</span></div>
+      <div class="info-row"><span class="info-label">Status</span><span class="badge ${badgeCls}">${badgeTxt}</span></div>
+      <div class="info-row"><span class="info-label">Nama</span><span class="info-value">${esc(data.nama||'-')}</span></div>
+      <div class="info-row"><span class="info-label">Deskripsi</span><span class="info-value">${esc(data.desc||'-')}</span></div>
+      <div class="info-row"><span class="info-label">Tech Stack</span><span class="info-value">${esc(data.tech||'-')}</span></div>
+      <div class="info-row"><span class="info-label">Tipe</span><span class="info-value">${esc(data.project_type||'script')}</span></div>
+      <div class="info-row"><span class="info-label">Files</span><span class="info-value">${(data.files||[]).length} file</span></div>
+      <div class="info-row"><span class="info-label">Lokasi</span><span class="info-value">${esc(data.folder||'-')}</span></div>
     </div>
     <div class="info-card">
-      <h3>⚡ Run Command Manual</h3>
-      <div class="cmd-box">${esc(data.run_cmd || 'Belum tersedia')}</div>
+      <h3>⚡ Run Command</h3>
+      <div class="cmd-box">${esc(data.run_cmd||'Belum tersedia')}</div>
     </div>
-    ${data.error ? `
-    <div class="info-card">
+    ${data.error ? `<div class="info-card">
       <h3>❌ Error Detail</h3>
-      <div class="cmd-box" style="color:#f87171;white-space:pre-wrap;word-break:break-all">${esc(data.error)}</div>
-    </div>` : ''}
-  `;
+      <div class="cmd-box" style="color:#f87171;white-space:pre-wrap">${esc(data.error)}</div>
+    </div>` : ''}`;
 }
 
-// ================================================
-// RUN / STOP / RESTART / DOWNLOAD
-// ================================================
+// ── RUN / STOP / RESTART / DOWNLOAD ──────────────────────
 async function runProject() {
-  if (!currentProjectId) { showToast('No project', 'err'); return; }
-  showToast('🚀 Memulai...', 'ok');
+  if (!currentProjectId) { showToast('No project','err'); return; }
+  showToast('🚀 Memulai...','info');
   try {
-    const resp = await fetch('/run/' + currentProjectId, { method: 'POST' });
-    const data = await resp.json();
+    const data = await fetch('/run/'+currentProjectId,{method:'POST'}).then(r=>r.json());
     if (data.sukses) {
-      showToast(`✅ Port ${data.port}!`, 'ok');
+      showToast(`✅ Port ${data.port}!`,'ok');
       if (data.url) {
-        showToast('⏳ Tunggu server siap (3s)...', 'info');
-        setTimeout(() => {
-          loadPreview(data.url, data.port, data.type);
-          switchToTab('tab-preview');
-        }, 3000);
-      } else {
-        switchToTab('tab-run');
-        mulaiRunPolling();
-      }
+        showToast('⏳ Tunggu server siap (3s)...','info');
+        setTimeout(() => { loadPreview(data.url,data.port,data.type); switchToTab('tab-preview'); }, 3000);
+      } else { switchToTab('tab-run'); mulaiRunPolling(); }
     } else {
-      showToast('❌ ' + (data.error || 'Failed'), 'err');
+      showToast('❌ '+(data.error||'Failed'),'err');
       switchToTab('tab-run');
-      renderRunLog({ logs: data.logs || [], alive: false, exit_code: -1 });
+      renderRunLog({logs:data.logs||[], alive:false, exit_code:-1});
     }
-  } catch(e) { showToast('❌ ' + e, 'err'); }
+  } catch(e) { showToast('❌ '+e,'err'); }
 }
 
 async function restartProject() {
   if (!currentProjectId) return;
-  showToast('🔄 Restart...', 'info');
+  showToast('🔄 Restart...','info');
   try {
-    const resp = await fetch('/restart/' + currentProjectId, { method: 'POST' });
-    const data = await resp.json();
-    if (data.sukses) {
-      showToast(`✅ Restart OK (port ${data.port})`, 'ok');
-      if (data.url) setTimeout(() => reloadPreview(), 3000);
-    } else {
-      showToast('❌ ' + (data.error || 'Failed'), 'err');
-    }
-  } catch(e) { showToast('❌ ' + e, 'err'); }
+    const data = await fetch('/restart/'+currentProjectId,{method:'POST'}).then(r=>r.json());
+    if (data.sukses) { showToast(`✅ Restart OK (port ${data.port})`,'ok'); if (data.url) setTimeout(reloadPreview,3000); }
+    else showToast('❌ '+(data.error||'Failed'),'err');
+  } catch(e) { showToast('❌ '+e,'err'); }
 }
 
 async function stopProject() {
   if (!currentProjectId) return;
-  try {
-    await fetch('/stop/' + currentProjectId, { method: 'POST' });
-    showToast('⏹️ Dihentikan', 'ok');
-    hentikanRunPolling();
-    clearPreview();
-    setTimeout(() => { if (!pollingInterval) polling(); }, 500);
-  } catch(e) { showToast('❌ ' + e, 'err'); }
+  await fetch('/stop/'+currentProjectId,{method:'POST'});
+  showToast('⏹️ Dihentikan','ok');
+  hentikanRunPolling();
+  clearPreview();
+  setTimeout(() => { if (!pollingInterval) polling(); }, 500);
 }
 
-async function downloadProject() {
-  if (!currentProjectId) { showToast('No project', 'err'); return; }
-  window.location.href = '/download/' + currentProjectId;
-  showToast('📥 Download...', 'ok');
+function downloadProject() {
+  if (!currentProjectId) { showToast('No project','err'); return; }
+  location.href = '/download/'+currentProjectId;
+  showToast('📥 Download...','ok');
 }
 
-// ================================================
-// PREVIEW
-// ================================================
-function openPreview() {
-  switchToTab('tab-preview');
-  refreshPreviewInfo();
-}
+// ── PREVIEW ───────────────────────────────────────────────
+function openPreview() { switchToTab('tab-preview'); }
 
 async function refreshPreviewInfo() {
   if (!currentProjectId) return;
   try {
-    const resp = await fetch('/status/' + currentProjectId);
-    const data = await resp.json();
-    if (data.running && data.running.alive && data.running.url) {
-      if (!currentPreviewUrl) loadPreview(data.running.url, data.running.port, data.running.type || 'fastapi');
+    const data = await fetch('/status/'+currentProjectId).then(r=>r.json());
+    if (data.running?.alive && data.running?.url) {
+      if (!currentPreviewUrl) loadPreview(data.running.url, data.running.port, data.running.type||'fastapi');
     } else if (!currentPreviewUrl) {
       showPreviewEmpty();
     }
-  } catch(e) {}
+  } catch(_) {}
 }
 
 function loadPreview(url, port, type) {
   currentPreviewUrl = url;
   const el = document.getElementById('preview-panel');
-  const displayUrl = url.startsWith('/') ? window.location.origin + url : url;
+  const displayUrl = url.startsWith('/') ? location.origin+url : url;
   el.innerHTML = `
     <div class="preview-toolbar">
       <button class="preview-btn" onclick="reloadPreview()" title="Reload">🔄</button>
       <button class="preview-btn" onclick="previewGoHome()" title="Home">🏠</button>
       <input type="text" class="preview-url" id="preview-url-input" value="${escAttr(displayUrl)}"
-             onkeydown="if(event.key==='Enter'){navigatePreview(this.value)}"/>
+             onkeydown="if(event.key==='Enter') navigatePreview(this.value)"/>
       <button class="preview-btn" onclick="navigatePreview(document.getElementById('preview-url-input').value)">➡️</button>
-      <button class="preview-btn ${previewMode==='desktop'?'active':''}" onclick="setPreviewMode('desktop', event)" title="Desktop">🖥️</button>
-      <button class="preview-btn ${previewMode==='tablet'?'active':''}" onclick="setPreviewMode('tablet', event)" title="Tablet">📱</button>
-      <button class="preview-btn ${previewMode==='mobile'?'active':''}" onclick="setPreviewMode('mobile', event)" title="Mobile">📱</button>
-      <button class="preview-btn" onclick="openInNewTab()" title="New Tab">🔗</button>
-      <button class="preview-btn" onclick="restartProject()" title="Restart">🔄</button>
-      <button class="preview-btn danger" onclick="stopProject()" title="Stop">⏹️</button>
+      <button class="preview-btn ${previewMode==='desktop'?'active':''}" onclick="setPreviewMode('desktop',event)">🖥️</button>
+      <button class="preview-btn ${previewMode==='tablet'?'active':''}"  onclick="setPreviewMode('tablet',event)">📱</button>
+      <button class="preview-btn ${previewMode==='mobile'?'active':''}"  onclick="setPreviewMode('mobile',event)">📱</button>
+      <button class="preview-btn" onclick="openInNewTab()">🔗</button>
+      <button class="preview-btn danger" onclick="stopProject()">⏹️</button>
     </div>
-    <div class="preview-frame-wrap" id="preview-wrap">
+    <div class="preview-frame-wrap">
       <div class="preview-loading" id="preview-loading">
         <div class="spinner"></div><span>Memuat preview...</span>
       </div>
       <iframe id="preview-iframe" class="preview-iframe ${previewMode!=='desktop'?previewMode:''}"
               src="${escAttr(url)}" onload="onPreviewLoad()" onerror="onPreviewError()"></iframe>
-    </div>
-  `;
+    </div>`;
   setTimeout(() => {
-    const loading = document.getElementById('preview-loading');
-    if (loading && loading.style.display !== 'none') {
-      loading.innerHTML = '<span style="color:#f87171">⚠️ Timeout — coba reload</span>';
-    }
+    const l = document.getElementById('preview-loading');
+    if (l && l.style.display !== 'none') l.innerHTML = '<span style="color:#f87171">⚠️ Timeout — coba reload</span>';
   }, 15000);
 }
 
-function onPreviewLoad() {
-  const loading = document.getElementById('preview-loading');
-  if (loading) loading.style.display = 'none';
-}
-function onPreviewError() {
-  const loading = document.getElementById('preview-loading');
-  if (loading) loading.innerHTML = '<span style="color:#f87171">❌ Gagal</span>';
-}
+function onPreviewLoad()  { const l=document.getElementById('preview-loading'); if(l) l.style.display='none'; }
+function onPreviewError() { const l=document.getElementById('preview-loading'); if(l) l.innerHTML='<span style="color:#f87171">❌ Gagal</span>'; }
+
 function reloadPreview() {
   const iframe = document.getElementById('preview-iframe');
-  const loading = document.getElementById('preview-loading');
-  if (loading) { loading.style.display = 'flex'; loading.innerHTML = '<div class="spinner"></div><span>Reload...</span>'; }
-  if (iframe) {
-    const src = iframe.src;
-    iframe.src = 'about:blank';
-    setTimeout(() => { iframe.src = src; }, 100);
-  }
-  showToast('🔄 Reload', 'ok');
+  const l = document.getElementById('preview-loading');
+  if (l) { l.style.display='flex'; l.innerHTML='<div class="spinner"></div><span>Reload...</span>'; }
+  if (iframe) { const src=iframe.src; iframe.src='about:blank'; setTimeout(()=>{iframe.src=src;},100); }
 }
 function previewGoHome() {
-  if (!currentPreviewUrl) return;
-  const iframe = document.getElementById('preview-iframe');
-  const inp = document.getElementById('preview-url-input');
-  if (iframe) iframe.src = currentPreviewUrl;
-  if (inp) inp.value = window.location.origin + currentPreviewUrl;
+  const iframe=document.getElementById('preview-iframe');
+  const inp=document.getElementById('preview-url-input');
+  if (iframe) iframe.src=currentPreviewUrl;
+  if (inp) inp.value=location.origin+currentPreviewUrl;
 }
 function navigatePreview(newUrl) {
-  if (!newUrl) return;
-  const iframe = document.getElementById('preview-iframe');
-  if (!iframe) return;
-  if (newUrl.startsWith('http')) {
-    try {
-      const parsed = new URL(newUrl);
-      iframe.src = currentPreviewUrl + parsed.pathname.replace(/^\/proxy\/[^\/]+\//, '');
-    } catch(e) { iframe.src = newUrl; }
-  } else {
-    iframe.src = newUrl;
-  }
+  const iframe=document.getElementById('preview-iframe');
+  if (!iframe||!newUrl) return;
+  iframe.src = newUrl.startsWith('http') ? newUrl : newUrl;
 }
-function openInNewTab() { if (currentPreviewUrl) window.open(currentPreviewUrl, '_blank'); }
+function openInNewTab() { if (currentPreviewUrl) window.open(currentPreviewUrl,'_blank'); }
 function setPreviewMode(mode, ev) {
   previewMode = mode;
-  const iframe = document.getElementById('preview-iframe');
-  if (iframe) iframe.className = 'preview-iframe' + (mode !== 'desktop' ? ' ' + mode : '');
-  document.querySelectorAll('.preview-toolbar .preview-btn').forEach(b => b.classList.remove('active'));
-  if (ev && ev.target) ev.target.classList.add('active');
+  const iframe=document.getElementById('preview-iframe');
+  if (iframe) iframe.className='preview-iframe'+(mode!=='desktop'?' '+mode:'');
+  document.querySelectorAll('.preview-toolbar .preview-btn').forEach(b=>b.classList.remove('active'));
+  ev?.target?.classList.add('active');
 }
-function clearPreview() { currentPreviewUrl = null; showPreviewEmpty(); }
+function clearPreview() { currentPreviewUrl=null; showPreviewEmpty(); }
 function showPreviewEmpty() {
-  const el = document.getElementById('preview-panel');
-  el.innerHTML = `
-    <div class="empty" style="margin:auto">
-      <div class="icon">🖥️</div>
-      <p>Preview muncul setelah RUN.</p>
-      ${currentProjectId ? '<button class="btn btn-green" style="margin-top:20px;max-width:200px" onclick="runProject()">▶️ RUN Sekarang</button>' : ''}
-    </div>
-  `;
+  const el=document.getElementById('preview-panel');
+  el.innerHTML=`<div class="empty" style="margin:auto"><div class="icon">🖥️</div><p>Preview muncul setelah RUN.</p>
+    ${currentProjectId?'<button class="btn btn-green" style="margin-top:20px;max-width:200px" onclick="runProject()">▶️ RUN Sekarang</button>':''}</div>`;
 }
 
-// ================================================
-// RUN POLLING
-// ================================================
+// ── RUN POLLING ───────────────────────────────────────────
 function mulaiRunPolling() {
-  if (runPollingInterval) clearInterval(runPollingInterval);
+  clearInterval(runPollingInterval);
   pollRunLogs();
   runPollingInterval = setInterval(pollRunLogs, 2000);
 }
-function hentikanRunPolling() {
-  if (runPollingInterval) { clearInterval(runPollingInterval); runPollingInterval = null; }
-}
+function hentikanRunPolling() { clearInterval(runPollingInterval); runPollingInterval=null; }
 
 async function pollRunLogs() {
   if (!currentProjectId) return;
   try {
-    const resp = await fetch('/run-logs/' + currentProjectId);
-    const data = await resp.json();
+    const data = await fetch('/run-logs/'+currentProjectId).then(r=>r.json());
     renderRunLog(data);
-    const runBadge = document.getElementById('run-badge');
-    const prevBadge = document.getElementById('preview-badge');
-    if (data.alive) {
-      runBadge.style.display = 'inline-block';
-      if (data.url) prevBadge.style.display = 'inline-block';
-    } else {
-      runBadge.style.display = 'none';
-      prevBadge.style.display = 'none';
-    }
-  } catch(e) {}
+    document.getElementById('run-badge').style.display   = data.alive ? 'inline-block' : 'none';
+    document.getElementById('preview-badge').style.display = (data.alive&&data.url) ? 'inline-block' : 'none';
+  } catch(_) {}
 }
 
 function renderRunLog(data) {
   const el = document.getElementById('run-panel');
-  const logs = data.logs || [];
+  const logs = data.logs||[];
   if (!logs.length && !data.alive) {
-    el.innerHTML = '<div class="empty"><div class="icon">▶️</div><p>Belum ada project running.</p></div>';
+    el.innerHTML='<div class="empty"><div class="icon">▶️</div><p>Belum ada project running.</p></div>';
     return;
   }
   const statusBadge = data.alive
     ? '<span class="badge badge-running">● RUNNING</span>'
-    : `<span class="badge badge-stopped">⏹️ STOPPED${data.exit_code !== null ? ' (exit '+data.exit_code+')' : ''}</span>`;
-
+    : `<span class="badge badge-stopped">⏹️ STOPPED${data.exit_code!=null?' (exit '+data.exit_code+')':''}</span>`;
   const controlBtn = data.alive
     ? `<div class="btn-group-3">
-         ${data.url ? `<button class="btn btn-blue" onclick="openPreview()">🖥️ Preview</button>` : '<span></span>'}
-         <button class="btn btn-yellow" onclick="restartProject()">🔄 Restart</button>
-         <button class="btn btn-red" onclick="stopProject()">⏹️ STOP</button>
+        ${data.url?`<button class="btn btn-blue" onclick="openPreview()">🖥️ Preview</button>`:'<span></span>'}
+        <button class="btn btn-yellow" onclick="restartProject()">🔄 Restart</button>
+        <button class="btn btn-red"    onclick="stopProject()">⏹️ STOP</button>
        </div>`
     : `<button class="btn btn-green" onclick="runProject()">▶️ START</button>`;
-
-  const logsHtml = logs.map(line => `<div class="${getRunLogClass(line)}">${esc(line)}</div>`).join('');
 
   el.innerHTML = `
     <div class="info-card">
       <h3>▶️ Runtime Info</h3>
       <div class="info-row"><span class="info-label">Status</span><span>${statusBadge}</span></div>
-      <div class="info-row"><span class="info-label">Port</span><span class="info-value">${data.port || '-'}</span></div>
-      <div class="info-row"><span class="info-label">Uptime</span><span class="info-value">${data.uptime !== undefined ? fmtUptime(data.uptime) : '-'}</span></div>
-      <div class="info-row"><span class="info-label">Tipe</span><span class="info-value">${esc(data.type || '-')}</span></div>
-      <div class="info-row"><span class="info-label">Command</span><span class="info-value" style="font-family:monospace;color:#4ade80">${esc(data.run_cmd || '-')}</span></div>
-      ${data.url && data.alive ? `<div class="info-row"><span class="info-label">URL</span><a href="${escAttr(data.url)}" target="_blank" style="color:#38bdf8;font-family:monospace">${esc(data.url)}</a></div>` : ''}
+      <div class="info-row"><span class="info-label">Port</span><span class="info-value">${data.port||'-'}</span></div>
+      <div class="info-row"><span class="info-label">Uptime</span><span class="info-value">${data.uptime!=null?fmtUptime(data.uptime):'-'}</span></div>
+      <div class="info-row"><span class="info-label">Tipe</span><span class="info-value">${esc(data.type||'-')}</span></div>
+      <div class="info-row"><span class="info-label">Command</span><span class="info-value" style="font-family:monospace;color:#4ade80">${esc(data.run_cmd||'-')}</span></div>
+      ${data.url&&data.alive?`<div class="info-row"><span class="info-label">URL</span><a href="${escAttr(data.url)}" target="_blank" style="color:#38bdf8;font-family:monospace">${esc(data.url)}</a></div>`:''}
       <div style="margin-top:12px">${controlBtn}</div>
     </div>
     <div class="info-card">
-      <h3>📟 Live Output <span style="font-size:.7rem;color:#4ade80;font-weight:normal">● WebSocket</span></h3>
-      <div id="run-log-panel">${logsHtml || '<span class="log-info">Menunggu...</span>'}</div>
-    </div>
-  `;
-  const p = document.getElementById('run-log-panel');
-  if (p) p.scrollTop = p.scrollHeight;
+      <h3>📟 Live Output <span style="font-size:.7rem;color:#4ade80;font-weight:normal">● Live</span></h3>
+      <div id="run-log-panel">${logs.map(l=>`<div class="${getRunLogClass(l)}">${esc(l)}</div>`).join('')||'<span class="log-info">Menunggu...</span>'}</div>
+    </div>`;
+  const p=document.getElementById('run-log-panel');
+  if(p) p.scrollTop=p.scrollHeight;
 }
 
-// ================================================
-// STATS
-// ================================================
+// ── STATS ─────────────────────────────────────────────────
 function mulaiStatsPolling() {
   loadStats();
-  if (statsPollingInterval) clearInterval(statsPollingInterval);
+  clearInterval(statsPollingInterval);
   statsPollingInterval = setInterval(loadStats, 5000);
 }
 
 async function loadStats() {
   const el = document.getElementById('stats-panel');
   try {
-    const resp = await fetch('/stats');
-    const data = await resp.json();
-    const req = data.requests || {};
-    const cache = data.cache || {};
-    const proj = data.projects || {};
-    const sys = data.system || {};
-    const successRate = req.total > 0 ? Math.round((req.success / req.total) * 100) : 0;
-
+    const data = await fetch('/stats').then(r=>r.json());
+    const req=data.requests||{}, cache=data.cache||{}, proj=data.projects||{}, sys=data.system||{};
+    const rate = req.total>0 ? Math.round((req.success/req.total)*100) : 0;
     el.innerHTML = `
       <div class="info-card">
-        <h3>📊 Realtime Statistics
-          <span style="font-size:.7rem;color:#4ade80;font-weight:normal">● Auto-refresh 5s</span>
-        </h3>
+        <h3>📊 Realtime Statistics <span style="font-size:.7rem;color:#4ade80;font-weight:normal">● Auto-refresh 5s</span></h3>
       </div>
       <div class="stats-grid">
-        <div class="stat-card info"><div class="icon">📞</div><div class="value">${req.total || 0}</div><div class="label">Total Requests</div></div>
-        <div class="stat-card success"><div class="icon">✅</div><div class="value">${req.success || 0}</div><div class="label">Success</div></div>
-        <div class="stat-card error"><div class="icon">❌</div><div class="value">${req.failed || 0}</div><div class="label">Failed</div></div>
-        <div class="stat-card ${successRate >= 80 ? 'success' : successRate >= 50 ? 'warn' : 'error'}">
-          <div class="icon">📈</div><div class="value">${successRate}%</div><div class="label">Success Rate</div>
-        </div>
+        <div class="stat-card info"><div class="icon">📞</div><div class="value">${req.total||0}</div><div class="label">Total Requests</div></div>
+        <div class="stat-card success"><div class="icon">✅</div><div class="value">${req.success||0}</div><div class="label">Success</div></div>
+        <div class="stat-card error"><div class="icon">❌</div><div class="value">${req.failed||0}</div><div class="label">Failed</div></div>
+        <div class="stat-card ${rate>=80?'success':rate>=50?'warn':'error'}"><div class="icon">📈</div><div class="value">${rate}%</div><div class="label">Success Rate</div></div>
       </div>
       <div class="stats-grid">
-        <div class="stat-card warn"><div class="icon">✨</div><div class="value">${req.cache_hits || 0}</div><div class="label">Cache Hits</div></div>
-        <div class="stat-card info"><div class="icon">🗄️</div><div class="value">${cache.size || 0}/${cache.max || 0}</div><div class="label">Cache Size</div></div>
-        <div class="stat-card info"><div class="icon">⏱️</div><div class="value">${req.avg_time || 0}s</div><div class="label">Avg Response</div></div>
+        <div class="stat-card warn"><div class="icon">✨</div><div class="value">${req.cache_hits||0}</div><div class="label">Cache Hits</div></div>
+        <div class="stat-card info"><div class="icon">🗄️</div><div class="value">${cache.size||0}/${cache.max||0}</div><div class="label">Cache Size</div></div>
+        <div class="stat-card info"><div class="icon">⏱️</div><div class="value">${req.avg_time||0}s</div><div class="label">Avg Response</div></div>
       </div>
       <div class="stats-grid">
-        <div class="stat-card info"><div class="icon">📁</div><div class="value">${proj.total || 0}</div><div class="label">Total Projects</div></div>
-        <div class="stat-card success"><div class="icon">🟢</div><div class="value">${proj.running || 0}</div><div class="label">Running Now</div></div>
-        <div class="stat-card warn"><div class="icon">💾</div><div class="value">${proj.backups || 0}</div><div class="label">Total Backups</div></div>
+        <div class="stat-card info"><div class="icon">📁</div><div class="value">${proj.total||0}</div><div class="label">Total Projects</div></div>
+        <div class="stat-card success"><div class="icon">🟢</div><div class="value">${proj.running||0}</div><div class="label">Running Now</div></div>
+        <div class="stat-card warn"><div class="icon">💾</div><div class="value">${proj.backups||0}</div><div class="label">Backups</div></div>
       </div>
       <div class="info-card">
         <h3>⚙️ System Config</h3>
-        <div class="info-row"><span class="info-label">Port Range</span><span class="info-value">${esc(sys.port_range || '-')}</span></div>
-        <div class="info-row"><span class="info-label">Rate Limit</span><span class="info-value">${esc(sys.rate_limit || '-')}</span></div>
-        <div class="info-row"><span class="info-label">Cache TTL</span><span class="info-value">${esc(sys.cache_ttl || '-')}</span></div>
+        <div class="info-row"><span class="info-label">Port Range</span><span class="info-value">${esc(sys.port_range||'-')}</span></div>
+        <div class="info-row"><span class="info-label">Rate Limit</span><span class="info-value">${esc(sys.rate_limit||'-')}</span></div>
+        <div class="info-row"><span class="info-label">Cache TTL</span><span class="info-value">${esc(sys.cache_ttl||'-')}</span></div>
       </div>
       <div class="info-card">
         <h3>🛠️ Actions</h3>
@@ -1460,41 +1306,32 @@ async function loadStats() {
           <button class="btn btn-red" onclick="clearCache()">🗑️ Clear Cache</button>
           <button class="btn btn-blue" onclick="checkHealth()">💚 Health Check</button>
         </div>
-      </div>
-    `;
-  } catch(e) {
-    el.innerHTML = `<div class="empty"><p>❌ ${esc(String(e))}</p></div>`;
-  }
+      </div>`;
+  } catch(e) { el.innerHTML=`<div class="empty"><p>❌ ${esc(String(e))}</p></div>`; }
 }
 
 async function clearCache() {
-  const r = await fetch('/cache/clear', {method: 'POST'});
-  const d = await r.json();
-  showToast(`✅ Cleared: ${d.cleared}`, 'ok');
+  const d = await fetch('/cache/clear',{method:'POST'}).then(r=>r.json());
+  showToast(`✅ Cleared: ${d.cleared}`,'ok');
   loadStats();
 }
-
 async function checkHealth() {
-  showToast('💚 Checking...', 'info');
+  showToast('💚 Checking...','info');
   try {
-    const r = await fetch('/health-upstream');
-    const d = await r.json();
-    const ok = d.keys.filter(k => k.status.includes('healthy')).length;
-    showToast(`${ok}/${d.keys.length} healthy`, ok > 0 ? 'ok' : 'err');
-  } catch(e) { showToast('❌ Failed', 'err'); }
+    const d = await fetch('/health-upstream').then(r=>r.json());
+    const ok = d.keys.filter(k=>k.status.includes('healthy')).length;
+    showToast(`${ok}/${d.keys.length} healthy`, ok>0?'ok':'err');
+  } catch(_) { showToast('❌ Failed','err'); }
 }
 
-// ================================================
-// BACKUP
-// ================================================
+// ── BACKUP ────────────────────────────────────────────────
 async function muatBackups() {
   const el = document.getElementById('backup-panel');
   el.innerHTML = '<div class="empty"><p>⏳ Loading...</p></div>';
   try {
-    const resp = await fetch('/backups');
-    const data = await resp.json();
-    const list = data.backups || [];
-    if (list.length === 0) {
+    const data = await fetch('/backups').then(r=>r.json());
+    const list = data.backups||[];
+    if (!list.length) {
       el.innerHTML = `
         <div class="info-card">
           <h3>💾 Backup System</h3>
@@ -1502,19 +1339,15 @@ async function muatBackups() {
           <ul style="font-size:.8rem;color:#94a3b8;margin-top:8px;padding-left:20px;line-height:1.8">
             <li>Sebelum "Lanjutkan" project</li>
             <li>Sebelum edit file manual</li>
-            <li>Sebelum delete project</li>
+            <li>Sebelum hapus project</li>
           </ul>
         </div>
-        <div class="empty"><div class="icon">💾</div><p>Belum ada backup.</p></div>
-      `;
+        <div class="empty"><div class="icon">💾</div><p>Belum ada backup.</p></div>`;
       return;
     }
     el.innerHTML = `
-      <div class="info-card">
-        <h3>💾 ${list.length} Backup</h3>
-        <p style="font-size:.78rem;color:#94a3b8">Restore atau hapus backup</p>
-      </div>
-      ${list.map(b => `
+      <div class="info-card"><h3>💾 ${list.length} Backup</h3></div>
+      ${list.map(b=>`
         <div class="backup-card">
           <div class="backup-icon">📦</div>
           <div class="backup-info">
@@ -1523,87 +1356,69 @@ async function muatBackups() {
           </div>
           <div class="backup-actions">
             <button class="btn btn-blue btn-sm" onclick="restoreBackup('${escAttr(b.name)}')">♻️</button>
-            <button class="btn btn-red btn-sm" onclick="deleteBackup('${escAttr(b.name)}')">🗑️</button>
+            <button class="btn btn-red  btn-sm" onclick="deleteBackup('${escAttr(b.name)}')">🗑️</button>
           </div>
-        </div>
-      `).join('')}
-    `;
-  } catch(e) {
-    el.innerHTML = `<div class="empty"><p>❌ ${esc(String(e))}</p></div>`;
-  }
+        </div>`).join('')}`;
+  } catch(e) { el.innerHTML=`<div class="empty"><p>❌ ${esc(String(e))}</p></div>`; }
 }
 
 async function restoreBackup(name) {
   showModal('Restore Backup?', `Restore "${name}"?`, async () => {
-    try {
-      const r = await fetch(`/restore/${encodeURIComponent(name)}`, {method: 'POST'});
-      const d = await r.json();
-      if (d.success) { showToast('✅ Restored', 'ok'); muatBackups(); }
-      else showToast('❌ ' + d.error, 'err');
-    } catch(e) { showToast('❌ ' + e, 'err'); }
+    const d = await fetch(`/restore/${encodeURIComponent(name)}`,{method:'POST'}).then(r=>r.json());
+    if (d.success) { showToast('✅ Restored','ok'); muatBackups(); }
+    else showToast('❌ '+d.error,'err');
   });
 }
-
 async function deleteBackup(name) {
   showModal('Hapus Backup?', `Hapus "${name}"?`, async () => {
-    try {
-      const r = await fetch(`/backups/${encodeURIComponent(name)}`, {method: 'DELETE'});
-      if (r.ok) { showToast('✅ Deleted', 'ok'); muatBackups(); }
-      else showToast('❌ Failed', 'err');
-    } catch(e) { showToast('❌ ' + e, 'err'); }
+    const r = await fetch(`/backups/${encodeURIComponent(name)}`,{method:'DELETE'});
+    if (r.ok) { showToast('✅ Deleted','ok'); muatBackups(); }
+    else showToast('❌ Failed','err');
   });
 }
 
-// ================================================
-// KEY STATUS
-// ================================================
+// ── KEY STATUS ────────────────────────────────────────────
 async function muatKeyStatus() {
   const el = document.getElementById('key-panel');
   el.innerHTML = '<div class="empty"><p>⏳ Loading...</p></div>';
   try {
-    const resp = await fetch('/key-status');
-    const data = await resp.json();
-    const keys = data.keys || [];
+    const data = await fetch('/key-status').then(r=>r.json());
+    const keys = data.keys||[];
     el.innerHTML = `
       <div class="info-card">
         <h3>🔑 API Keys — ${keys.length} Total</h3>
         <p style="font-size:.75rem;color:#64748b">Active: Index ${data.current_index} · Smart routing</p>
       </div>
-      ${keys.map(k => {
-        const dotCls = k.error_count === 0 ? 'green' : k.error_count >= 3 ? 'red' : 'yellow';
+      ${keys.map(k=>{
+        const dot = k.error_count===0?'green':k.error_count>=3?'red':'yellow';
         return `
-        <div class="key-card ${k.active ? 'active-key' : ''}">
-          <div class="key-header">
-            <div class="key-dot ${dotCls}"></div>
-            <div class="key-info">
-              <div class="kmodel">${esc(k.model)} ${k.active ? '<span style="color:#4ade80;font-size:.7rem">← ACTIVE</span>' : ''}</div>
-              <div class="kurl">${esc(k.base_url)}</div>
-              <div class="khint">Key: ${esc(k.api_key_hint)}</div>
+          <div class="key-card ${k.active?'active-key':''}">
+            <div class="key-header">
+              <div class="key-dot ${dot}"></div>
+              <div class="key-info">
+                <div class="kmodel">${esc(k.model)} ${k.active?'<span style="color:#4ade80;font-size:.7rem">← ACTIVE</span>':''}</div>
+                <div class="kurl">${esc(k.base_url)}</div>
+                <div class="khint">Key: ${esc(k.api_key_hint)}</div>
+              </div>
             </div>
-          </div>
-          <div class="key-metrics">
-            <div class="key-metric"><div class="val val-ok">${k.success_count || 0}</div><div class="lbl">Success</div></div>
-            <div class="key-metric"><div class="val val-err">${k.error_count || 0}</div><div class="lbl">Errors</div></div>
-            <div class="key-metric"><div class="val val-info">${k.avg_time || 0}s</div><div class="lbl">Avg Time</div></div>
-          </div>
-          ${k.last_error ? `<div style="font-size:.7rem;color:#f87171;margin-top:8px;padding-top:8px;border-top:1px solid #334155">⚠️ ${esc(k.last_error)}</div>` : ''}
-        </div>`;
+            <div class="key-metrics">
+              <div class="key-metric"><div class="val val-ok">${k.success_count||0}</div><div class="lbl">Success</div></div>
+              <div class="key-metric"><div class="val val-err">${k.error_count||0}</div><div class="lbl">Errors</div></div>
+              <div class="key-metric"><div class="val val-info">${k.avg_time||0}s</div><div class="lbl">Avg Time</div></div>
+            </div>
+            ${k.last_error?`<div style="font-size:.7rem;color:#f87171;margin-top:8px;padding-top:8px;border-top:1px solid #334155">⚠️ ${esc(k.last_error)}</div>`:''}
+          </div>`;
       }).join('')}
-      <button class="btn btn-red" id="btn-reset-key" style="margin-top:8px">🔄 Reset Counter</button>
-    `;
+      <button class="btn btn-red" id="btn-reset-key" style="margin-top:8px">🔄 Reset Counter</button>`;
     document.getElementById('btn-reset-key').addEventListener('click', async () => {
-      await fetch('/key-reset', { method: 'POST' });
-      showToast('Reset!', 'ok');
+      await fetch('/key-reset',{method:'POST'});
+      showToast('Reset!','ok');
       muatKeyStatus();
     });
-  } catch(e) {
-    el.innerHTML = `<div class="empty"><p>❌ ${esc(String(e))}</p></div>`;
-  }
+  } catch(e) { el.innerHTML=`<div class="empty"><p>❌ ${esc(String(e))}</p></div>`; }
 }
 
-// ================================================
-// INIT
-// ================================================
+// ── INIT ──────────────────────────────────────────────────
 initChips();
 cekServer();
 setInterval(cekServer, 30000);
