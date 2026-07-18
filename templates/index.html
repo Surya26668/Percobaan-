@@ -55,6 +55,7 @@
     .btn-sm{padding:7px 14px;font-size:.8rem;width:auto;border-radius:6px}
 
     .btn-group{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+    .btn-group-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}
 
     .project-list-wrap{display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto}
     .project-card{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 12px;cursor:pointer;transition:.2s}
@@ -70,8 +71,11 @@
     .tab:hover{color:#e2e8f0}
     .tab.active{color:#818cf8;border-bottom-color:#818cf8}
     .tab-badge{display:inline-block;background:#22c55e;color:#fff;border-radius:999px;font-size:.65rem;padding:1px 7px;margin-left:5px;font-weight:700;vertical-align:middle}
+    .tab-badge.live{background:#dc2626;animation:pulse 1.5s infinite}
     .tab-content{flex:1;overflow-y:auto;display:none;padding:20px}
     .tab-content.active{display:block}
+    .tab-content.preview-active{padding:0;overflow:hidden;display:none;flex-direction:column}
+    .tab-content.preview-active.active{display:flex}
 
     #log-panel,#run-log-panel{background:#020617;border-radius:10px;padding:14px;font-family:'Consolas','Courier New',monospace;font-size:.8rem;line-height:1.8;min-height:300px;white-space:pre-wrap;word-break:break-word}
     .log-loading{color:#facc15}
@@ -144,6 +148,25 @@
 
     @keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 
+    /* ================================================ */
+    /*  PREVIEW STYLES                                  */
+    /* ================================================ */
+    .preview-toolbar{background:#1e293b;border-bottom:1px solid #334155;padding:10px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0}
+    .preview-url{flex:1;background:#020617;border:1px solid #334155;border-radius:6px;padding:6px 12px;font-family:monospace;font-size:.78rem;color:#38bdf8;min-width:180px;outline:none}
+    .preview-url:focus{border-color:#6366f1}
+    .preview-btn{background:#334155;border:none;color:#e2e8f0;padding:6px 12px;border-radius:6px;font-size:.75rem;cursor:pointer;transition:.15s;font-weight:600;white-space:nowrap}
+    .preview-btn:hover{background:#475569}
+    .preview-btn.active{background:#6366f1;color:#fff}
+    .preview-btn.danger{background:#dc2626}
+    .preview-btn.danger:hover{background:#b91c1c}
+    .preview-frame-wrap{flex:1;background:#94a3b8;overflow:auto;display:flex;align-items:stretch;justify-content:center;position:relative}
+    .preview-iframe{width:100%;height:100%;border:none;background:#fff;display:block}
+    .preview-iframe.mobile{max-width:390px;box-shadow:0 0 20px rgba(0,0,0,.3);border:2px solid #1e293b}
+    .preview-iframe.tablet{max-width:768px;box-shadow:0 0 20px rgba(0,0,0,.3);border:2px solid #1e293b}
+    .preview-loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#1e293b;color:#e2e8f0;padding:20px 30px;border-radius:10px;font-size:.9rem;display:flex;align-items:center;gap:12px;z-index:10}
+    .preview-loading .spinner{width:20px;height:20px;border:3px solid #334155;border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+
     ::-webkit-scrollbar{width:5px;height:5px}
     ::-webkit-scrollbar-track{background:#0f172a}
     ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
@@ -174,7 +197,6 @@
       <div class="mode-tab" id="tab-mode-lanjut" data-mode="mode-lanjut">🔄 Lanjutkan</div>
     </div>
 
-    <!-- MODE: BUAT BARU -->
     <div class="mode-panel active" id="mode-baru">
       <div>
         <label>📌 Nama Project</label>
@@ -194,7 +216,6 @@
       </div>
     </div>
 
-    <!-- MODE: LANJUTKAN -->
     <div class="mode-panel" id="mode-lanjut">
       <div>
         <label>📂 Pilih Project Yang Ada</label>
@@ -227,6 +248,7 @@
       <div class="tab active" data-tab="tab-log">📟 Log</div>
       <div class="tab" data-tab="tab-files">📂 Files</div>
       <div class="tab" data-tab="tab-info">📋 Info</div>
+      <div class="tab" data-tab="tab-preview">🖥️ Preview <span id="preview-badge" style="display:none" class="tab-badge live">LIVE</span></div>
       <div class="tab" data-tab="tab-run">▶️ Run <span id="run-badge" style="display:none" class="tab-badge">ON</span></div>
       <div class="tab" data-tab="tab-keys">🔑 API Keys</div>
     </div>
@@ -242,6 +264,15 @@
     <div class="tab-content" id="tab-info">
       <div id="info-panel">
         <div class="empty"><div class="icon">📋</div><p>Info project akan muncul setelah proses dimulai.</p></div>
+      </div>
+    </div>
+    <div class="tab-content preview-active" id="tab-preview">
+      <div id="preview-panel" style="width:100%;height:100%;display:flex;flex-direction:column">
+        <div class="empty" style="margin:auto">
+          <div class="icon">🖥️</div>
+          <p>Preview akan muncul setelah project di-RUN.<br/>
+          Hanya untuk project tipe <strong>FastAPI</strong> atau <strong>Flask</strong>.</p>
+        </div>
       </div>
     </div>
     <div class="tab-content" id="tab-run">
@@ -270,10 +301,10 @@ const CHIPS_BARU = [
   {label:'🎓 Akademik', desc:'Sistem informasi akademik dengan KRS online, input nilai, jadwal kuliah, absensi, dashboard statistik FastAPI SQLite', nama:'sistem_akademik'},
   {label:'🤖 ML Prediksi', desc:'Machine learning prediksi kelulusan mahasiswa berdasarkan IPK, absensi, nilai menggunakan scikit-learn pandas matplotlib', nama:'ml_kelulusan'},
   {label:'🛒 E-Commerce', desc:'REST API e-commerce kampus untuk jual beli barang bekas mahasiswa dengan JWT, CRUD produk, keranjang, pembayaran mock FastAPI', nama:'ecommerce_kampus'},
-  {label:'📱 Absensi QR', desc:'Sistem absensi mahasiswa QR Code Python, generate QR, scan simulasi, rekap kehadiran, laporan CSV', nama:'absensi_qr'},
+  {label:'📱 Absensi QR', desc:'Sistem absensi mahasiswa QR Code Python FastAPI, generate QR, scan simulasi, rekap kehadiran, laporan CSV', nama:'absensi_qr'},
   {label:'📊 Analisis Data', desc:'Analisis data nilai mahasiswa visualisasi matplotlib, statistik deskriptif, korelasi, export PDF Python', nama:'analisis_nilai'},
   {label:'🖥️ Inventaris', desc:'Manajemen inventaris laboratorium komputer kampus CRUD perangkat peminjaman pengembalian laporan kerusakan FastAPI SQLite', nama:'inventaris_lab'},
-  {label:'💬 Chatbot', desc:'Chatbot FAQ kampus Python NLP NLTK basis pengetahuan JSON antarmuka CLI interaktif', nama:'chatbot_kampus'},
+  {label:'💬 Chatbot', desc:'Chatbot FAQ kampus Python NLP FastAPI dengan web interface interaktif', nama:'chatbot_kampus'},
 ];
 
 const CHIPS_LANJUT = [
@@ -290,11 +321,13 @@ const CHIPS_LANJUT = [
 // ================================================
 // STATE
 // ================================================
-let currentProjectId = null;
-let pollingInterval  = null;
+let currentProjectId   = null;
+let pollingInterval    = null;
 let runPollingInterval = null;
-let progressMode     = 'baru';
-let progressVal      = 5;
+let progressMode       = 'baru';
+let progressVal        = 5;
+let currentPreviewUrl  = null;
+let previewMode        = 'desktop';
 
 // ================================================
 // UTILS
@@ -304,33 +337,25 @@ function esc(s) {
   d.textContent = String(s || '');
   return d.innerHTML;
 }
-
 function escAttr(s) {
   return String(s || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
-
 function iconFile(path) {
   const ext = (path || '').split('.').pop().toLowerCase();
-  const map = {
-    py:'🐍', md:'📖', txt:'📄', json:'📦', html:'🌐',
-    css:'🎨', js:'⚡', ts:'⚡', yaml:'⚙️', yml:'⚙️',
-    toml:'⚙️', sql:'🗄️', env:'🔒'
-  };
+  const map = {py:'🐍', md:'📖', txt:'📄', json:'📦', html:'🌐',
+    css:'🎨', js:'⚡', ts:'⚡', yaml:'⚙️', yml:'⚙️', toml:'⚙️', sql:'🗄️', env:'🔒'};
   return map[ext] || '📄';
 }
-
 function fmtSize(b) {
   if (!b || b < 1024) return (b || 0) + ' B';
   if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
   return (b / 1048576).toFixed(1) + ' MB';
 }
-
 function fmtUptime(s) {
   if (!s || s < 60) return s + 's';
   if (s < 3600) return Math.floor(s/60) + 'm ' + (s%60) + 's';
   return Math.floor(s/3600) + 'h ' + Math.floor((s%3600)/60) + 'm';
 }
-
 function showToast(msg, type) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -371,12 +396,10 @@ document.querySelector('.mode-tabs').addEventListener('click', function(e) {
   const tab = e.target.closest('.mode-tab');
   if (!tab) return;
   const modeId = tab.dataset.mode;
-
   document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
   document.getElementById(modeId).classList.add('active');
   tab.classList.add('active');
-
   if (modeId === 'mode-lanjut') muatProjectList();
 });
 
@@ -386,22 +409,10 @@ document.querySelector('.mode-tabs').addEventListener('click', function(e) {
 document.getElementById('main-tabs').addEventListener('click', function(e) {
   const tab = e.target.closest('.tab');
   if (!tab) return;
-  const tabId = tab.dataset.tab;
-
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById(tabId).classList.add('active');
-  tab.classList.add('active');
-
-  if (tabId === 'tab-keys') muatKeyStatus();
-  if (tabId === 'tab-run')  mulaiRunPolling();
+  switchToTab(tab.dataset.tab);
 });
 
-document.getElementById('btn-key-header').addEventListener('click', () => {
-  switchToTab('tab-keys');
-  muatKeyStatus();
-});
-
+document.getElementById('btn-key-header').addEventListener('click', () => switchToTab('tab-keys'));
 document.getElementById('btn-test-ai').addEventListener('click', testAI);
 
 function switchToTab(tabId) {
@@ -409,7 +420,9 @@ function switchToTab(tabId) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById(tabId).classList.add('active');
   document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
-  if (tabId === 'tab-run') mulaiRunPolling();
+  if (tabId === 'tab-keys')    muatKeyStatus();
+  if (tabId === 'tab-run')     mulaiRunPolling();
+  if (tabId === 'tab-preview' && currentPreviewUrl) refreshPreviewInfo();
 }
 
 // ================================================
@@ -438,12 +451,10 @@ async function testAI() {
   switchToTab('tab-keys');
   const el = document.getElementById('key-panel');
   el.innerHTML = '<div class="empty"><p>🧪 Testing semua API Key...</p></div>';
-
   try {
     const resp = await fetch('/test-ai');
     const data = await resp.json();
     const keys = data.keys || [];
-
     let html = '<div class="info-card"><h3>🧪 Hasil Test AI</h3><div class="test-result">';
     keys.forEach(k => {
       if (k.status.includes('sukses')) {
@@ -454,7 +465,6 @@ async function testAI() {
     });
     html += '</div></div>';
     el.innerHTML = html;
-
     const sukses = keys.filter(k => k.status.includes('sukses')).length;
     showToast(`Test selesai: ${sukses}/${keys.length} key berhasil`, sukses > 0 ? 'ok' : 'err');
   } catch(e) {
@@ -468,17 +478,14 @@ async function testAI() {
 async function muatProjectList() {
   const el = document.getElementById('project-list');
   el.innerHTML = '<div class="empty"><p>⏳ Memuat daftar project...</p></div>';
-
   try {
     const resp = await fetch('/list-projects');
     const data = await resp.json();
     const list = data.projects || [];
-
     if (list.length === 0) {
       el.innerHTML = '<div class="empty"><p>Belum ada project.</p></div>';
       return;
     }
-
     el.innerHTML = list.map(p => `
       <div class="project-card" data-nama="${escAttr(p.nama)}" title="${escAttr(p.deskripsi)}">
         <div class="pname">📁 ${esc(p.nama)}</div>
@@ -486,7 +493,6 @@ async function muatProjectList() {
         <div class="pfiles">${p.file_count} file · ${esc(p.run_cmd)}</div>
       </div>
     `).join('');
-
     el.addEventListener('click', function(e) {
       const card = e.target.closest('.project-card');
       if (!card) return;
@@ -505,22 +511,17 @@ async function muatProjectList() {
 document.getElementById('btn-buat').addEventListener('click', async function() {
   const deskripsi = document.getElementById('deskripsi').value.trim();
   const nama = document.getElementById('nama').value.trim();
-
   if (!deskripsi) { showToast('Masukkan deskripsi project!', 'err'); return; }
   if (!nama) { showToast('Masukkan nama project!', 'err'); return; }
-
   progressMode = 'baru';
   resetUI('baru');
-
   const fd = new FormData();
   fd.append('deskripsi', deskripsi);
   fd.append('nama', nama);
-
   try {
     const resp = await fetch('/buat-project', { method: 'POST', body: fd });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const json = await resp.json();
-
     currentProjectId = json.project_id;
     showToast(`Project "${json.nama}" dimulai!`, 'ok');
     mulaiPolling();
@@ -530,23 +531,16 @@ document.getElementById('btn-buat').addEventListener('click', async function() {
   }
 });
 
-// ================================================
-// LANJUT PROJECT
-// ================================================
 document.getElementById('btn-lanjut').addEventListener('click', async function() {
   const nama = document.getElementById('nama-lanjut').value.trim();
   const permintaan = document.getElementById('permintaan').value.trim();
-
   if (!nama) { showToast('Pilih atau ketik nama project!', 'err'); return; }
   if (!permintaan) { showToast('Masukkan permintaan!', 'err'); return; }
-
   progressMode = 'lanjut';
   resetUI('lanjut');
-
   const fd = new FormData();
   fd.append('nama', nama);
   fd.append('permintaan', permintaan);
-
   try {
     const resp = await fetch('/lanjut-project', { method: 'POST', body: fd });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
@@ -560,9 +554,6 @@ document.getElementById('btn-lanjut').addEventListener('click', async function()
   }
 });
 
-// ================================================
-// UI HELPERS
-// ================================================
 function resetUI(mode) {
   document.getElementById('log-panel').innerHTML = '<div class="log-loading">⏳ Memulai proses...</div>';
   document.getElementById('file-list').innerHTML = '<div class="empty"><div class="icon">⏳</div><p>Menunggu...</p></div>';
@@ -572,7 +563,6 @@ function resetUI(mode) {
   progressVal = 5;
   switchToTab('tab-log');
 }
-
 function resetBtn() {
   document.getElementById('btn-buat').disabled = false;
   document.getElementById('btn-lanjut').disabled = false;
@@ -581,7 +571,7 @@ function resetBtn() {
 }
 
 // ================================================
-// POLLING GENERATE
+// POLLING
 // ================================================
 function mulaiPolling() {
   if (pollingInterval) clearInterval(pollingInterval);
@@ -598,12 +588,15 @@ async function polling() {
     renderLog(data.logs || []);
     renderInfo(data);
 
-    // Update running badge
+    // Update running badges
     const runBadge = document.getElementById('run-badge');
+    const prevBadge = document.getElementById('preview-badge');
     if (data.running && data.running.alive) {
       runBadge.style.display = 'inline-block';
+      if (data.running.url) prevBadge.style.display = 'inline-block';
     } else {
       runBadge.style.display = 'none';
+      prevBadge.style.display = 'none';
     }
 
     if (data.status === 'loading') {
@@ -616,12 +609,8 @@ async function polling() {
       pollingInterval = null;
       document.getElementById('pb-' + progressMode).style.width = '100%';
       resetBtn();
-
-      if (data.status === 'done') {
-        showToast('✅ Project berhasil dibuat!', 'ok');
-      } else {
-        showToast('❌ Project gagal.', 'err');
-      }
+      if (data.status === 'done') showToast('✅ Project berhasil dibuat!', 'ok');
+      else showToast('❌ Project gagal.', 'err');
 
       try {
         const fresp = await fetch('/files/' + currentProjectId);
@@ -649,12 +638,10 @@ function renderLog(logs) {
     '📁':'log-folder','🧪':'log-run','🎉':'log-done',
     'ℹ️':'log-info','🔄':'log-lanjut'
   };
-
   if (!logs.length) {
     panel.innerHTML = '<span class="log-info">Menunggu proses...</span>';
     return;
   }
-
   panel.innerHTML = logs.map(line => {
     let cls = 'log-info';
     for (const [emoji, klass] of Object.entries(emojiMap)) {
@@ -662,21 +649,15 @@ function renderLog(logs) {
     }
     return `<div class="${cls}">${esc(line)}</div>`;
   }).join('');
-
   panel.scrollTop = panel.scrollHeight;
 }
 
-// ================================================
-// RENDER FILES
-// ================================================
 function renderFiles(files) {
   const el = document.getElementById('file-list');
-
   if (!files || files.length === 0) {
     el.innerHTML = '<div class="empty"><div class="icon">📂</div><p>Belum ada file.</p></div>';
     return;
   }
-
   el.innerHTML = '<div class="file-tree">' + files.map((f, i) => `
     <div class="file-item">
       <div class="file-header" data-idx="${i}">
@@ -687,19 +668,16 @@ function renderFiles(files) {
       <pre class="file-code" id="fcode-${i}">${esc(f.content)}</pre>
     </div>
   `).join('') + '</div>';
-
   el.addEventListener('click', function(e) {
     const header = e.target.closest('.file-header');
     if (!header) return;
     const code = document.getElementById('fcode-' + header.dataset.idx);
-    if (code) {
-      code.style.display = code.style.display === 'block' ? 'none' : 'block';
-    }
+    if (code) code.style.display = code.style.display === 'block' ? 'none' : 'block';
   });
 }
 
 // ================================================
-// RENDER INFO — dengan tombol RUN & DOWNLOAD
+// RENDER INFO
 // ================================================
 function renderInfo(data) {
   const el = document.getElementById('info-panel');
@@ -711,18 +689,18 @@ function renderInfo(data) {
   const b = badgeMap[data.status] || ['badge-loading', data.status];
   const fileCount = (data.files || []).length;
 
-  // Running section
   let runningHtml = '';
   if (data.status === 'done') {
     if (data.running && data.running.alive) {
       const url = data.running.url;
+      const isWeb = url && (data.running.type === 'fastapi' || data.running.type === 'flask');
       runningHtml = `
         <div class="running-card">
           <div class="r-title">
             <span class="badge badge-running">● RUNNING</span>
             Project sedang berjalan
           </div>
-          ${url ? `
+          ${isWeb ? `
             <a href="${escAttr(url)}" target="_blank" class="r-url">🌐 ${esc(url)}</a>
           ` : `
             <div style="color:#94a3b8;font-size:.8rem;margin-bottom:8px">
@@ -734,9 +712,10 @@ function renderInfo(data) {
             <span>🔌 Port: <b>${data.running.port}</b></span>
             <span>📦 Tipe: <b>${esc(data.running.type||'script')}</b></span>
           </div>
-          <div class="btn-group">
+          <div class="btn-group-3">
+            ${isWeb ? `<button class="btn btn-blue" onclick="openPreview()">🖥️ Preview</button>` : ''}
+            <button class="btn btn-blue" onclick="switchToTab('tab-run')">📟 Log</button>
             <button class="btn btn-red" onclick="stopProject()">⏹️ STOP</button>
-            <button class="btn btn-blue" onclick="switchToTab('tab-run')">📟 Lihat Log</button>
           </div>
         </div>
       `;
@@ -745,7 +724,7 @@ function renderInfo(data) {
         <div class="info-card">
           <h3>🚀 Jalankan Project</h3>
           <p style="font-size:.8rem;color:#94a3b8;margin-bottom:12px">
-            Klik RUN untuk menjalankan project di server. Server akan alokasikan port otomatis.
+            Klik RUN untuk menjalankan project di server. Preview akan otomatis terbuka di dalam web!
           </p>
           <div class="btn-group">
             <button class="btn btn-green" onclick="runProject()">▶️ RUN Project</button>
@@ -788,28 +767,26 @@ async function runProject() {
     showToast('Belum ada project aktif', 'err');
     return;
   }
-
   showToast('🚀 Memulai project...', 'ok');
-
   try {
     const resp = await fetch('/run/' + currentProjectId, { method: 'POST' });
     const data = await resp.json();
-
     if (data.sukses) {
       showToast(`✅ Berjalan di port ${data.port}!`, 'ok');
-      switchToTab('tab-run');
-      mulaiRunPolling();
-
       if (data.url) {
+        // ✅ Auto-open Preview tab dengan iframe
+        showToast('⏳ Menunggu server siap (3 detik)...', 'ok');
         setTimeout(() => {
-          if (confirm(`Buka ${data.url} di tab baru?`)) {
-            window.open(data.url, '_blank');
-          }
-        }, 1500);
+          loadPreview(data.url, data.port, data.type);
+          switchToTab('tab-preview');
+        }, 3000);
+      } else {
+        // CLI/script → ke Run tab
+        switchToTab('tab-run');
+        mulaiRunPolling();
       }
     } else {
       showToast('❌ Gagal: ' + (data.error || 'Unknown'), 'err');
-      // Tetap ke tab Run untuk lihat log error
       switchToTab('tab-run');
       renderRunLog({ logs: data.logs || [], alive: false, exit_code: -1 });
     }
@@ -820,14 +797,13 @@ async function runProject() {
 
 async function stopProject() {
   if (!currentProjectId) return;
-
   try {
     await fetch('/stop/' + currentProjectId, { method: 'POST' });
     showToast('⏹️ Project dihentikan', 'ok');
     hentikanRunPolling();
-    // Refresh info
+    clearPreview();
     setTimeout(() => {
-      if (pollingInterval) return; // masih polling generate
+      if (pollingInterval) return;
       polling();
     }, 500);
   } catch(e) {
@@ -845,14 +821,170 @@ async function downloadProject() {
 }
 
 // ================================================
-// RUN POLLING — live logs
+// PREVIEW LIVE — iframe di dalam web
+// ================================================
+function openPreview() {
+  switchToTab('tab-preview');
+  refreshPreviewInfo();
+}
+
+async function refreshPreviewInfo() {
+  // Refresh info running untuk dapat URL terbaru
+  if (!currentProjectId) return;
+  try {
+    const resp = await fetch('/status/' + currentProjectId);
+    const data = await resp.json();
+    if (data.running && data.running.alive && data.running.url) {
+      const type = data.running.type || 'fastapi';
+      if (!currentPreviewUrl) {
+        loadPreview(data.running.url, data.running.port, type);
+      }
+    } else if (!currentPreviewUrl) {
+      showPreviewEmpty();
+    }
+  } catch(e) {}
+}
+
+function loadPreview(url, port, type) {
+  currentPreviewUrl = url;
+  const el = document.getElementById('preview-panel');
+
+  // URL bisa relative (/proxy/xxx) atau absolute
+  const displayUrl = url.startsWith('/') ? window.location.origin + url : url;
+
+  el.innerHTML = `
+    <div class="preview-toolbar">
+      <button class="preview-btn" onclick="reloadPreview()" title="Reload">🔄</button>
+      <button class="preview-btn" onclick="previewGoHome()" title="Home">🏠</button>
+      <input type="text" class="preview-url" id="preview-url-input"
+             value="${escAttr(displayUrl)}"
+             onkeydown="if(event.key==='Enter'){navigatePreview(this.value)}"/>
+      <button class="preview-btn" onclick="navigatePreview(document.getElementById('preview-url-input').value)" title="Go">➡️</button>
+      <button class="preview-btn ${previewMode==='desktop'?'active':''}" onclick="setPreviewMode('desktop')" title="Desktop">🖥️</button>
+      <button class="preview-btn ${previewMode==='tablet'?'active':''}" onclick="setPreviewMode('tablet')" title="Tablet">📱</button>
+      <button class="preview-btn ${previewMode==='mobile'?'active':''}" onclick="setPreviewMode('mobile')" title="Mobile">📱</button>
+      <button class="preview-btn" onclick="openInNewTab()" title="Buka di tab baru">🔗</button>
+      <button class="preview-btn danger" onclick="stopProject()" title="Stop">⏹️</button>
+    </div>
+    <div class="preview-frame-wrap" id="preview-wrap">
+      <div class="preview-loading" id="preview-loading">
+        <div class="spinner"></div>
+        <span>Memuat preview...</span>
+      </div>
+      <iframe id="preview-iframe" class="preview-iframe ${previewMode!=='desktop'?previewMode:''}"
+              src="${escAttr(url)}"
+              onload="onPreviewLoad()"
+              onerror="onPreviewError()"></iframe>
+    </div>
+  `;
+
+  // Timeout kalau iframe tidak load
+  setTimeout(() => {
+    const loading = document.getElementById('preview-loading');
+    if (loading && loading.style.display !== 'none') {
+      loading.innerHTML = '<span style="color:#f87171">⚠️ Timeout — coba klik reload</span>';
+    }
+  }, 15000);
+}
+
+function onPreviewLoad() {
+  const loading = document.getElementById('preview-loading');
+  if (loading) loading.style.display = 'none';
+}
+
+function onPreviewError() {
+  const loading = document.getElementById('preview-loading');
+  if (loading) {
+    loading.innerHTML = '<span style="color:#f87171">❌ Gagal load — cek tab Run</span>';
+  }
+}
+
+function reloadPreview() {
+  const iframe = document.getElementById('preview-iframe');
+  const loading = document.getElementById('preview-loading');
+  if (loading) {
+    loading.style.display = 'flex';
+    loading.innerHTML = '<div class="spinner"></div><span>Memuat ulang...</span>';
+  }
+  if (iframe) {
+    // Force reload
+    const src = iframe.src;
+    iframe.src = 'about:blank';
+    setTimeout(() => { iframe.src = src; }, 100);
+  }
+  showToast('🔄 Reload preview', 'ok');
+}
+
+function previewGoHome() {
+  if (!currentPreviewUrl) return;
+  const iframe = document.getElementById('preview-iframe');
+  const urlInput = document.getElementById('preview-url-input');
+  if (iframe) iframe.src = currentPreviewUrl;
+  if (urlInput) urlInput.value = window.location.origin + currentPreviewUrl;
+}
+
+function navigatePreview(newUrl) {
+  if (!newUrl) return;
+  const iframe = document.getElementById('preview-iframe');
+  if (!iframe) return;
+
+  // Extract path dari URL
+  let path = newUrl;
+  try {
+    const parsed = new URL(newUrl);
+    path = parsed.pathname + parsed.search + parsed.hash;
+  } catch(e) {}
+
+  // Jika absolute URL, replace dengan proxy
+  if (newUrl.startsWith('http')) {
+    // Kembali ke base
+    iframe.src = currentPreviewUrl + path.replace(/^\/proxy\/[^\/]+\//, '');
+  } else {
+    iframe.src = newUrl;
+  }
+}
+
+function openInNewTab() {
+  if (currentPreviewUrl) {
+    window.open(currentPreviewUrl, '_blank');
+  }
+}
+
+function setPreviewMode(mode) {
+  previewMode = mode;
+  const iframe = document.getElementById('preview-iframe');
+  if (iframe) {
+    iframe.className = 'preview-iframe' + (mode !== 'desktop' ? ' ' + mode : '');
+  }
+  document.querySelectorAll('.preview-toolbar .preview-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+}
+
+function clearPreview() {
+  currentPreviewUrl = null;
+  showPreviewEmpty();
+}
+
+function showPreviewEmpty() {
+  const el = document.getElementById('preview-panel');
+  el.innerHTML = `
+    <div class="empty" style="margin:auto">
+      <div class="icon">🖥️</div>
+      <p>Preview akan muncul setelah project di-RUN.<br/>
+      Hanya untuk project tipe <strong>FastAPI</strong> atau <strong>Flask</strong>.</p>
+      ${currentProjectId ? '<button class="btn btn-green" style="margin-top:20px;max-width:200px" onclick="runProject()">▶️ RUN Sekarang</button>' : ''}
+    </div>
+  `;
+}
+
+// ================================================
+// RUN POLLING
 // ================================================
 function mulaiRunPolling() {
   if (runPollingInterval) clearInterval(runPollingInterval);
   pollRunLogs();
   runPollingInterval = setInterval(pollRunLogs, 2000);
 }
-
 function hentikanRunPolling() {
   if (runPollingInterval) {
     clearInterval(runPollingInterval);
@@ -862,19 +994,18 @@ function hentikanRunPolling() {
 
 async function pollRunLogs() {
   if (!currentProjectId) return;
-
   try {
     const resp = await fetch('/run-logs/' + currentProjectId);
     const data = await resp.json();
     renderRunLog(data);
-
-    // Update badge di tab
     const runBadge = document.getElementById('run-badge');
+    const prevBadge = document.getElementById('preview-badge');
     if (data.alive) {
       runBadge.style.display = 'inline-block';
-      runBadge.textContent = 'ON';
+      if (data.url) prevBadge.style.display = 'inline-block';
     } else {
       runBadge.style.display = 'none';
+      prevBadge.style.display = 'none';
     }
   } catch(e) {
     console.error('Run polling error:', e);
@@ -884,7 +1015,6 @@ async function pollRunLogs() {
 function renderRunLog(data) {
   const el = document.getElementById('run-panel');
   const logs = data.logs || [];
-
   if (!logs.length && !data.alive) {
     el.innerHTML = '<div class="empty"><div class="icon">▶️</div><p>Belum ada project yang running.<br/>Klik tombol RUN di tab Info.</p></div>';
     return;
@@ -895,11 +1025,14 @@ function renderRunLog(data) {
     : `<span class="badge badge-stopped">⏹️ STOPPED${data.exit_code !== null && data.exit_code !== undefined ? ' (exit '+data.exit_code+')' : ''}</span>`;
 
   const urlHtml = data.url && data.alive
-    ? `<a href="${escAttr(data.url)}" target="_blank" class="r-url">🌐 ${esc(data.url)}</a>`
+    ? `<div class="info-row"><span class="info-label">URL</span><a href="${escAttr(data.url)}" target="_blank" style="color:#38bdf8;font-family:monospace">${esc(data.url)}</a></div>`
     : '';
 
   const controlBtn = data.alive
-    ? `<button class="btn btn-red" onclick="stopProject()">⏹️ STOP</button>`
+    ? `<div class="btn-group">
+         ${data.url ? `<button class="btn btn-blue" onclick="openPreview()">🖥️ Preview</button>` : ''}
+         <button class="btn btn-red" onclick="stopProject()">⏹️ STOP</button>
+       </div>`
     : `<button class="btn btn-green" onclick="runProject()">▶️ START ULANG</button>`;
 
   const logsHtml = logs.map(line => {
@@ -907,7 +1040,7 @@ function renderRunLog(data) {
     if (line.startsWith('[SYSTEM]')) cls = 'log-sys';
     else if (/error|traceback|exception|failed/i.test(line)) cls = 'log-error';
     else if (/warning|warn/i.test(line)) cls = 'log-warning';
-    else if (/success|ready|started|running|listening/i.test(line)) cls = 'log-success';
+    else if (/success|ready|started|running|listening|application startup/i.test(line)) cls = 'log-success';
     return `<div class="${cls}">${esc(line)}</div>`;
   }).join('');
 
@@ -928,7 +1061,6 @@ function renderRunLog(data) {
     </div>
   `;
 
-  // Auto scroll ke bawah
   const logPanel = document.getElementById('run-log-panel');
   if (logPanel) logPanel.scrollTop = logPanel.scrollHeight;
 }
@@ -939,12 +1071,10 @@ function renderRunLog(data) {
 async function muatKeyStatus() {
   const el = document.getElementById('key-panel');
   el.innerHTML = '<div class="empty"><p>⏳ Memuat status key...</p></div>';
-
   try {
     const resp = await fetch('/key-status');
     const data = await resp.json();
     const keys = data.keys || [];
-
     el.innerHTML = `
       <div class="info-card">
         <h3>🔑 Status API Keys — Claude Code</h3>
@@ -979,7 +1109,6 @@ async function muatKeyStatus() {
         </p>
       </div>
     `;
-
     document.getElementById('btn-reset-key').addEventListener('click', async () => {
       await fetch('/key-reset', { method: 'POST' });
       showToast('Error counter direset!', 'ok');
