@@ -37,7 +37,6 @@ API_KEYS = [
         "mimo-v2.5",
     ),
 ]
-]
 
 MAX_FIX  = 3
 BASE_DIR = Path("workspace")
