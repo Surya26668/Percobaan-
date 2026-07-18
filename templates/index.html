@@ -1,1 +1,663 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>🎓 AI Project Maker</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
 
+    header{background:linear-gradient(135deg,#1e40af,#7c3aed);padding:18px 28px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    header h1{font-size:1.4rem;font-weight:700}
+    header p{font-size:.8rem;opacity:.85;margin-top:3px}
+    .key-badge{background:rgba(255,255,255,.15);border-radius:8px;padding:6px 14px;font-size:.78rem;cursor:pointer;border:1px solid rgba(255,255,255,.2)}
+    .key-badge:hover{background:rgba(255,255,255,.25)}
+
+    .container{display:grid;grid-template-columns:360px 1fr;height:calc(100vh - 70px)}
+
+    .sidebar{background:#1e293b;border-right:1px solid #334155;padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:16px}
+
+    .mode-tabs{display:flex;gap:8px}
+    .mode-tab{flex:1;padding:9px;border-radius:8px;border:2px solid #334155;background:transparent;color:#64748b;font-size:.82rem;font-weight:700;cursor:pointer;transition:.2s;text-align:center}
+    .mode-tab.active{border-color:#6366f1;background:#1e1b4b;color:#818cf8}
+    .mode-panel{display:none}
+    .mode-panel.active{display:flex;flex-direction:column;gap:14px}
+
+    label{display:block;font-size:.75rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
+    input,textarea{width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;padding:9px 12px;font-size:.88rem;resize:vertical;transition:border-color .2s}
+    input:focus,textarea:focus{outline:none;border-color:#6366f1}
+    textarea{min-height:110px}
+
+    .chip-label{font-size:.72rem;color:#475569;margin-bottom:6px;font-weight:600}
+    .chip-list{display:flex;flex-wrap:wrap;gap:6px}
+    .chip{background:#1e3a5f;border:1px solid #2563eb;color:#93c5fd;border-radius:999px;padding:3px 10px;font-size:.72rem;cursor:pointer;transition:.2s}
+    .chip:hover{background:#2563eb;color:#fff}
+
+    .btn{width:100%;padding:11px;border-radius:9px;border:none;font-size:.95rem;font-weight:700;cursor:pointer;transition:opacity .2s,transform .1s}
+    .btn:hover{opacity:.92;transform:translateY(-1px)}
+    .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+    .btn-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff}
+    .btn-green{background:linear-gradient(135deg,#059669,#10b981);color:#fff}
+    .btn-red{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;margin-top:6px}
+
+    .project-list-wrap{display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto}
+    .project-card{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 12px;cursor:pointer;transition:.2s}
+    .project-card:hover{border-color:#6366f1;background:#1e1b4b}
+    .project-card.selected{border-color:#6366f1;background:#1e1b4b}
+    .project-card .pname{font-size:.85rem;font-weight:700;color:#93c5fd}
+    .project-card .ptech{font-size:.72rem;color:#475569;margin-top:2px}
+    .project-card .pfiles{font-size:.7rem;color:#334155;margin-top:2px}
+
+    .main-panel{display:flex;flex-direction:column;overflow:hidden}
+    .tabs{display:flex;background:#1e293b;border-bottom:1px solid #334155}
+    .tab{padding:13px 22px;font-size:.82rem;font-weight:600;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;transition:.2s}
+    .tab:hover{color:#e2e8f0}
+    .tab.active{color:#818cf8;border-bottom-color:#818cf8}
+    .tab-content{flex:1;overflow-y:auto;display:none;padding:20px}
+    .tab-content.active{display:block}
+
+    #log-panel{background:#020617;border-radius:10px;padding:14px;font-family:'Consolas',monospace;font-size:.8rem;line-height:1.8;min-height:200px;white-space:pre-wrap;word-break:break-word}
+    .log-loading{color:#facc15}
+    .log-success{color:#4ade80}
+    .log-error{color:#f87171}
+    .log-warning{color:#fb923c}
+    .log-fix{color:#a78bfa}
+    .log-file{color:#38bdf8}
+    .log-folder{color:#818cf8}
+    .log-run{color:#f0abfc}
+    .log-done{color:#34d399;font-weight:bold}
+    .log-info{color:#94a3b8}
+    .log-lanjut{color:#22d3ee}
+
+    .file-tree{display:flex;flex-direction:column;gap:4px}
+    .file-item{background:#1e293b;border:1px solid #334155;border-radius:8px;overflow:hidden}
+    .file-header{padding:9px 13px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:.82rem;font-weight:600;color:#93c5fd;transition:background .15s}
+    .file-header:hover{background:#273549}
+    .file-size{margin-left:auto;font-size:.7rem;color:#475569;font-weight:400}
+    .file-code{display:none;background:#020617;padding:12px;font-family:'Consolas',monospace;font-size:.78rem;color:#e2e8f0;overflow-x:auto;white-space:pre;border-top:1px solid #334155;max-height:360px;overflow-y:auto}
+
+    .info-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:18px;margin-bottom:14px}
+    .info-card h3{font-size:.78rem;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em}
+    .info-row{display:flex;gap:10px;margin-bottom:7px;align-items:flex-start}
+    .info-label{font-size:.78rem;color:#64748b;min-width:80px}
+    .info-value{font-size:.82rem;color:#e2e8f0}
+    .cmd-box{background:#020617;border-radius:6px;padding:8px 12px;font-family:monospace;font-size:.8rem;color:#4ade80;margin-top:8px}
+
+    /* BADGE — didefinisikan di CSS utama (fix bug sebelumnya) */
+    .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700}
+    .badge-loading{background:#422006;color:#fbbf24}
+    .badge-done{background:#052e16;color:#4ade80}
+    .badge-error{background:#450a0a;color:#f87171}
+
+    .key-card{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+    .key-card.active-key{border-color:#22c55e}
+    .key-dot{width:10px;height:10px;border-radius:50%;background:#334155;flex-shrink:0}
+    .key-dot.green{background:#22c55e}
+    .key-dot.yellow{background:#f59e0b}
+    .key-dot.red{background:#ef4444}
+    .key-info{flex:1}
+    .key-info .kurl{font-size:.78rem;color:#64748b}
+    .key-info .kmodel{font-size:.82rem;color:#93c5fd;font-weight:600}
+    .key-info .khint{font-size:.72rem;color:#475569;font-family:monospace}
+    .key-err{font-size:.72rem;color:#f87171}
+
+    .progress-wrap{background:#334155;border-radius:999px;height:3px;overflow:hidden;margin-top:4px}
+    .progress-bar{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:999px;transition:width .4s}
+
+    .empty{text-align:center;color:#475569;padding:50px 20px}
+    .empty .icon{font-size:2.5rem;margin-bottom:10px}
+    .empty p{font-size:.88rem}
+
+    ::-webkit-scrollbar{width:5px;height:5px}
+    ::-webkit-scrollbar-track{background:#0f172a}
+    ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+  </style>
+</head>
+<body>
+
+<header>
+  <div>
+    <h1>🎓 AI Project Maker</h1>
+    <p>Generate &amp; kembangkan project kuliah tingkat tinggi otomatis</p>
+  </div>
+  <div class="key-badge" id="btn-key-header">🔑 API Keys</div>
+</header>
+
+<div class="container">
+  <aside class="sidebar">
+
+    <div class="mode-tabs">
+      <div class="mode-tab active" id="tab-mode-baru"   onclick="ganti_mode('mode-baru',   this)">➕ Buat Baru</div>
+      <div class="mode-tab"       id="tab-mode-lanjut"  onclick="ganti_mode('mode-lanjut', this); muat_project_list()">🔄 Lanjutkan</div>
+    </div>
+
+    <!-- MODE: BUAT BARU -->
+    <div class="mode-panel active" id="mode-baru">
+      <div>
+        <label>📌 Nama Project</label>
+        <input type="text" id="nama" placeholder="sistem_perpustakaan" value="project_kuliah"/>
+      </div>
+      <div>
+        <label>📋 Deskripsi Project</label>
+        <textarea id="deskripsi" placeholder="Jelaskan project yang ingin dibuat..."></textarea>
+      </div>
+      <div>
+        <p class="chip-label">💡 Contoh Cepat</p>
+        <div class="chip-list" id="chips-baru"></div>
+      </div>
+      <button class="btn btn-primary" id="btn-buat" onclick="buatProject()">🚀 Generate Project</button>
+      <div class="progress-wrap" id="pw-baru" style="display:none">
+        <div class="progress-bar" id="pb-baru" style="width:5%"></div>
+      </div>
+    </div>
+
+    <!-- MODE: LANJUTKAN -->
+    <div class="mode-panel" id="mode-lanjut">
+      <div>
+        <label>📂 Pilih Project Yang Ada</label>
+        <div class="project-list-wrap" id="project-list">
+          <div class="empty"><p>Klik tab Lanjutkan untuk muat list.</p></div>
+        </div>
+      </div>
+      <div>
+        <label>📌 Nama Project</label>
+        <input type="text" id="nama-lanjut" placeholder="nama_folder_project"/>
+      </div>
+      <div>
+        <label>✨ Minta Fitur / Perubahan</label>
+        <textarea id="permintaan" placeholder="Contoh: tambahkan autentikasi JWT..."></textarea>
+      </div>
+      <div>
+        <p class="chip-label">💡 Contoh Pengembangan</p>
+        <div class="chip-list" id="chips-lanjut"></div>
+      </div>
+      <button class="btn btn-green" id="btn-lanjut" onclick="lanjutProject()">🔄 Kembangkan Project</button>
+      <div class="progress-wrap" id="pw-lanjut" style="display:none">
+        <div class="progress-bar" id="pb-lanjut" style="width:5%"></div>
+      </div>
+    </div>
+
+  </aside>
+
+  <div class="main-panel">
+    <div class="tabs">
+      <div class="tab active" data-tab="tab-log"  >📟 Log</div>
+      <div class="tab"        data-tab="tab-files">📂 Files</div>
+      <div class="tab"        data-tab="tab-info" >📋 Info</div>
+      <div class="tab"        data-tab="tab-keys" >🔑 API Keys</div>
+    </div>
+
+    <div class="tab-content active" id="tab-log">
+      <div id="log-panel"><span class="log-info">Belum ada proses. Isi form lalu klik Generate.</span></div>
+    </div>
+    <div class="tab-content" id="tab-files">
+      <div id="file-list"><div class="empty"><div class="icon">📂</div><p>File muncul setelah project selesai.</p></div></div>
+    </div>
+    <div class="tab-content" id="tab-info">
+      <div id="info-panel"><div class="empty"><div class="icon">📋</div><p>Info muncul setelah project selesai.</p></div></div>
+    </div>
+    <div class="tab-content" id="tab-keys">
+      <div id="key-panel"><div class="empty"><div class="icon">🔑</div><p>Klik tab API Keys untuk lihat status.</p></div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ================================================
+// DATA CHIPS
+// ================================================
+const CHIPS_BARU = [
+  {label:'📚 Perpustakaan', desc:'Sistem manajemen perpustakaan kampus dengan FastAPI, SQLAlchemy, SQLite, fitur pinjam buku, pengembalian, denda, laporan, dan unit test', nama:'sistem_perpustakaan'},
+  {label:'🎓 Akademik',     desc:'Sistem informasi akademik dengan KRS online, input nilai, jadwal kuliah, absensi, dashboard statistik FastAPI SQLite', nama:'sistem_akademik'},
+  {label:'🤖 ML Prediksi',  desc:'Machine learning prediksi kelulusan mahasiswa berdasarkan IPK, absensi, nilai menggunakan scikit-learn pandas matplotlib', nama:'ml_kelulusan'},
+  {label:'🛒 E-Commerce',   desc:'REST API e-commerce kampus untuk jual beli barang bekas mahasiswa dengan JWT, CRUD produk, keranjang, pembayaran mock FastAPI', nama:'ecommerce_kampus'},
+  {label:'📱 Absensi QR',   desc:'Sistem absensi mahasiswa QR Code Python, generate QR, scan simulasi, rekap kehadiran, laporan CSV', nama:'absensi_qr'},
+  {label:'📊 Analisis Data',desc:'Analisis data nilai mahasiswa visualisasi matplotlib, statistik deskriptif, korelasi, export PDF Python', nama:'analisis_nilai'},
+  {label:'🖥️ Inventaris',   desc:'Manajemen inventaris laboratorium komputer kampus CRUD perangkat peminjaman pengembalian laporan kerusakan FastAPI SQLite', nama:'inventaris_lab'},
+  {label:'💬 Chatbot',      desc:'Chatbot FAQ kampus Python NLP NLTK basis pengetahuan JSON antarmuka CLI interaktif', nama:'chatbot_kampus'},
+];
+
+const CHIPS_LANJUT = [
+  {label:'📄 Export PDF',  text:'Tambahkan fitur export laporan ke PDF menggunakan reportlab'},
+  {label:'🔐 Auth JWT',    text:'Tambahkan autentikasi JWT dengan login dan register endpoint'},
+  {label:'📊 Dashboard',   text:'Tambahkan dashboard statistik dengan grafik matplotlib yang disimpan sebagai gambar'},
+  {label:'📧 Email',       text:'Tambahkan fitur notifikasi email menggunakan smtplib'},
+  {label:'📑 Pagination',  text:'Tambahkan pagination dan filtering pada semua endpoint list'},
+  {label:'🧪 Unit Test',   text:'Tambahkan unit test lengkap menggunakan pytest untuk semua endpoint'},
+  {label:'🐳 Docker',      text:'Tambahkan Dockerfile dan docker-compose.yml untuk deployment'},
+  {label:'📝 Logging',     text:'Tambahkan logging system dan error handling yang lebih baik'},
+];
+
+// Render chips
+function render_chips() {
+  const baru = document.getElementById('chips-baru');
+  baru.innerHTML = CHIPS_BARU.map(c =>
+    `<span class="chip" data-desc="${escAttr(c.desc)}" data-nama="${escAttr(c.nama)}">${c.label}</span>`
+  ).join('');
+
+  baru.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.getElementById('deskripsi').value = chip.dataset.desc;
+      document.getElementById('nama').value      = chip.dataset.nama;
+    });
+  });
+
+  const lanjut = document.getElementById('chips-lanjut');
+  lanjut.innerHTML = CHIPS_LANJUT.map(c =>
+    `<span class="chip" data-text="${escAttr(c.text)}">${c.label}</span>`
+  ).join('');
+
+  lanjut.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.getElementById('permintaan').value = chip.dataset.text;
+    });
+  });
+}
+
+// ================================================
+// STATE
+// ================================================
+let currentProjectId = null;
+let pollingInterval  = null;
+let progressMode     = 'baru';
+let progressVal      = 5;
+
+// ================================================
+// MODE SWITCH
+// ================================================
+function ganti_mode(modeId, el) {
+  document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(modeId).classList.add('active');
+  el.classList.add('active');
+}
+
+// ================================================
+// TAB SWITCH — pakai event delegation (bukan onclick inline)
+// ================================================
+document.querySelector('.tabs').addEventListener('click', function(e) {
+  const tab = e.target.closest('.tab');
+  if (!tab) return;
+
+  const tabId = tab.dataset.tab;
+
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  tab.classList.add('active');
+
+  if (tabId === 'tab-keys') muat_key_status();
+});
+
+// Tombol key di header
+document.getElementById('btn-key-header').addEventListener('click', () => {
+  const keysTab = document.querySelector('[data-tab="tab-keys"]');
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-keys').classList.add('active');
+  keysTab.classList.add('active');
+  muat_key_status();
+});
+
+// ================================================
+// MUAT LIST PROJECT — FIX: pakai data-* attribute
+// ================================================
+async function muat_project_list() {
+  const el = document.getElementById('project-list');
+  el.innerHTML = '<div class="empty"><p>⏳ Memuat...</p></div>';
+
+  try {
+    const resp = await fetch('/list-projects');
+    const data = await resp.json();
+    const list = data.projects || [];
+
+    if (list.length === 0) {
+      el.innerHTML = '<div class="empty"><p>Belum ada project. Buat dulu.</p></div>';
+      return;
+    }
+
+    el.innerHTML = list.map(p => `
+      <div class="project-card"
+           data-nama="${escAttr(p.nama)}"
+           title="${escAttr(p.deskripsi)}">
+        <div class="pname">📁 ${escHtml(p.nama)}</div>
+        <div class="ptech">${escHtml(p.tech_stack)}</div>
+        <div class="pfiles">${p.file_count} file &nbsp;|&nbsp; ${escHtml(p.run_cmd)}</div>
+      </div>
+    `).join('');
+
+    // FIX: event listener, bukan onclick inline dengan global event
+    el.querySelectorAll('.project-card').forEach(card => {
+      card.addEventListener('click', function() {
+        document.getElementById('nama-lanjut').value = this.dataset.nama;
+        el.querySelectorAll('.project-card').forEach(c => c.classList.remove('selected'));
+        this.classList.add('selected');
+      });
+    });
+
+  } catch(e) {
+    el.innerHTML = `<div class="empty"><p>Gagal muat: ${escHtml(String(e))}</p></div>`;
+  }
+}
+
+// ================================================
+// BUAT PROJECT BARU
+// ================================================
+async function buatProject() {
+  const deskripsi = document.getElementById('deskripsi').value.trim();
+  const nama      = document.getElementById('nama').value.trim();
+
+  if (!deskripsi) { alert('Masukkan deskripsi project!'); return; }
+  if (!nama)      { alert('Masukkan nama project!'); return; }
+
+  progressMode = 'baru';
+  reset_ui('baru');
+
+  const fd = new FormData();
+  fd.append('deskripsi', deskripsi);
+  fd.append('nama', nama);
+
+  try {
+    const resp = await fetch('/buat-project', { method: 'POST', body: fd });
+    const json = await resp.json();
+    currentProjectId = json.project_id;
+    mulai_polling();
+  } catch(e) {
+    alert('Gagal menghubungi server: ' + e);
+    reset_btn();
+  }
+}
+
+// ================================================
+// LANJUT PROJECT
+// ================================================
+async function lanjutProject() {
+  const nama       = document.getElementById('nama-lanjut').value.trim();
+  const permintaan = document.getElementById('permintaan').value.trim();
+
+  if (!nama)       { alert('Pilih atau ketik nama project!'); return; }
+  if (!permintaan) { alert('Masukkan permintaan pengembangan!'); return; }
+
+  progressMode = 'lanjut';
+  reset_ui('lanjut');
+
+  const fd = new FormData();
+  fd.append('nama', nama);
+  fd.append('permintaan', permintaan);
+
+  try {
+    const resp = await fetch('/lanjut-project', { method: 'POST', body: fd });
+    const json = await resp.json();
+    currentProjectId = json.project_id;
+    mulai_polling();
+  } catch(e) {
+    alert('Gagal menghubungi server: ' + e);
+    reset_btn();
+  }
+}
+
+// ================================================
+// RESET UI
+// ================================================
+function reset_ui(mode) {
+  document.getElementById('log-panel').innerHTML = '<div class="log-loading">⏳ Memulai proses...</div>';
+  document.getElementById(`pw-${mode}`).style.display = 'block';
+  document.getElementById(`pb-${mode}`).style.width   = '5%';
+  document.getElementById(mode === 'baru' ? 'btn-buat' : 'btn-lanjut').disabled = true;
+  progressVal = 5;
+
+  // Switch ke tab log
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-log').classList.add('active');
+  document.querySelector('[data-tab="tab-log"]').classList.add('active');
+}
+
+function reset_btn() {
+  document.getElementById('btn-buat').disabled   = false;
+  document.getElementById('btn-lanjut').disabled = false;
+  document.getElementById('pw-baru').style.display   = 'none';
+  document.getElementById('pw-lanjut').style.display = 'none';
+}
+
+// ================================================
+// POLLING
+// ================================================
+function mulai_polling() {
+  if (pollingInterval) clearInterval(pollingInterval);
+  pollingInterval = setInterval(polling, 1500);
+}
+
+async function polling() {
+  if (!currentProjectId) return;
+
+  try {
+    const resp = await fetch(`/status/${currentProjectId}`);
+    if (!resp.ok) return;
+    const data = await resp.json();
+
+    render_log(data.logs || []);
+    render_info(data);
+
+    if (data.status === 'loading') {
+      progressVal = Math.min(progressVal + 2, 88);
+      document.getElementById(`pb-${progressMode}`).style.width = progressVal + '%';
+    }
+
+    if (data.status === 'done' || data.status === 'error') {
+      clearInterval(pollingInterval);
+      document.getElementById(`pb-${progressMode}`).style.width = '100%';
+      document.getElementById(progressMode === 'baru' ? 'btn-buat' : 'btn-lanjut').disabled = false;
+
+      // Load files
+      try {
+        const fresp = await fetch(`/files/${currentProjectId}`);
+        const fdata = await fresp.json();
+        render_files(fdata.files || []);
+      } catch(e) {}
+
+      setTimeout(() => {
+        document.getElementById(`pw-${progressMode}`).style.display = 'none';
+      }, 2000);
+    }
+  } catch(e) {
+    console.error('Polling error:', e);
+  }
+}
+
+// ================================================
+// RENDER LOG
+// ================================================
+function render_log(logs) {
+  const panel = document.getElementById('log-panel');
+  const map   = {
+    '⏳':'log-loading','✅':'log-success','❌':'log-error',
+    '⚠️':'log-warning','🔧':'log-fix','📄':'log-file',
+    '📁':'log-folder','🧪':'log-run','🎉':'log-done',
+    'ℹ️':'log-info','🔄':'log-lanjut'
+  };
+
+  if (!logs.length) {
+    panel.innerHTML = '<span class="log-info">Menunggu proses...</span>';
+    return;
+  }
+
+  panel.innerHTML = logs.map(line => {
+    let cls = 'log-info';
+    for (const [em, klass] of Object.entries(map)) {
+      if (line.includes(em)) { cls = klass; break; }
+    }
+    return `<div class="${cls}">${escHtml(line)}</div>`;
+  }).join('');
+
+  panel.scrollTop = panel.scrollHeight;
+}
+
+// ================================================
+// RENDER FILES
+// ================================================
+function render_files(files) {
+  const el = document.getElementById('file-list');
+
+  if (!files || files.length === 0) {
+    el.innerHTML = '<div class="empty"><div class="icon">📂</div><p>Belum ada file.</p></div>';
+    return;
+  }
+
+  const items = files.map((f, i) => {
+    const id = `code-${i}`;
+    return `
+      <div class="file-item">
+        <div class="file-header" data-target="${id}">
+          <span>${icon_file(f.path)}</span>
+          <span>${escHtml(f.path)}</span>
+          <span class="file-size">${fmt_size(f.size)}</span>
+        </div>
+        <pre class="file-code" id="${id}">${escHtml(f.content)}</pre>
+      </div>
+    `;
+  }).join('');
+
+  el.innerHTML = `<div class="file-tree">${items}</div>`;
+
+  // Event listener untuk toggle (bukan onclick inline)
+  el.querySelectorAll('.file-header').forEach(header => {
+    header.addEventListener('click', function() {
+      const target = document.getElementById(this.dataset.target);
+      if (target) {
+        target.style.display = target.style.display === 'block' ? 'none' : 'block';
+      }
+    });
+  });
+}
+
+// ================================================
+// RENDER INFO
+// ================================================
+function render_info(data) {
+  const el    = document.getElementById('info-panel');
+  const bmap  = {
+    loading: ['badge-loading','⏳ Diproses'],
+    done:    ['badge-done',   '✅ Selesai'],
+    error:   ['badge-error',  '❌ Gagal'],
+  };
+  const badge = bmap[data.status] || ['badge-loading', data.status];
+
+  el.innerHTML = `
+    <div class="info-card">
+      <h3>📋 Info Project</h3>
+      <div class="info-row">
+        <span class="info-label">Status</span>
+        <span><span class="badge ${badge[0]}">${badge[1]}</span></span>
+      </div>
+      <div class="info-row"><span class="info-label">Nama</span><span class="info-value">${escHtml(data.nama||'-')}</span></div>
+      <div class="info-row"><span class="info-label">Deskripsi</span><span class="info-value">${escHtml(data.desc||'-')}</span></div>
+      <div class="info-row"><span class="info-label">Tech</span><span class="info-value">${escHtml(data.tech||'-')}</span></div>
+      <div class="info-row"><span class="info-label">Files</span><span class="info-value">${(data.files||[]).length} file</span></div>
+      <div class="info-row"><span class="info-label">Lokasi</span><span class="info-value">${escHtml(data.folder||'-')}</span></div>
+    </div>
+    <div class="info-card">
+      <h3>⚡ Cara Jalankan</h3>
+      <div class="cmd-box">${escHtml(data.run_cmd||'Belum tersedia')}</div>
+    </div>
+    ${data.error ? `
+    <div class="info-card">
+      <h3>❌ Error Detail</h3>
+      <div class="cmd-box" style="color:#f87171;white-space:pre-wrap">${escHtml(data.error)}</div>
+    </div>` : ''}
+  `;
+}
+
+// ================================================
+// RENDER KEY STATUS
+// ================================================
+async function muat_key_status() {
+  const el = document.getElementById('key-panel');
+  el.innerHTML = '<div class="empty"><p>⏳ Memuat status key...</p></div>';
+
+  try {
+    const resp = await fetch('/key-status');
+    const data = await resp.json();
+
+    const dot_class = (k) => {
+      if (k.error_count === 0) return 'green';
+      if (k.error_count >= 2)  return 'red';
+      return 'yellow';
+    };
+
+    el.innerHTML = `
+      <div class="info-card">
+        <h3>🔑 Status API Keys</h3>
+        <p style="font-size:.78rem;color:#64748b;margin-bottom:12px">
+          Key aktif: Index ${data.current_index} dari ${data.keys.length} key
+        </p>
+        ${data.keys.map(k => `
+          <div class="key-card ${k.active ? 'active-key' : ''}">
+            <div class="key-dot ${dot_class(k)}"></div>
+            <div class="key-info">
+              <div class="kmodel">${escHtml(k.model)}${k.active ? ' ← AKTIF' : ''}</div>
+              <div class="kurl">${escHtml(k.base_url)}</div>
+              <div class="khint">Key: ${escHtml(k.api_key_hint)}</div>
+            </div>
+            <div class="key-err">${k.error_count > 0 ? k.error_count+'× error' : '✓ OK'}</div>
+          </div>
+        `).join('')}
+        <button class="btn btn-red" id="btn-reset-key">🔄 Reset Error Counter</button>
+      </div>
+      <div class="info-card">
+        <h3>📖 Cara Tambah API Key</h3>
+        <p style="font-size:.8rem;color:#94a3b8;line-height:1.8">
+          Buka <code style="color:#38bdf8">main.py</code>, cari <code style="color:#38bdf8">API_KEYS</code>,
+          tambahkan:<br/><br/>
+          <code style="color:#4ade80">
+          ("https://freetokenfaucet.com/v1", "tf_key_baru", "gpt-5.6-terra"),
+          </code>
+        </p>
+      </div>
+    `;
+
+    document.getElementById('btn-reset-key').addEventListener('click', async () => {
+      await fetch('/key-reset', { method: 'POST' });
+      muat_key_status();
+    });
+
+  } catch(e) {
+    el.innerHTML = `<div class="empty"><p>Gagal load: ${escHtml(String(e))}</p></div>`;
+  }
+}
+
+// ================================================
+// UTILS
+// ================================================
+function icon_file(path) {
+  const ext = (path || '').split('.').pop().toLowerCase();
+  const map = {py:'🐍',md:'📖',txt:'📄',json:'📦',html:'🌐',
+               css:'🎨',js:'⚡',ts:'⚡',yaml:'⚙️',yml:'⚙️',toml:'⚙️',sql:'🗄️'};
+  return map[ext] || '📄';
+}
+
+function fmt_size(b) {
+  if (!b || b < 1024) return (b||0) + ' B';
+  return (b/1024).toFixed(1) + ' KB';
+}
+
+function escHtml(s) {
+  return String(s||'')
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function escAttr(s) {
+  return String(s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
+// ================================================
+// INIT
+// ================================================
+render_chips();
+</script>
+</body>
+</html>
