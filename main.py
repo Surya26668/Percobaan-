@@ -31,7 +31,6 @@ import anthropic
 # DECRYPT API KEY
 # ================================================
 def decrypt_key(encrypted: str) -> str:
-    """Decrypt API key dari .env menggunakan ENCRYPTION_KEY"""
     if not encrypted:
         return ""
     if Fernet is None:
@@ -40,7 +39,6 @@ def decrypt_key(encrypted: str) -> str:
     try:
         enc_key = os.getenv("ENCRYPTION_KEY", "")
         if not enc_key:
-            # Jika tidak ada ENCRYPTION_KEY, anggap key tidak dienkripsi
             return encrypted
         f = Fernet(enc_key.encode())
         return f.decrypt(encrypted.encode()).decode()
@@ -54,21 +52,15 @@ def decrypt_key(encrypted: str) -> str:
 # ================================================
 BASE_URL = os.getenv("BASE_URL", "https://ai.bluepack.my.id/anthropic")
 
-# Ambil semua API key dari .env
-# Format .env:
-#   API_KEY_1_ENC=gAAAAAB...   ← terenkripsi
-#   API_KEY_2_ENC=gAAAAAB...
-#   MODEL_1=claude-opus-4-5
-#   MODEL_2=claude-sonnet-4-5
 _raw_keys = []
 i = 1
 while True:
     enc = os.getenv(f"API_KEY_{i}_ENC", "")
-    raw = os.getenv(f"API_KEY_{i}", "")      # fallback tanpa enkripsi
+    raw = os.getenv(f"API_KEY_{i}", "")
     mdl = os.getenv(f"MODEL_{i}", "")
 
     if not enc and not raw:
-        break  # tidak ada key lagi
+        break
 
     api_key = decrypt_key(enc) if enc else raw
     model   = mdl or "claude-sonnet-4-5"
@@ -81,9 +73,8 @@ while True:
         })
     i += 1
 
-# Fallback jika .env kosong — pakai hardcode (tidak disarankan)
 if not _raw_keys:
-    print("⚠️  Tidak ada API Key di .env, menggunakan fallback hardcode")
+    print("⚠️  Tidak ada API Key di .env, menggunakan fallback")
     _raw_keys = [
         {
             "base_url" : BASE_URL,
@@ -196,11 +187,11 @@ key_manager = MultiKeyManager(API_KEYS)
 # ================================================
 def buat_client(base_url: str, api_key: str) -> anthropic.Anthropic:
     return anthropic.Anthropic(
-        base_url   = base_url,
-        api_key    = api_key,
-        timeout    = 3000.0,
-        http_client= httpx.Client(
-            timeout= httpx.Timeout(
+        base_url    = base_url,
+        api_key     = api_key,
+        timeout     = 3000.0,
+        http_client = httpx.Client(
+            timeout = httpx.Timeout(
                 connect = 30.0,
                 read    = 3000.0,
                 write   = 30.0,
@@ -211,7 +202,25 @@ def buat_client(base_url: str, api_key: str) -> anthropic.Anthropic:
     )
 
 # ================================================
-# TANYA AI
+# AMBIL TEXT DARI RESPONSE — helper
+# Skip ThinkingBlock, ToolUseBlock, dll
+# ================================================
+def ambil_text(resp) -> str:
+    hasil = ""
+    for block in resp.content:
+        block_type = getattr(block, "type", "")
+        if block_type == "text":
+            hasil += getattr(block, "text", "")
+        elif block_type == "thinking":
+            thinking_len = len(getattr(block, "thinking", ""))
+            print(f"[AI] 💭 ThinkingBlock ({thinking_len} chars), diskip")
+        else:
+            if block_type:
+                print(f"[AI] ⚠️ Block '{block_type}' diskip")
+    return hasil.strip()
+
+# ================================================
+# TANYA AI — FIXED ThinkingBlock
 # ================================================
 def tanya_ai(system_prompt: str, user_prompt: str) -> str:
     last_error  = "tidak ada error"
@@ -235,12 +244,12 @@ def tanya_ai(system_prompt: str, user_prompt: str) -> str:
                 messages   = [{"role": "user", "content": user_prompt}]
             )
 
-            hasil = ""
-            for block in response.content:
-                if hasattr(block, "text"):
-                    hasil += block.text
+            # ✅ Pakai helper — skip ThinkingBlock otomatis
+            hasil = ambil_text(response)
 
-            hasil = hasil.strip()
+            if not hasil:
+                raise Exception("Response kosong — tidak ada TextBlock")
+
             print(f"[AI] ✅ Sukses! {len(hasil)} karakter | model={model}")
             return hasil
 
@@ -280,6 +289,9 @@ def tanya_ai(system_prompt: str, user_prompt: str) -> str:
 
     raise Exception(f"Semua key/model gagal. Error terakhir: {last_error}")
 
+# ================================================
+# BERSIHKAN JSON
+# ================================================
 def bersihkan_json(text: str) -> str:
     text = text.strip()
     if "```" in text:
@@ -527,7 +539,9 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
             save_state()
             return
 
-        daftar_file = plan.get("files", ["main.py","requirements.txt","README.md","tests/test_main.py"])
+        daftar_file = plan.get("files", [
+            "main.py", "requirements.txt", "README.md", "tests/test_main.py"
+        ])
         install_cmd = plan.get("install_cmd", "pip install -r requirements.txt")
         run_cmd     = plan.get("run_cmd",     "python main.py")
         test_cmd    = plan.get("test_cmd",    "python -m pytest tests/ -v")
@@ -580,10 +594,13 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
             save_state()
 
         meta = {
-            "nama": nama, "deskripsi": deskripsi,
-            "tech_stack": tech_stack, "run_cmd": run_cmd,
-            "install_cmd": install_cmd, "test_cmd": test_cmd,
-            "files": file_berhasil,
+            "nama"       : nama,
+            "deskripsi"  : deskripsi,
+            "tech_stack" : tech_stack,
+            "run_cmd"    : run_cmd,
+            "install_cmd": install_cmd,
+            "test_cmd"   : test_cmd,
+            "files"      : file_berhasil,
         }
         (project_dir / ".ai_meta.json").write_text(
             json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
@@ -736,7 +753,8 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
             log(project_id, "Reinstall dependencies...", "loading")
             jalankan_cmd(
                 meta.get("install_cmd", "pip install -r requirements.txt"),
-                str(project_dir), timeout=120,
+                str(project_dir),
+                timeout=120,
             )
 
         jalankan_test(project_id, project_dir, meta.get("test_cmd", ""), run_cmd)
@@ -776,6 +794,7 @@ async def halaman_utama():
 
 @app.get("/test-ai")
 async def test_ai():
+    """Test semua API Key — pakai ambil_text() agar aman dari ThinkingBlock"""
     hasil_cek = []
     for i, key_info in enumerate(API_KEYS):
         try:
@@ -785,15 +804,22 @@ async def test_ai():
                 max_tokens = 64,
                 messages   = [{"role": "user", "content": "Balas dengan kata: OK"}]
             )
-            reply = resp.content[0].text if resp.content else ""
+
+            # ✅ FIX: pakai ambil_text(), bukan resp.content[0].text
+            reply = ambil_text(resp) or "(kosong)"
+
             hasil_cek.append({
-                "index" : i, "status": "✅ sukses",
-                "model" : key_info["model"], "reply": reply,
+                "index" : i,
+                "status": "✅ sukses",
+                "model" : key_info["model"],
+                "reply" : reply,
             })
         except Exception as e:
             hasil_cek.append({
-                "index" : i, "status": "❌ gagal",
-                "model" : key_info["model"], "error": str(e),
+                "index" : i,
+                "status": "❌ gagal",
+                "model" : key_info["model"],
+                "error" : str(e),
             })
     return JSONResponse({"keys": hasil_cek})
 
@@ -822,9 +848,15 @@ async def buat_project_route(
 
     with _log_lock:
         projects[project_id] = {
-            "status": "loading", "logs": [], "files": [],
-            "folder": "", "error": "", "run_cmd": "",
-            "tech": "", "desc": "", "nama": nama,
+            "status" : "loading",
+            "logs"   : [],
+            "files"  : [],
+            "folder" : "",
+            "error"  : "",
+            "run_cmd": "",
+            "tech"   : "",
+            "desc"   : "",
+            "nama"   : nama,
         }
         save_state()
 
@@ -847,9 +879,15 @@ async def lanjut_project_route(
 
     with _log_lock:
         projects[project_id] = {
-            "status": "loading", "logs": [], "files": [],
-            "folder": "", "error": "", "run_cmd": "",
-            "tech": "", "desc": "", "nama": nama,
+            "status" : "loading",
+            "logs"   : [],
+            "files"  : [],
+            "folder" : "",
+            "error"  : "",
+            "run_cmd": "",
+            "tech"   : "",
+            "desc"   : "",
+            "nama"   : nama,
         }
         save_state()
 
@@ -895,7 +933,11 @@ async def lihat_files(project_id: str):
             isi = fp.read_text(encoding="utf-8", errors="ignore")
         except Exception:
             isi = "(tidak bisa dibaca)"
-        hasil.append({"path": rel, "content": isi, "size": fp.stat().st_size})
+        hasil.append({
+            "path"   : rel,
+            "content": isi,
+            "size"   : fp.stat().st_size,
+        })
 
     return JSONResponse({"files": hasil})
 
