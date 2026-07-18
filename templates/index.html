@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🚀 AI Project Maker — ULTIMATE Edition</title>
+  <title>🚀 AI Project Maker — ULTIMATE Edition v2.1</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
@@ -101,6 +101,24 @@
     .log-sys{color:#fbbf24;font-weight:bold}
     .log-cache{color:#f0abfc}
 
+    /* ✅ CANCEL BUTTON FLOATING */
+    .cancel-floating{position:sticky;bottom:0;background:linear-gradient(180deg,transparent,#020617 30%);padding:20px 0 0;margin-top:15px;text-align:center}
+    .cancel-floating .btn{max-width:280px;display:inline-block;box-shadow:0 4px 15px rgba(220,38,38,.4);animation:pulseBtn 2s infinite}
+    @keyframes pulseBtn{0%,100%{box-shadow:0 4px 15px rgba(220,38,38,.4)}50%{box-shadow:0 4px 25px rgba(220,38,38,.7)}}
+
+    /* ✅ FILE PROGRESS CHECKLIST */
+    .file-progress{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:14px;margin-bottom:12px}
+    .file-progress h3{font-size:.78rem;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em}
+    .file-progress-list{display:flex;flex-direction:column;gap:6px}
+    .file-progress-item{display:flex;align-items:center;gap:10px;padding:6px 10px;background:#0f172a;border-radius:6px;font-size:.78rem;transition:.15s}
+    .file-progress-item .icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .file-progress-item.pending{color:#64748b}
+    .file-progress-item.loading{color:#fbbf24;background:linear-gradient(90deg,#1e293b,#422006)}
+    .file-progress-item.done{color:#4ade80;background:linear-gradient(90deg,#0f172a,#052e16)}
+    .file-progress-item.failed{color:#f87171;background:linear-gradient(90deg,#0f172a,#450a0a)}
+    .file-progress-item .time{margin-left:auto;font-size:.68rem;color:#64748b}
+    .spinner-mini{width:14px;height:14px;border:2px solid #334155;border-top-color:#fbbf24;border-radius:50%;animation:spin 0.8s linear infinite}
+
     .file-tree{display:flex;flex-direction:column;gap:4px}
     .file-item{background:#1e293b;border:1px solid #334155;border-radius:8px;overflow:hidden}
     .file-header{padding:9px 13px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:.8rem;font-weight:600;color:#93c5fd;transition:background .15s}
@@ -113,7 +131,7 @@
     .file-actions button.del{background:#dc2626}
     .file-code{display:none;background:#020617;padding:12px;font-family:'Consolas','Courier New',monospace;font-size:.76rem;color:#e2e8f0;overflow-x:auto;white-space:pre;border-top:1px solid #334155;max-height:400px;overflow-y:auto}
     .file-editor{display:none;padding:0}
-    .file-editor textarea{background:#020617;color:#e2e8f0;font-family:monospace;font-size:.75rem;border:none;border-top:1px solid #334155;padding:12px;min-height:300px;border-radius:0;resize:vertical}
+    .file-editor textarea{background:#020617;color:#e2e8f0;font-family:monospace;font-size:.75rem;border:none;border-top:1px solid #334155;padding:12px;min-height:300px;border-radius:0;resize:vertical;width:100%}
     .file-editor .editor-actions{padding:8px;background:#1e293b;display:flex;gap:6px;justify-content:flex-end}
 
     .info-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px;margin-bottom:12px}
@@ -127,6 +145,7 @@
     .badge-loading{background:#422006;color:#fbbf24}
     .badge-done{background:#052e16;color:#4ade80}
     .badge-error{background:#450a0a;color:#f87171}
+    .badge-cancelled{background:#1e293b;color:#94a3b8}
     .badge-running{background:#052e16;color:#4ade80;animation:pulse 2s infinite}
     .badge-stopped{background:#1e293b;color:#94a3b8}
 
@@ -156,7 +175,6 @@
     .val-err{color:#f87171}
     .val-info{color:#38bdf8}
 
-    /* ✅ STATS GRID */
     .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
     .stat-card{background:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid #334155;border-radius:10px;padding:16px;text-align:center;transition:.2s}
     .stat-card:hover{border-color:#6366f1;transform:translateY(-2px)}
@@ -172,7 +190,6 @@
     .stat-card.info{border-color:#3b82f6}
     .stat-card.info .value{color:#60a5fa}
 
-    /* ✅ BACKUP */
     .backup-card{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
     .backup-icon{width:40px;height:40px;background:#0f172a;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
     .backup-info{flex:1}
@@ -200,7 +217,6 @@
 
     @keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 
-    /* MODAL */
     .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:9998;display:none;align-items:center;justify-content:center;padding:20px}
     .modal-overlay.show{display:flex}
     .modal{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:24px;max-width:500px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,.5)}
@@ -208,7 +224,6 @@
     .modal p{font-size:.85rem;color:#94a3b8;margin-bottom:14px}
     .modal-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
 
-    /* PREVIEW */
     .preview-toolbar{background:#1e293b;border-bottom:1px solid #334155;padding:9px 12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex-shrink:0}
     .preview-url{flex:1;background:#020617;border:1px solid #334155;border-radius:6px;padding:6px 12px;font-family:monospace;font-size:.76rem;color:#38bdf8;min-width:180px;outline:none}
     .preview-url:focus{border-color:#6366f1}
@@ -225,10 +240,13 @@
     .preview-loading .spinner{width:20px;height:20px;border:3px solid #334155;border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
 
-    /* WS indicator */
     .ws-indicator{position:fixed;bottom:15px;left:15px;background:#1e293b;border:1px solid #334155;border-radius:20px;padding:5px 12px;font-size:.7rem;display:flex;align-items:center;gap:6px;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,.3)}
     .ws-indicator.connected{border-color:#22c55e;color:#4ade80}
     .ws-indicator.disconnected{border-color:#ef4444;color:#f87171}
+
+    /* ✅ HEARTBEAT INDICATOR */
+    .heartbeat-indicator{display:inline-block;padding:2px 8px;border-radius:6px;font-size:.7rem;background:#422006;color:#fbbf24;margin-left:6px;font-weight:600}
+    .heartbeat-indicator .dot{display:inline-block;width:6px;height:6px;background:#fbbf24;border-radius:50%;margin-right:4px;animation:pulse 1s infinite}
 
     ::-webkit-scrollbar{width:6px;height:6px}
     ::-webkit-scrollbar-track{background:#0f172a}
@@ -240,8 +258,8 @@
 
 <header>
   <div>
-    <h1>🚀 AI Project Maker <span class="version">ULTIMATE v2.0</span></h1>
-    <p>Generate, kembangkan &amp; jalankan project otomatis · Cache · Backup · Live Preview</p>
+    <h1>🚀 AI Project Maker <span class="version">ULTIMATE v2.1</span></h1>
+    <p>Generate, kembangkan &amp; jalankan project · Cache · Backup · Cancel · Live Preview</p>
   </div>
   <div class="header-right">
     <span id="server-status">
@@ -257,7 +275,6 @@
 
 <div class="container">
   <aside class="sidebar">
-
     <div class="mode-tabs">
       <div class="mode-tab active" id="tab-mode-baru" data-mode="mode-baru">➕ Buat Baru</div>
       <div class="mode-tab" id="tab-mode-lanjut" data-mode="mode-lanjut">🔄 Lanjutkan</div>
@@ -270,7 +287,7 @@
       </div>
       <div>
         <label>📋 Deskripsi Project</label>
-        <textarea id="deskripsi" placeholder="Jelaskan project yang ingin dibuat secara detail..."></textarea>
+        <textarea id="deskripsi" placeholder="Jelaskan project yang ingin dibuat..."></textarea>
       </div>
       <div>
         <p class="chip-label">💡 Contoh Cepat</p>
@@ -306,7 +323,6 @@
         <div class="progress-bar" id="pb-lanjut" style="width:5%"></div>
       </div>
     </div>
-
   </aside>
 
   <div class="main-panel">
@@ -322,6 +338,7 @@
     </div>
 
     <div class="tab-content active" id="tab-log">
+      <div id="file-progress-wrapper"></div>
       <div id="log-panel"><span class="log-info">Belum ada proses. Isi form di kiri lalu klik Generate.</span></div>
     </div>
     <div class="tab-content" id="tab-files">
@@ -334,12 +351,12 @@
       <div id="preview-panel" style="width:100%;height:100%;display:flex;flex-direction:column">
         <div class="empty" style="margin:auto">
           <div class="icon">🖥️</div>
-          <p>Preview muncul setelah project di-RUN.<br/>Untuk tipe <strong>FastAPI</strong> atau <strong>Flask</strong>.</p>
+          <p>Preview muncul setelah project di-RUN.</p>
         </div>
       </div>
     </div>
     <div class="tab-content" id="tab-run">
-      <div id="run-panel"><div class="empty"><div class="icon">▶️</div><p>Klik RUN di tab Info untuk jalankan project.</p></div></div>
+      <div id="run-panel"><div class="empty"><div class="icon">▶️</div><p>Klik RUN di tab Info untuk jalankan.</p></div></div>
     </div>
     <div class="tab-content" id="tab-stats">
       <div id="stats-panel"><div class="empty"><div class="icon">📊</div><p>Loading statistics...</p></div></div>
@@ -348,20 +365,18 @@
       <div id="backup-panel"><div class="empty"><div class="icon">💾</div><p>Loading backups...</p></div></div>
     </div>
     <div class="tab-content" id="tab-keys">
-      <div id="key-panel"><div class="empty"><div class="icon">🔑</div><p>Klik untuk melihat status key.</p></div></div>
+      <div id="key-panel"><div class="empty"><div class="icon">🔑</div><p>Klik untuk melihat status.</p></div></div>
     </div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
-<!-- WebSocket Indicator -->
 <div class="ws-indicator disconnected" id="ws-indicator">
   <span>🔌</span>
   <span id="ws-status">Disconnected</span>
 </div>
 
-<!-- Confirm Modal -->
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal">
     <h3 id="modal-title">Konfirmasi</h3>
@@ -380,23 +395,23 @@
 // CHIPS DATA
 // ================================================
 const CHIPS_BARU = [
-  {label:'📚 Perpustakaan', desc:'Sistem manajemen perpustakaan FastAPI SQLAlchemy SQLite, pinjam buku, pengembalian, denda, laporan, unit test, halaman HTML lengkap dengan Bootstrap', nama:'sistem_perpustakaan'},
-  {label:'🎓 Akademik', desc:'Sistem informasi akademik FastAPI dengan KRS online, input nilai, jadwal kuliah, absensi, dashboard, halaman HTML Bootstrap', nama:'sistem_akademik'},
-  {label:'🤖 ML Prediksi', desc:'Machine learning prediksi kelulusan mahasiswa scikit-learn pandas matplotlib dengan web interface FastAPI', nama:'ml_kelulusan'},
-  {label:'🛒 E-Commerce', desc:'REST API e-commerce kampus FastAPI dengan JWT auth, CRUD produk, keranjang, pembayaran mock, halaman HTML lengkap', nama:'ecommerce_kampus'},
-  {label:'📱 Absensi QR', desc:'Sistem absensi mahasiswa QR Code FastAPI, generate QR, scan, rekap kehadiran, laporan CSV, halaman HTML dengan Bootstrap', nama:'absensi_qr'},
-  {label:'📊 Analisis Data', desc:'Analisis data nilai mahasiswa FastAPI visualisasi matplotlib statistik export PDF dengan web interface', nama:'analisis_nilai'},
-  {label:'🖥️ Inventaris', desc:'Manajemen inventaris laboratorium FastAPI SQLite CRUD perangkat peminjaman laporan dengan halaman HTML lengkap', nama:'inventaris_lab'},
-  {label:'💬 Chatbot', desc:'Chatbot FAQ kampus FastAPI dengan halaman web chat interaktif JavaScript, basis pengetahuan JSON', nama:'chatbot_kampus'},
+  {label:'📚 Perpustakaan', desc:'Sistem manajemen perpustakaan FastAPI SQLAlchemy SQLite, pinjam buku, denda, halaman HTML lengkap dengan Bootstrap 5', nama:'sistem_perpustakaan'},
+  {label:'🎓 Akademik', desc:'Sistem informasi akademik FastAPI dengan KRS online, input nilai, jadwal kuliah, absensi, dashboard, HTML Bootstrap', nama:'sistem_akademik'},
+  {label:'🤖 ML Prediksi', desc:'ML prediksi kelulusan mahasiswa scikit-learn pandas dengan web interface FastAPI dan HTML dashboard', nama:'ml_kelulusan'},
+  {label:'🛒 E-Commerce', desc:'REST API e-commerce kampus FastAPI dengan JWT auth, CRUD produk, keranjang, halaman HTML lengkap', nama:'ecommerce_kampus'},
+  {label:'📱 Absensi QR', desc:'Sistem absensi mahasiswa QR Code FastAPI, generate QR, scan, rekap, halaman HTML Bootstrap', nama:'absensi_qr'},
+  {label:'📊 Analisis Data', desc:'Analisis data nilai mahasiswa FastAPI matplotlib statistik export PDF dengan web interface', nama:'analisis_nilai'},
+  {label:'🖥️ Inventaris', desc:'Manajemen inventaris lab FastAPI SQLite CRUD perangkat peminjaman laporan HTML lengkap', nama:'inventaris_lab'},
+  {label:'💬 Chatbot', desc:'Chatbot FAQ kampus FastAPI dengan halaman web chat interaktif JavaScript', nama:'chatbot_kampus'},
 ];
 
 const CHIPS_LANJUT = [
-  {label:'🎨 UI Lengkap', text:'Tambahkan halaman web HTML lengkap dengan Bootstrap 5 CDN. Buat halaman home, list, form, dan dashboard. Response HTMLResponse dengan JavaScript untuk interaksi form.'},
-  {label:'📄 Export PDF', text:'Tambahkan fitur export laporan ke PDF menggunakan reportlab'},
+  {label:'🎨 UI Lengkap', text:'Tambahkan halaman web HTML lengkap Bootstrap 5. Halaman home, list, form, dashboard. HTMLResponse dengan JS.'},
+  {label:'📄 Export PDF', text:'Tambahkan fitur export laporan PDF menggunakan reportlab'},
   {label:'🔐 Auth JWT', text:'Tambahkan autentikasi JWT dengan login dan register endpoint'},
   {label:'📊 Dashboard', text:'Tambahkan dashboard statistik dengan grafik Chart.js'},
   {label:'📧 Email', text:'Tambahkan fitur notifikasi email menggunakan smtplib'},
-  {label:'📑 Pagination', text:'Tambahkan pagination dan filtering pada semua endpoint list'},
+  {label:'📑 Pagination', text:'Tambahkan pagination dan filtering pada semua endpoint'},
   {label:'🧪 Unit Test', text:'Tambahkan unit test lengkap menggunakan pytest'},
   {label:'🐳 Docker', text:'Tambahkan Dockerfile dan docker-compose.yml'},
 ];
@@ -414,6 +429,8 @@ let currentPreviewUrl  = null;
 let previewMode        = 'desktop';
 let ws                 = null;
 let wsReconnectTimer   = null;
+let isProcessing       = false;
+let fileProgressState  = {};    // {filename: 'pending'|'loading'|'done'|'failed'}
 
 // ================================================
 // UTILS
@@ -482,10 +499,8 @@ function connectWebSocket(projectId) {
   try {
     ws = new WebSocket(url);
     ws.onopen = () => {
-      console.log('WS connected');
       document.getElementById('ws-indicator').className = 'ws-indicator connected';
-      document.getElementById('ws-status').textContent = 'Connected';
-      // Send keep-alive
+      document.getElementById('ws-status').textContent = 'Live';
       setInterval(() => { if (ws && ws.readyState === 1) ws.send('ping'); }, 30000);
     };
     ws.onmessage = (e) => {
@@ -495,34 +510,21 @@ function connectWebSocket(projectId) {
       } catch(err) {}
     };
     ws.onclose = () => {
-      console.log('WS closed');
       document.getElementById('ws-indicator').className = 'ws-indicator disconnected';
-      document.getElementById('ws-status').textContent = 'Disconnected';
-      // Auto reconnect
-      if (currentProjectId) {
+      document.getElementById('ws-status').textContent = 'Offline';
+      if (currentProjectId && isProcessing) {
         clearTimeout(wsReconnectTimer);
         wsReconnectTimer = setTimeout(() => connectWebSocket(currentProjectId), 3000);
       }
     };
-    ws.onerror = () => {
-      console.log('WS error');
-    };
-  } catch(e) {
-    console.error('WS init error:', e);
-  }
+  } catch(e) { console.error(e); }
 }
 
 function handleWsMessage(data) {
   if (data.type === 'log') {
-    // Append log realtime
-    const panel = document.getElementById('log-panel');
-    if (panel) {
-      const cls = getLogClass(data.message);
-      panel.innerHTML += `<div class="${cls}">${esc(data.message)}</div>`;
-      panel.scrollTop = panel.scrollHeight;
-    }
+    // Trigger re-render (polling akan tetap update)
+    parseLogForFileProgress(data.message);
   } else if (data.type === 'runlog') {
-    // Realtime run log
     const panel = document.getElementById('run-log-panel');
     if (panel) {
       const cls = getRunLogClass(data.line);
@@ -532,6 +534,7 @@ function handleWsMessage(data) {
   } else if (data.type === 'status') {
     if (data.status === 'done') showToast('✅ Selesai!', 'ok');
     else if (data.status === 'error') showToast('❌ Error!', 'err');
+    else if (data.status === 'cancelled') showToast('🛑 Dibatalkan', 'info');
   }
 }
 
@@ -552,6 +555,99 @@ function getRunLogClass(line) {
   if (/warning|warn/i.test(line)) return 'log-warning';
   if (/success|ready|started|running|listening|application startup/i.test(line)) return 'log-success';
   return 'log-info';
+}
+
+// ================================================
+// ✅ FILE PROGRESS PARSER
+// ================================================
+function parseLogForFileProgress(line) {
+  // Match pattern: [3/9] main.py...
+  const m1 = line.match(/\[(\d+)\/(\d+)\]\s+(\S+)\.\.\./);
+  if (m1) {
+    fileProgressState[m1[3]] = 'loading';
+    return;
+  }
+  // Match pattern: ✓ 4500 chars (12.3s)
+  const m2 = line.match(/✓\s+(\d+)\s+chars\s+\(([\d.]+)s\)/);
+  if (m2) {
+    // Cari file terakhir yang loading
+    for (const [file, status] of Object.entries(fileProgressState)) {
+      if (status === 'loading') {
+        fileProgressState[file] = {status: 'done', chars: m2[1], time: m2[2]};
+        break;
+      }
+    }
+    return;
+  }
+  // Match pattern: ✗ Gagal
+  if (line.includes('✗ Gagal')) {
+    for (const [file, status] of Object.entries(fileProgressState)) {
+      if (status === 'loading') {
+        fileProgressState[file] = 'failed';
+        break;
+      }
+    }
+    return;
+  }
+  // Match pattern: Struktur: 9 file — untuk init
+  const m3 = line.match(/Struktur:\s+(\d+)\s+file/);
+  if (m3) {
+    // Reset progress
+    fileProgressState = {};
+  }
+}
+
+function renderFileProgress(files) {
+  const wrapper = document.getElementById('file-progress-wrapper');
+  if (!wrapper) return;
+
+  if (!files || Object.keys(files).length === 0) {
+    wrapper.innerHTML = '';
+    return;
+  }
+
+  const items = Object.entries(files).map(([file, state]) => {
+    let iconHtml, itemClass, timeHtml = '';
+    if (state === 'pending') {
+      iconHtml = '⚪';
+      itemClass = 'pending';
+    } else if (state === 'loading') {
+      iconHtml = '<div class="spinner-mini"></div>';
+      itemClass = 'loading';
+    } else if (state === 'failed') {
+      iconHtml = '❌';
+      itemClass = 'failed';
+    } else if (typeof state === 'object' && state.status === 'done') {
+      iconHtml = '✅';
+      itemClass = 'done';
+      timeHtml = `<span class="time">${state.time}s · ${state.chars} chars</span>`;
+    } else {
+      iconHtml = '⚪';
+      itemClass = 'pending';
+    }
+
+    return `
+      <div class="file-progress-item ${itemClass}">
+        <span class="icon">${iconHtml}</span>
+        <span>${iconFile(file)} ${esc(file)}</span>
+        ${timeHtml}
+      </div>
+    `;
+  }).join('');
+
+  const doneCount = Object.values(files).filter(s => typeof s === 'object' && s.status === 'done').length;
+  const total = Object.keys(files).length;
+
+  wrapper.innerHTML = `
+    <div class="file-progress">
+      <h3>📦 Progress Generate File
+        <span style="font-size:.7rem;color:#4ade80;font-weight:normal">${doneCount}/${total} selesai</span>
+      </h3>
+      <div class="file-progress-list">
+        ${items}
+      </div>
+    </div>
+  `;
 }
 
 // ================================================
@@ -658,14 +754,14 @@ async function testAI() {
     html += '</div></div>';
     el.innerHTML = html;
     const sukses = keys.filter(k => k.status.includes('sukses')).length;
-    showToast(`Test: ${sukses}/${keys.length} key OK`, sukses > 0 ? 'ok' : 'err');
+    showToast(`Test: ${sukses}/${keys.length} OK`, sukses > 0 ? 'ok' : 'err');
   } catch(e) {
-    el.innerHTML = `<div class="empty"><p>❌ Gagal test: ${esc(String(e))}</p></div>`;
+    el.innerHTML = `<div class="empty"><p>❌ Gagal: ${esc(String(e))}</p></div>`;
   }
 }
 
 // ================================================
-// LIST PROJECT — dengan tombol Delete
+// LIST PROJECT
 // ================================================
 async function muatProjectList() {
   const el = document.getElementById('project-list');
@@ -680,7 +776,7 @@ async function muatProjectList() {
     }
     el.innerHTML = list.map(p => `
       <div class="project-card" data-nama="${escAttr(p.nama)}" title="${escAttr(p.deskripsi)}">
-        <button class="del-btn" data-del="${escAttr(p.nama)}" title="Hapus project">🗑️</button>
+        <button class="del-btn" data-del="${escAttr(p.nama)}" title="Hapus">🗑️</button>
         <div class="pname">
           ${p.is_running ? '<span class="live-dot"></span>' : ''}
           📁 ${esc(p.nama)}
@@ -695,19 +791,14 @@ async function muatProjectList() {
       if (delBtn) {
         e.stopPropagation();
         const nama = delBtn.dataset.del;
-        showModal(
-          `Hapus Project?`,
-          `Yakin hapus "${nama}"? Project akan di-backup otomatis sebelum dihapus.`,
+        showModal('Hapus Project?', `Yakin hapus "${nama}"? Akan di-backup otomatis.`,
           async () => {
             const r = await fetch(`/project/${encodeURIComponent(nama)}`, {method: 'DELETE'});
             if (r.ok) {
-              showToast('✅ Project dihapus (backup dibuat)', 'ok');
+              showToast('✅ Dihapus (backup dibuat)', 'ok');
               muatProjectList();
-            } else {
-              showToast('❌ Gagal hapus', 'err');
-            }
-          }
-        );
+            } else showToast('❌ Gagal', 'err');
+          });
         return;
       }
       const card = e.target.closest('.project-card');
@@ -717,7 +808,7 @@ async function muatProjectList() {
       card.classList.add('selected');
     });
   } catch(e) {
-    el.innerHTML = `<div class="empty"><p>❌ Gagal muat: ${esc(String(e))}</p></div>`;
+    el.innerHTML = `<div class="empty"><p>❌ ${esc(String(e))}</p></div>`;
   }
 }
 
@@ -742,6 +833,7 @@ document.getElementById('btn-buat').addEventListener('click', async function() {
     }
     const json = await resp.json();
     currentProjectId = json.project_id;
+    isProcessing = true;
     connectWebSocket(currentProjectId);
     showToast(`🚀 "${json.nama}" dimulai!`, 'ok');
     mulaiPolling();
@@ -769,8 +861,9 @@ document.getElementById('btn-lanjut').addEventListener('click', async function()
     }
     const json = await resp.json();
     currentProjectId = json.project_id;
+    isProcessing = true;
     connectWebSocket(currentProjectId);
-    showToast(`🔄 "${json.nama}" dikembangkan (auto-backup)!`, 'ok');
+    showToast(`🔄 "${json.nama}" dikembangkan!`, 'ok');
     mulaiPolling();
   } catch(e) {
     showToast('Gagal: ' + e, 'err');
@@ -779,7 +872,9 @@ document.getElementById('btn-lanjut').addEventListener('click', async function()
 });
 
 function resetUI(mode) {
-  document.getElementById('log-panel').innerHTML = '<div class="log-loading">⏳ Memulai...</div>';
+  fileProgressState = {};
+  document.getElementById('file-progress-wrapper').innerHTML = '';
+  document.getElementById('log-panel').innerHTML = '<div class="log-loading">⏳ Memulai proses...</div>';
   document.getElementById('file-list').innerHTML = '<div class="empty"><div class="icon">⏳</div><p>Menunggu...</p></div>';
   document.getElementById('pw-' + mode).style.display = 'block';
   document.getElementById('pb-' + mode).style.width = '5%';
@@ -792,6 +887,27 @@ function resetBtn() {
   document.getElementById('btn-lanjut').disabled = false;
   document.getElementById('pw-baru').style.display = 'none';
   document.getElementById('pw-lanjut').style.display = 'none';
+  isProcessing = false;
+}
+
+// ================================================
+// ✅ CANCEL PROJECT
+// ================================================
+async function cancelProject() {
+  if (!currentProjectId) return;
+  showModal('Batalkan Proses?',
+    'Yakin batalkan? Server akan berhenti setelah file yang sedang diproses selesai.',
+    async () => {
+      try {
+        const r = await fetch('/cancel/' + currentProjectId, {method: 'POST'});
+        const d = await r.json();
+        if (d.success) {
+          showToast('🛑 Cancel dikirim — tunggu proses selesai', 'info');
+        } else {
+          showToast('❌ ' + (d.error || 'Failed'), 'err');
+        }
+      } catch(e) { showToast('❌ ' + e, 'err'); }
+    });
 }
 
 // ================================================
@@ -809,7 +925,10 @@ async function polling() {
     if (!resp.ok) return;
     const data = await resp.json();
 
-    renderLog(data.logs || []);
+    // Parse logs untuk file progress
+    (data.logs || []).forEach(line => parseLogForFileProgress(line));
+    renderFileProgress(fileProgressState);
+    renderLog(data.logs || [], data.status === 'loading');
     renderInfo(data);
 
     const runBadge = document.getElementById('run-badge');
@@ -823,16 +942,18 @@ async function polling() {
     }
 
     if (data.status === 'loading') {
-      progressVal = Math.min(progressVal + 1.5, 88);
+      progressVal = Math.min(progressVal + 1.2, 88);
       document.getElementById('pb-' + progressMode).style.width = progressVal + '%';
     }
 
-    if (data.status === 'done' || data.status === 'error') {
+    if (data.status === 'done' || data.status === 'error' || data.status === 'cancelled') {
       clearInterval(pollingInterval);
       pollingInterval = null;
+      isProcessing = false;
       document.getElementById('pb-' + progressMode).style.width = '100%';
       resetBtn();
       if (data.status === 'done') showToast('✅ Selesai!', 'ok');
+      else if (data.status === 'cancelled') showToast('🛑 Dibatalkan', 'info');
       else showToast('❌ Gagal.', 'err');
       try {
         const fresp = await fetch('/files/' + currentProjectId);
@@ -847,20 +968,37 @@ async function polling() {
 }
 
 // ================================================
-// RENDER LOG
+// ✅ RENDER LOG dengan CANCEL BUTTON
 // ================================================
-function renderLog(logs) {
+function renderLog(logs, isLoading) {
   const panel = document.getElementById('log-panel');
   if (!logs.length) {
     panel.innerHTML = '<span class="log-info">Menunggu proses...</span>';
     return;
   }
-  panel.innerHTML = logs.map(line => `<div class="${getLogClass(line)}">${esc(line)}</div>`).join('');
+
+  let html = logs.map(line => `<div class="${getLogClass(line)}">${esc(line)}</div>`).join('');
+
+  // ✅ Tombol Cancel jika masih loading
+  if (isLoading) {
+    html += `
+      <div class="cancel-floating">
+        <button class="btn btn-red" onclick="cancelProject()">
+          🛑 Batalkan Proses
+        </button>
+        <p style="font-size:.7rem;color:#64748b;margin-top:8px">
+          Cancel akan dieksekusi setelah file yang sedang diproses selesai
+        </p>
+      </div>
+    `;
+  }
+
+  panel.innerHTML = html;
   panel.scrollTop = panel.scrollHeight;
 }
 
 // ================================================
-// RENDER FILES — dengan Edit & Delete
+// RENDER FILES
 // ================================================
 function renderFiles(files) {
   const el = document.getElementById('file-list');
@@ -906,7 +1044,7 @@ function renderFiles(files) {
       showModal('Hapus File?', `Yakin hapus "${path}"?`, async () => {
         const r = await fetch(`/files/${currentProjectId}/delete?path=${encodeURIComponent(path)}`, {method: 'DELETE'});
         if (r.ok) {
-          showToast('✅ File dihapus', 'ok');
+          showToast('✅ Dihapus', 'ok');
           const fresp = await fetch('/files/' + currentProjectId);
           const fdata = await fresp.json();
           renderFiles(fdata.files || []);
@@ -934,13 +1072,13 @@ async function saveEdit(idx, path) {
   try {
     const r = await fetch(`/files/${currentProjectId}/save`, {method: 'POST', body: fd});
     if (r.ok) {
-      showToast('✅ File disimpan (backup dibuat)', 'ok');
+      showToast('✅ Disimpan (backup dibuat)', 'ok');
       cancelEdit(idx);
       const fresp = await fetch('/files/' + currentProjectId);
       const fdata = await fresp.json();
       renderFiles(fdata.files || []);
-    } else showToast('❌ Gagal simpan', 'err');
-  } catch(e) { showToast('❌ Error: ' + e, 'err'); }
+    } else showToast('❌ Gagal', 'err');
+  } catch(e) { showToast('❌ ' + e, 'err'); }
 }
 
 // ================================================
@@ -952,6 +1090,7 @@ function renderInfo(data) {
     loading: ['badge-loading', '⏳ Diproses'],
     done: ['badge-done', '✅ Selesai'],
     error: ['badge-error', '❌ Gagal'],
+    cancelled: ['badge-cancelled', '🛑 Dibatalkan'],
   };
   const b = badgeMap[data.status] || ['badge-loading', data.status];
   const fileCount = (data.files || []).length;
@@ -963,15 +1102,12 @@ function renderInfo(data) {
       const isWeb = url && (data.running.type === 'fastapi' || data.running.type === 'flask');
       runningHtml = `
         <div class="running-card">
-          <div class="r-title">
-            <span class="badge badge-running">● RUNNING</span>
-            Project berjalan
-          </div>
+          <div class="r-title"><span class="badge badge-running">● RUNNING</span> Project berjalan</div>
           ${isWeb ? `<a href="${escAttr(url)}" target="_blank" class="r-url">🌐 ${esc(url)}</a>` :
             `<div style="color:#94a3b8;font-size:.8rem;margin-bottom:8px">Tipe CLI/Script — lihat tab ▶️ Run</div>`}
           <div class="r-info">
             <span>⏱️ <b>${fmtUptime(data.running.uptime)}</b></span>
-            <span>🔌 Port <b>${data.running.port}</b></span>
+            <span>🔌 <b>${data.running.port}</b></span>
             <span>📦 <b>${esc(data.running.type||'script')}</b></span>
           </div>
           <div class="btn-group-4">
@@ -987,7 +1123,7 @@ function renderInfo(data) {
         <div class="info-card">
           <h3>🚀 Jalankan Project</h3>
           <p style="font-size:.78rem;color:#94a3b8;margin-bottom:12px">
-            Preview otomatis terbuka setelah RUN. Backup otomatis sebelum modifikasi.
+            Preview otomatis terbuka setelah RUN.
           </p>
           <div class="btn-group">
             <button class="btn btn-green" onclick="runProject()">▶️ RUN Project</button>
@@ -1044,11 +1180,11 @@ async function runProject() {
         mulaiRunPolling();
       }
     } else {
-      showToast('❌ Gagal: ' + (data.error || 'Unknown'), 'err');
+      showToast('❌ ' + (data.error || 'Failed'), 'err');
       switchToTab('tab-run');
       renderRunLog({ logs: data.logs || [], alive: false, exit_code: -1 });
     }
-  } catch(e) { showToast('❌ Error: ' + e, 'err'); }
+  } catch(e) { showToast('❌ ' + e, 'err'); }
 }
 
 async function restartProject() {
@@ -1059,9 +1195,7 @@ async function restartProject() {
     const data = await resp.json();
     if (data.sukses) {
       showToast(`✅ Restart OK (port ${data.port})`, 'ok');
-      if (data.url) {
-        setTimeout(() => { reloadPreview(); }, 3000);
-      }
+      if (data.url) setTimeout(() => reloadPreview(), 3000);
     } else {
       showToast('❌ ' + (data.error || 'Failed'), 'err');
     }
@@ -1146,7 +1280,7 @@ function onPreviewLoad() {
 }
 function onPreviewError() {
   const loading = document.getElementById('preview-loading');
-  if (loading) loading.innerHTML = '<span style="color:#f87171">❌ Gagal — cek tab Run</span>';
+  if (loading) loading.innerHTML = '<span style="color:#f87171">❌ Gagal</span>';
 }
 function reloadPreview() {
   const iframe = document.getElementById('preview-iframe');
@@ -1193,7 +1327,7 @@ function showPreviewEmpty() {
   el.innerHTML = `
     <div class="empty" style="margin:auto">
       <div class="icon">🖥️</div>
-      <p>Preview muncul setelah RUN.<br/>Untuk <strong>FastAPI</strong> atau <strong>Flask</strong>.</p>
+      <p>Preview muncul setelah RUN.</p>
       ${currentProjectId ? '<button class="btn btn-green" style="margin-top:20px;max-width:200px" onclick="runProject()">▶️ RUN Sekarang</button>' : ''}
     </div>
   `;
@@ -1233,7 +1367,7 @@ function renderRunLog(data) {
   const el = document.getElementById('run-panel');
   const logs = data.logs || [];
   if (!logs.length && !data.alive) {
-    el.innerHTML = '<div class="empty"><div class="icon">▶️</div><p>Belum ada project running.<br/>Klik RUN di tab Info.</p></div>';
+    el.innerHTML = '<div class="empty"><div class="icon">▶️</div><p>Belum ada project running.</p></div>';
     return;
   }
   const statusBadge = data.alive
@@ -1263,7 +1397,7 @@ function renderRunLog(data) {
     </div>
     <div class="info-card">
       <h3>📟 Live Output <span style="font-size:.7rem;color:#4ade80;font-weight:normal">● WebSocket</span></h3>
-      <div id="run-log-panel">${logsHtml || '<span class="log-info">Menunggu output...</span>'}</div>
+      <div id="run-log-panel">${logsHtml || '<span class="log-info">Menunggu...</span>'}</div>
     </div>
   `;
   const p = document.getElementById('run-log-panel');
@@ -1271,7 +1405,7 @@ function renderRunLog(data) {
 }
 
 // ================================================
-// ✅ STATS TAB
+// STATS
 // ================================================
 function mulaiStatsPolling() {
   loadStats();
@@ -1296,73 +1430,30 @@ async function loadStats() {
           <span style="font-size:.7rem;color:#4ade80;font-weight:normal">● Auto-refresh 5s</span>
         </h3>
       </div>
-
       <div class="stats-grid">
-        <div class="stat-card info">
-          <div class="icon">📞</div>
-          <div class="value">${req.total || 0}</div>
-          <div class="label">Total Requests</div>
-        </div>
-        <div class="stat-card success">
-          <div class="icon">✅</div>
-          <div class="value">${req.success || 0}</div>
-          <div class="label">Success</div>
-        </div>
-        <div class="stat-card error">
-          <div class="icon">❌</div>
-          <div class="value">${req.failed || 0}</div>
-          <div class="label">Failed</div>
-        </div>
+        <div class="stat-card info"><div class="icon">📞</div><div class="value">${req.total || 0}</div><div class="label">Total Requests</div></div>
+        <div class="stat-card success"><div class="icon">✅</div><div class="value">${req.success || 0}</div><div class="label">Success</div></div>
+        <div class="stat-card error"><div class="icon">❌</div><div class="value">${req.failed || 0}</div><div class="label">Failed</div></div>
         <div class="stat-card ${successRate >= 80 ? 'success' : successRate >= 50 ? 'warn' : 'error'}">
-          <div class="icon">📈</div>
-          <div class="value">${successRate}%</div>
-          <div class="label">Success Rate</div>
+          <div class="icon">📈</div><div class="value">${successRate}%</div><div class="label">Success Rate</div>
         </div>
       </div>
-
       <div class="stats-grid">
-        <div class="stat-card warn">
-          <div class="icon">✨</div>
-          <div class="value">${req.cache_hits || 0}</div>
-          <div class="label">Cache Hits</div>
-        </div>
-        <div class="stat-card info">
-          <div class="icon">🗄️</div>
-          <div class="value">${cache.size || 0}/${cache.max || 0}</div>
-          <div class="label">Cache Size</div>
-        </div>
-        <div class="stat-card info">
-          <div class="icon">⏱️</div>
-          <div class="value">${req.avg_time || 0}s</div>
-          <div class="label">Avg Response</div>
-        </div>
+        <div class="stat-card warn"><div class="icon">✨</div><div class="value">${req.cache_hits || 0}</div><div class="label">Cache Hits</div></div>
+        <div class="stat-card info"><div class="icon">🗄️</div><div class="value">${cache.size || 0}/${cache.max || 0}</div><div class="label">Cache Size</div></div>
+        <div class="stat-card info"><div class="icon">⏱️</div><div class="value">${req.avg_time || 0}s</div><div class="label">Avg Response</div></div>
       </div>
-
       <div class="stats-grid">
-        <div class="stat-card info">
-          <div class="icon">📁</div>
-          <div class="value">${proj.total || 0}</div>
-          <div class="label">Total Projects</div>
-        </div>
-        <div class="stat-card success">
-          <div class="icon">🟢</div>
-          <div class="value">${proj.running || 0}</div>
-          <div class="label">Running Now</div>
-        </div>
-        <div class="stat-card warn">
-          <div class="icon">💾</div>
-          <div class="value">${proj.backups || 0}</div>
-          <div class="label">Total Backups</div>
-        </div>
+        <div class="stat-card info"><div class="icon">📁</div><div class="value">${proj.total || 0}</div><div class="label">Total Projects</div></div>
+        <div class="stat-card success"><div class="icon">🟢</div><div class="value">${proj.running || 0}</div><div class="label">Running Now</div></div>
+        <div class="stat-card warn"><div class="icon">💾</div><div class="value">${proj.backups || 0}</div><div class="label">Total Backups</div></div>
       </div>
-
       <div class="info-card">
         <h3>⚙️ System Config</h3>
         <div class="info-row"><span class="info-label">Port Range</span><span class="info-value">${esc(sys.port_range || '-')}</span></div>
         <div class="info-row"><span class="info-label">Rate Limit</span><span class="info-value">${esc(sys.rate_limit || '-')}</span></div>
         <div class="info-row"><span class="info-label">Cache TTL</span><span class="info-value">${esc(sys.cache_ttl || '-')}</span></div>
       </div>
-
       <div class="info-card">
         <h3>🛠️ Actions</h3>
         <div class="btn-group">
@@ -1372,29 +1463,29 @@ async function loadStats() {
       </div>
     `;
   } catch(e) {
-    el.innerHTML = `<div class="empty"><p>❌ Failed load stats: ${esc(String(e))}</p></div>`;
+    el.innerHTML = `<div class="empty"><p>❌ ${esc(String(e))}</p></div>`;
   }
 }
 
 async function clearCache() {
   const r = await fetch('/cache/clear', {method: 'POST'});
   const d = await r.json();
-  showToast(`✅ Cache cleared: ${d.cleared} entries`, 'ok');
+  showToast(`✅ Cleared: ${d.cleared}`, 'ok');
   loadStats();
 }
 
 async function checkHealth() {
-  showToast('💚 Checking upstream...', 'info');
+  showToast('💚 Checking...', 'info');
   try {
     const r = await fetch('/health-upstream');
     const d = await r.json();
     const ok = d.keys.filter(k => k.status.includes('healthy')).length;
-    showToast(`${ok}/${d.keys.length} keys healthy`, ok > 0 ? 'ok' : 'err');
+    showToast(`${ok}/${d.keys.length} healthy`, ok > 0 ? 'ok' : 'err');
   } catch(e) { showToast('❌ Failed', 'err'); }
 }
 
 // ================================================
-// ✅ BACKUP TAB
+// BACKUP
 // ================================================
 async function muatBackups() {
   const el = document.getElementById('backup-panel');
@@ -1407,9 +1498,7 @@ async function muatBackups() {
       el.innerHTML = `
         <div class="info-card">
           <h3>💾 Backup System</h3>
-          <p style="font-size:.85rem;color:#94a3b8">
-            Backup dibuat otomatis saat:
-          </p>
+          <p style="font-size:.85rem;color:#94a3b8">Backup dibuat otomatis saat:</p>
           <ul style="font-size:.8rem;color:#94a3b8;margin-top:8px;padding-left:20px;line-height:1.8">
             <li>Sebelum "Lanjutkan" project</li>
             <li>Sebelum edit file manual</li>
@@ -1422,8 +1511,8 @@ async function muatBackups() {
     }
     el.innerHTML = `
       <div class="info-card">
-        <h3>💾 ${list.length} Backup Tersedia</h3>
-        <p style="font-size:.78rem;color:#94a3b8">Restore atau hapus backup lama</p>
+        <h3>💾 ${list.length} Backup</h3>
+        <p style="font-size:.78rem;color:#94a3b8">Restore atau hapus backup</p>
       </div>
       ${list.map(b => `
         <div class="backup-card">
@@ -1433,26 +1522,24 @@ async function muatBackups() {
             <div class="bmeta">📁 ${esc(b.project)} · ${fmtSize(b.size)} · ${fmtDate(b.created)}</div>
           </div>
           <div class="backup-actions">
-            <button class="btn btn-blue btn-sm" onclick="restoreBackup('${escAttr(b.name)}')">♻️ Restore</button>
+            <button class="btn btn-blue btn-sm" onclick="restoreBackup('${escAttr(b.name)}')">♻️</button>
             <button class="btn btn-red btn-sm" onclick="deleteBackup('${escAttr(b.name)}')">🗑️</button>
           </div>
         </div>
       `).join('')}
     `;
   } catch(e) {
-    el.innerHTML = `<div class="empty"><p>❌ Error: ${esc(String(e))}</p></div>`;
+    el.innerHTML = `<div class="empty"><p>❌ ${esc(String(e))}</p></div>`;
   }
 }
 
 async function restoreBackup(name) {
-  showModal('Restore Backup?', `Restore "${name}"? Project saat ini akan di-backup dulu.`, async () => {
+  showModal('Restore Backup?', `Restore "${name}"?`, async () => {
     try {
       const r = await fetch(`/restore/${encodeURIComponent(name)}`, {method: 'POST'});
       const d = await r.json();
-      if (d.success) {
-        showToast('✅ Restored!', 'ok');
-        muatBackups();
-      } else showToast('❌ ' + d.error, 'err');
+      if (d.success) { showToast('✅ Restored', 'ok'); muatBackups(); }
+      else showToast('❌ ' + d.error, 'err');
     } catch(e) { showToast('❌ ' + e, 'err'); }
   });
 }
@@ -1461,16 +1548,14 @@ async function deleteBackup(name) {
   showModal('Hapus Backup?', `Hapus "${name}"?`, async () => {
     try {
       const r = await fetch(`/backups/${encodeURIComponent(name)}`, {method: 'DELETE'});
-      if (r.ok) {
-        showToast('✅ Deleted', 'ok');
-        muatBackups();
-      } else showToast('❌ Failed', 'err');
+      if (r.ok) { showToast('✅ Deleted', 'ok'); muatBackups(); }
+      else showToast('❌ Failed', 'err');
     } catch(e) { showToast('❌ ' + e, 'err'); }
   });
 }
 
 // ================================================
-// KEY STATUS — dengan metrics
+// KEY STATUS
 // ================================================
 async function muatKeyStatus() {
   const el = document.getElementById('key-panel');
@@ -1482,7 +1567,7 @@ async function muatKeyStatus() {
     el.innerHTML = `
       <div class="info-card">
         <h3>🔑 API Keys — ${keys.length} Total</h3>
-        <p style="font-size:.75rem;color:#64748b">Active: Index ${data.current_index} · Smart routing enabled</p>
+        <p style="font-size:.75rem;color:#64748b">Active: Index ${data.current_index} · Smart routing</p>
       </div>
       ${keys.map(k => {
         const dotCls = k.error_count === 0 ? 'green' : k.error_count >= 3 ? 'red' : 'yellow';
@@ -1497,27 +1582,18 @@ async function muatKeyStatus() {
             </div>
           </div>
           <div class="key-metrics">
-            <div class="key-metric">
-              <div class="val val-ok">${k.success_count || 0}</div>
-              <div class="lbl">Success</div>
-            </div>
-            <div class="key-metric">
-              <div class="val val-err">${k.error_count || 0}</div>
-              <div class="lbl">Errors</div>
-            </div>
-            <div class="key-metric">
-              <div class="val val-info">${k.avg_time || 0}s</div>
-              <div class="lbl">Avg Time</div>
-            </div>
+            <div class="key-metric"><div class="val val-ok">${k.success_count || 0}</div><div class="lbl">Success</div></div>
+            <div class="key-metric"><div class="val val-err">${k.error_count || 0}</div><div class="lbl">Errors</div></div>
+            <div class="key-metric"><div class="val val-info">${k.avg_time || 0}s</div><div class="lbl">Avg Time</div></div>
           </div>
           ${k.last_error ? `<div style="font-size:.7rem;color:#f87171;margin-top:8px;padding-top:8px;border-top:1px solid #334155">⚠️ ${esc(k.last_error)}</div>` : ''}
         </div>`;
       }).join('')}
-      <button class="btn btn-red" id="btn-reset-key" style="margin-top:8px">🔄 Reset Error Counter</button>
+      <button class="btn btn-red" id="btn-reset-key" style="margin-top:8px">🔄 Reset Counter</button>
     `;
     document.getElementById('btn-reset-key').addEventListener('click', async () => {
       await fetch('/key-reset', { method: 'POST' });
-      showToast('Counter direset!', 'ok');
+      showToast('Reset!', 'ok');
       muatKeyStatus();
     });
   } catch(e) {
