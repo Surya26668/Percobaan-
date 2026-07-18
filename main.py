@@ -78,10 +78,10 @@ class MultiKeyManager:
         client = OpenAI(
             base_url=base_url,
             api_key=api_key,
-            timeout=60.0,
+            timeout=120.0,
             http_client=httpx.Client(
-                timeout=60.0,
-                verify=False,          # ← skip SSL verify jika server pakai self-signed
+                timeout=120.0,
+                verify=False,
             )
         )
         return client, model
@@ -120,7 +120,7 @@ class MultiKeyManager:
 key_manager = MultiKeyManager(API_KEYS)
 
 # ================================================
-# TANYA AI — VERBOSE ERROR
+# TANYA AI
 # ================================================
 def tanya_ai(system_prompt: str, user_prompt: str) -> str:
     last_error = "tidak ada error"
@@ -128,10 +128,7 @@ def tanya_ai(system_prompt: str, user_prompt: str) -> str:
 
     for attempt in range(max_retries):
         base_url, api_key, model = API_KEYS[key_manager.current_idx]
-        print(f"[AI] Attempt {attempt+1}/{max_retries}")
-        print(f"[AI] URL   : {base_url}")
-        print(f"[AI] Model : {model}")
-        print(f"[AI] Key   : {api_key[:12]}...")
+        print(f"[AI] Attempt {attempt+1}/{max_retries} | model={model}")
 
         try:
             client, model = key_manager.get_client()
@@ -144,7 +141,7 @@ def tanya_ai(system_prompt: str, user_prompt: str) -> str:
                 ]
             )
             hasil = (response.choices[0].message.content or "").strip()
-            print(f"[AI] ✅ Sukses! Panjang response: {len(hasil)} karakter")
+            print(f"[AI] ✅ Sukses! {len(hasil)} karakter")
             return hasil
 
         except Exception as e:
@@ -157,22 +154,18 @@ def tanya_ai(system_prompt: str, user_prompt: str) -> str:
                 "unauthorized","invalid_api_key","insufficient",
                 "429","401","403",
             ]):
-                print(f"[AI] → Auth/Rate error, ganti key")
                 key_manager.mark_error()
                 time.sleep(1)
             elif any(k in err_str for k in [
                 "connection","timeout","network","ssl",
-                "connect","refused","unreachable","name or service"
+                "connect","refused","unreachable",
             ]):
-                print(f"[AI] → Connection error, tunggu 3 detik")
                 time.sleep(3)
             else:
-                print(f"[AI] → Error lain, tunggu 2 detik")
                 time.sleep(2)
 
     raise Exception(
-        f"Semua API key gagal setelah {max_retries} percobaan. "
-        f"Error terakhir: {last_error}"
+        f"Semua API key gagal. Error terakhir: {last_error}"
     )
 
 def bersihkan_json(text: str) -> str:
@@ -274,39 +267,21 @@ def perbaiki_error(project_id: str, project_dir: Path, error_msg: str):
         log(project_id, "Tidak ada file untuk diperbaiki.", "warning")
         return
 
-    system = """
-Kamu adalah expert debugger Python/Web.
-Perbaiki error berdasarkan pesan error dan isi file yang ada.
+    system = (
+        "Kamu adalah debugger Python. "
+        "Perbaiki error. Balas HANYA JSON valid:\n"
+        '{"analysis":"penjelasan","fixed_files":{"path/file.py":"code lengkap"}}'
+    )
 
-Balas HANYA JSON valid tanpa markdown:
-{
-  "analysis": "penjelasan singkat apa yang salah",
-  "fixed_files": {
-    "path/file.py": "isi code LENGKAP yang sudah diperbaiki"
-  }
-}
-
-ATURAN:
-- Tulis isi file LENGKAP, bukan parsial
-- Hanya perbaiki file yang memang bermasalah
-- Jangan hapus fungsi yang tidak berkaitan dengan error
-"""
     context = {}
     total   = 0
     for k, v in semua_file.items():
-        if total > 8000: break
+        if total > 6000: break
         context[k] = v
         total += len(v)
 
-    user = f"""
-ERROR MESSAGE:
-{error_msg[:2000]}
+    user = f"ERROR:\n{error_msg[:1000]}\n\nFILE:\n{json.dumps(context, ensure_ascii=False)}"
 
-FILE PROJECT:
-{json.dumps(context, ensure_ascii=False, indent=2)}
-
-Perbaiki semua file yang bermasalah.
-"""
     try:
         raw  = tanya_ai(system, user)
         data = json.loads(bersihkan_json(raw))
@@ -319,15 +294,14 @@ Perbaiki semua file yang bermasalah.
             filename = str(filename).strip().lstrip("/")
             target   = (project_dir / filename).resolve()
             if not str(target).startswith(str(project_dir.resolve())):
-                log(project_id, f"Path tidak aman: {filename}", "warning")
                 continue
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(new_code, encoding="utf-8")
             log(project_id, f"Diperbaiki: {filename}", "fix")
     except json.JSONDecodeError as e:
-        log(project_id, f"Gagal parse JSON perbaikan: {e}", "error")
+        log(project_id, f"Gagal parse JSON: {e}", "error")
     except Exception as e:
-        log(project_id, f"Error saat perbaiki: {e}", "error")
+        log(project_id, f"Error perbaiki: {e}", "error")
 
 # ================================================
 # TEST OTOMATIS + AUTO FIX
@@ -368,62 +342,44 @@ def jalankan_test(project_id: str, project_dir: Path,
 # ================================================
 def buat_project_background(project_id: str, deskripsi: str, nama: str):
     try:
-        log(project_id, "Memulai pembuatan project baru...", "loading")
+        log(project_id, "Memulai pembuatan project...", "loading")
         log(project_id, f"API key index: {key_manager.current_idx}", "info")
-        log(project_id, "AI sedang merancang struktur project...", "loading")
+        log(project_id, "AI sedang merancang project...", "loading")
 
-        system_plan = """
-Kamu adalah Senior Software Engineer berpengalaman.
-Buat project kuliah tingkat tinggi (S1) yang profesional, lengkap, dan siap dijalankan.
+        # ✅ PROMPT RINGKAS — tidak overload token
+        system_plan = (
+            "Kamu adalah programmer expert Python.\n"
+            "Buat project kuliah S1 yang lengkap dan siap dijalankan.\n\n"
+            "Balas HANYA JSON valid tanpa markdown:\n"
+            "{\n"
+            '  "description": "deskripsi singkat",\n'
+            '  "tech_stack": "teknologi",\n'
+            '  "folders": ["tests"],\n'
+            '  "files": {\n'
+            '    "main.py": "code lengkap",\n'
+            '    "requirements.txt": "library per baris",\n'
+            '    "README.md": "dokumentasi",\n'
+            '    "tests/test_main.py": "unit test pytest"\n'
+            "  },\n"
+            '  "install_cmd": "pip install -r requirements.txt",\n'
+            '  "run_cmd": "python main.py",\n'
+            '  "test_cmd": "python -m pytest tests/ -v"\n'
+            "}\n\n"
+            "WAJIB: setiap file berisi code LENGKAP yang bisa langsung dijalankan."
+        )
 
-Balas HANYA dengan JSON valid tanpa markdown:
-{
-  "description": "deskripsi singkat project",
-  "tech_stack": "teknologi yang digunakan",
-  "folders": ["folder1", "folder2/subfolder"],
-  "files": {
-    "main.py": "isi code lengkap",
-    "models.py": "isi code lengkap",
-    "requirements.txt": "daftar library",
-    "README.md": "dokumentasi lengkap",
-    "tests/test_main.py": "isi code test"
-  },
-  "install_cmd": "pip install -r requirements.txt",
-  "run_cmd": "python main.py",
-  "test_cmd": "python -m pytest tests/ -v"
-}
+        user_plan = (
+            f"Buat project Python bernama '{nama}'.\n"
+            f"Deskripsi: {deskripsi}\n"
+            "Syarat: minimal 4 file, best practice, siap dijalankan tanpa konfigurasi tambahan."
+        )
 
-ATURAN WAJIB:
-- Minimal 5 file yang relevan
-- Setiap file harus berisi code LENGKAP dan bisa langsung dijalankan
-- Gunakan best practice Python
-- Komentar dalam bahasa Indonesia
-- Sertakan README.md dengan cara instalasi dan cara pakai
-- Sertakan requirements.txt dengan versi library yang stabil
-- Sertakan minimal 1 file test dengan pytest
-- Jangan gunakan library yang tidak umum atau tidak stabil
-"""
-        user_plan = f"""
-Buatkan project kuliah lengkap berikut:
-
-DESKRIPSI:
-{deskripsi}
-
-NAMA PROJECT:
-{nama}
-
-SYARAT:
-- Layak untuk tugas akhir / skripsi level S1
-- Minimal 5 file terstruktur rapi
-- Menggunakan Python
-- Bisa langsung dijalankan tanpa konfigurasi tambahan
-"""
         raw_plan = tanya_ai(system_plan, user_plan)
 
         try:
             data = json.loads(bersihkan_json(raw_plan))
         except json.JSONDecodeError as e:
-            msg = f"AI tidak mengembalikan JSON valid: {e}"
+            msg = f"AI tidak mengembalikan JSON valid: {e}\nRaw: {raw_plan[:300]}"
             log(project_id, msg, "error")
             projects[project_id]["status"] = "error"
             projects[project_id]["error"]  = msg
@@ -557,64 +513,47 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
             except Exception:
                 pass
 
-        semua_file = baca_semua_file(project_dir, max_chars=600)
+        semua_file = baca_semua_file(project_dir, max_chars=400)
         log(project_id, f"Total file: {len(semua_file)}", "info")
         for f in semua_file:
             log(project_id, f"File ada: {f}", "file")
 
-        system_lanjut = """
-Kamu adalah Senior Software Engineer yang melanjutkan project yang sudah ada.
-Tugasmu: tambahkan atau modifikasi fitur sesuai permintaan,
-sambil mempertahankan kode dan struktur yang sudah ada.
+        # ✅ PROMPT RINGKAS
+        system_lanjut = (
+            "Kamu adalah programmer expert yang melanjutkan project Python.\n"
+            "Tambahkan fitur sesuai permintaan tanpa menghapus kode yang ada.\n\n"
+            "Balas HANYA JSON valid tanpa markdown:\n"
+            "{\n"
+            '  "analysis": "apa yang akan ditambahkan",\n'
+            '  "new_files": {"path/file.py": "code lengkap"},\n'
+            '  "modified_files": {"path/file.py": "code lengkap"},\n'
+            '  "run_cmd": "perintah jalankan",\n'
+            '  "notes": "ringkasan perubahan"\n'
+            "}\n\n"
+            "WAJIB: tulis isi file LENGKAP, bukan snippet."
+        )
 
-Balas HANYA JSON valid tanpa markdown:
-{
-  "analysis": "analisis singkat project dan apa yang akan ditambahkan",
-  "new_files": {
-    "path/file_baru.py": "isi code LENGKAP"
-  },
-  "modified_files": {
-    "path/file_lama.py": "isi code LENGKAP yang sudah dimodifikasi"
-  },
-  "run_cmd": "perintah menjalankan project",
-  "notes": "penjelasan singkat apa yang sudah ditambahkan"
-}
-
-ATURAN PENTING:
-- Jangan hapus fungsi yang sudah ada kecuali diminta
-- Tulis isi file LENGKAP, bukan parsial atau snippet
-- Pertahankan style dan struktur kode yang ada
-- Kalau modifikasi requirements.txt, sertakan SEMUA library (lama + baru)
-- Minimal ada 1 perubahan nyata
-"""
         context  = {}
         total_ch = 0
         for fname, fcontent in semua_file.items():
-            if total_ch > 7000: break
+            if total_ch > 5000: break
             context[fname] = fcontent
             total_ch += len(fcontent)
 
-        user_lanjut = f"""
-PROJECT YANG ADA:
-Nama      : {nama}
-Tech Stack: {meta.get('tech_stack','Python')}
-Deskripsi : {meta.get('deskripsi','-')}
+        user_lanjut = (
+            f"Project: {nama}\n"
+            f"Tech: {meta.get('tech_stack','Python')}\n"
+            f"Permintaan: {permintaan}\n\n"
+            f"File yang ada:\n{json.dumps(context, ensure_ascii=False)}"
+        )
 
-FILE-FILE YANG SUDAH ADA:
-{json.dumps(context, ensure_ascii=False, indent=2)}
-
-PERMINTAAN PENGEMBANGAN:
-{permintaan}
-
-Kembangkan project sesuai permintaan di atas.
-"""
         log(project_id, "AI sedang mengembangkan project...", "loading")
         raw_lanjut = tanya_ai(system_lanjut, user_lanjut)
 
         try:
             hasil = json.loads(bersihkan_json(raw_lanjut))
         except json.JSONDecodeError as e:
-            msg = f"AI tidak mengembalikan JSON valid: {e}"
+            msg = f"AI tidak mengembalikan JSON valid: {e}\nRaw: {raw_lanjut[:300]}"
             log(project_id, msg, "error")
             projects[project_id]["status"] = "error"
             projects[project_id]["error"]  = msg
@@ -633,7 +572,6 @@ Kembangkan project sesuai permintaan di atas.
             filename = str(filename).strip().lstrip("/")
             target   = (project_dir / filename).resolve()
             if not str(target).startswith(str(project_dir.resolve())):
-                log(project_id, f"Path tidak aman: {filename}", "warning")
                 continue
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(str(content), encoding="utf-8")
@@ -643,7 +581,6 @@ Kembangkan project sesuai permintaan di atas.
             filename = str(filename).strip().lstrip("/")
             target   = (project_dir / filename).resolve()
             if not str(target).startswith(str(project_dir.resolve())):
-                log(project_id, f"Path tidak aman: {filename}", "warning")
                 continue
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(str(content), encoding="utf-8")
@@ -718,7 +655,6 @@ async def halaman_utama():
     return HTMLResponse(content=html_file.read_text(encoding="utf-8"))
 
 
-# ✅ ENDPOINT DEBUG — buka /test-ai di browser untuk cek koneksi AI
 @app.get("/test-ai")
 async def test_ai():
     hasil_cek = []
@@ -728,10 +664,7 @@ async def test_ai():
                 base_url=base_url,
                 api_key=api_key,
                 timeout=30.0,
-                http_client=httpx.Client(
-                    timeout=30.0,
-                    verify=False,
-                )
+                http_client=httpx.Client(timeout=30.0, verify=False)
             )
             resp = client.chat.completions.create(
                 model=model,
@@ -740,22 +673,36 @@ async def test_ai():
             )
             reply = resp.choices[0].message.content
             hasil_cek.append({
-                "index"  : i,
-                "status" : "✅ sukses",
-                "model"  : model,
+                "index"   : i,
+                "status"  : "✅ sukses",
+                "model"   : model,
                 "base_url": base_url,
-                "reply"  : reply,
+                "reply"   : reply,
             })
         except Exception as e:
             hasil_cek.append({
-                "index"  : i,
-                "status" : "❌ gagal",
-                "model"  : model,
+                "index"   : i,
+                "status"  : "❌ gagal",
+                "model"   : model,
                 "base_url": base_url,
-                "error"  : str(e),
+                "error"   : str(e),
             })
-
     return JSONResponse({"keys": hasil_cek})
+
+
+@app.get("/list-models")
+async def list_models():
+    try:
+        client = OpenAI(
+            base_url=API_KEYS[0][0],
+            api_key=API_KEYS[0][1],
+            timeout=30.0,
+            http_client=httpx.Client(timeout=30.0, verify=False)
+        )
+        models = client.models.list()
+        return JSONResponse({"models": [m.id for m in models.data]})
+    except Exception as e:
+        return JSONResponse({"error": str(e)})
 
 
 @app.post("/buat-project")
