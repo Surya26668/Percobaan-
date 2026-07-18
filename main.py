@@ -106,6 +106,10 @@ REQUEST_TIMEOUT     = 180
 MAX_FILES_PER_PROJ  = 8
 MAX_LINES_PER_FILE  = 250
 
+# ✅ Retry setting untuk upstream error (502/503/504)
+UPSTREAM_MAX_RETRY  = 6      # Total retry saat upstream error
+UPSTREAM_WAIT_BASE  = 8      # Base wait time (detik)
+
 PORT_START          = 9001
 PORT_END            = 9100
 
@@ -216,15 +220,23 @@ def ambil_text(resp) -> str:
             print(f"[AI] 💭 ThinkingBlock ({thinking_len} chars), diskip")
     return hasil.strip()
 
+# ================================================
+# ✅ TANYA AI — AUTO RETRY 502/503/504
+# ================================================
 def tanya_ai(system_prompt: str, user_prompt: str, max_tokens: int = 4096) -> str:
-    last_error  = "tidak ada error"
-    max_retries = len(API_KEYS) * 2
+    last_error         = "tidak ada error"
+    upstream_retries   = 0                            # Counter khusus upstream error
+    normal_retries_max = len(API_KEYS) * 2
 
-    for attempt in range(max_retries):
+    total_attempts = 0
+    max_total      = normal_retries_max + UPSTREAM_MAX_RETRY
+
+    while total_attempts < max_total:
+        total_attempts += 1
         key_info = key_manager.get_info()
         model    = key_info["model"]
 
-        print(f"[AI] Attempt {attempt+1}/{max_retries} | model={model}")
+        print(f"[AI] Attempt {total_attempts}/{max_total} | model={model} | upstream_retry={upstream_retries}")
         t_start = time.time()
 
         try:
@@ -248,22 +260,51 @@ def tanya_ai(system_prompt: str, user_prompt: str, max_tokens: int = 4096) -> st
 
         except anthropic.AuthenticationError as e:
             last_error = f"401: {str(e)[:200]}"
+            print(f"[AI] ❌ {last_error}")
             key_manager.mark_error()
             time.sleep(1)
+
         except anthropic.RateLimitError as e:
             last_error = f"429: {str(e)[:200]}"
+            print(f"[AI] ❌ {last_error}")
             key_manager.mark_error()
             time.sleep(5)
+
         except anthropic.APIStatusError as e:
-            last_error = f"Status {e.status_code}: {str(e.message)[:200]}"
-            key_manager.mark_error()
-            time.sleep(2)
+            status = e.status_code
+            last_error = f"Status {status}: {str(e.message)[:200]}"
+            print(f"[AI] ❌ {last_error}")
+
+            # ✅ 502/503/504 = upstream error — retry lebih lama, jangan mark_error
+            if status in (502, 503, 504):
+                if upstream_retries >= UPSTREAM_MAX_RETRY:
+                    print(f"[AI] ⚠️ Upstream retry limit tercapai ({UPSTREAM_MAX_RETRY})")
+                    raise Exception(
+                        f"Anthropic upstream error {status} — sudah retry {UPSTREAM_MAX_RETRY}x. "
+                        f"Provider sedang down. Coba lagi beberapa menit."
+                    )
+
+                upstream_retries += 1
+                # Exponential backoff: 8, 16, 24, 32, 40, 48 detik
+                wait_time = UPSTREAM_WAIT_BASE * upstream_retries
+                print(f"[AI] ⏳ Upstream error, tunggu {wait_time}s sebelum retry #{upstream_retries}...")
+                time.sleep(wait_time)
+                # Coba key lain juga siapa tahu key ini yang bermasalah
+                if upstream_retries > 2:
+                    key_manager.next_key()
+            else:
+                key_manager.mark_error()
+                time.sleep(2)
+
         except anthropic.APIConnectionError as e:
             last_error = f"Connection: {str(e)[:200]}"
+            print(f"[AI] ❌ {last_error}")
             key_manager.mark_error()
             time.sleep(3)
+
         except Exception as e:
             last_error = f"{str(e)[:200]}"
+            print(f"[AI] ❌ {last_error}")
             key_manager.mark_error()
             time.sleep(2)
 
@@ -294,30 +335,22 @@ def bersihkan_code(text: str) -> str:
     return "\n".join(cleaned).strip()
 
 # ================================================
-# ✅ PARSE JSON TOLERAN — handle invalid escape sequences
+# PARSE JSON TOLERAN
 # ================================================
 def parse_json_toleran(text: str) -> dict:
-    """
-    Parse JSON yang mungkin berisi backslash aneh dari code Python.
-    4 strategi bertingkat.
-    """
     text = bersihkan_json(text)
 
-    # ── Strategi 1: Parse langsung ──
     try:
         return json.loads(text)
     except json.JSONDecodeError as e:
         print(f"[JSON] Attempt 1 failed: {e}")
 
-    # ── Strategi 2: Fix invalid escape sequences ──
-    # JSON hanya boleh: \" \\ \/ \b \f \n \r \t \uXXXX
     try:
         fixed = re.sub(r'\\(?![\\"/bfnrtu])', r'\\\\', text)
         return json.loads(fixed)
     except json.JSONDecodeError as e:
         print(f"[JSON] Attempt 2 failed: {e}")
 
-    # ── Strategi 3: Fix + hapus control characters ──
     try:
         fixed = re.sub(r'\\(?![\\"/bfnrtu])', r'\\\\', text)
         fixed = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', fixed)
@@ -325,7 +358,6 @@ def parse_json_toleran(text: str) -> dict:
     except json.JSONDecodeError as e:
         print(f"[JSON] Attempt 3 failed: {e}")
 
-    # ── Strategi 4: Ekstrak field manual pakai regex ──
     print("[JSON] Fallback: ekstrak field manual pakai regex")
     result = {
         "analysis"      : "",
@@ -342,26 +374,22 @@ def parse_json_toleran(text: str) -> dict:
         "fixed_files"   : {},
     }
 
-    # Ekstrak field string sederhana
     for field in ["analysis", "run_cmd", "notes", "description",
                   "tech_stack", "install_cmd", "test_cmd", "project_type"]:
         m = re.search(rf'"{field}"\s*:\s*"([^"]*(?:\\.[^"]*)*)"', text)
         if m:
             result[field] = m.group(1)
 
-    # Ekstrak array files
     m = re.search(r'"files"\s*:\s*\[(.*?)\]', text, re.DOTALL)
     if m:
         files_str = m.group(1)
         result["files"] = re.findall(r'"([^"]+)"', files_str)
 
-    # Ekstrak isi file dari new_files/modified_files/fixed_files
     for match in re.finditer(
         r'"([a-zA-Z0-9_/\-\.]+\.(?:py|js|ts|html|css|json|txt|md|yaml|yml|toml))"\s*:\s*"((?:[^"\\]|\\.)*)"',
         text
     ):
         fname, fcontent = match.group(1), match.group(2)
-        # Unescape manually
         fcontent = fcontent.replace('\\n', '\n').replace('\\t', '\t')
         fcontent = fcontent.replace('\\"', '"').replace('\\\\', '\\')
         result["modified_files"][fname] = fcontent
@@ -555,7 +583,6 @@ def perbaiki_error(project_id: str, project_dir: Path, error_msg: str):
 
     try:
         raw  = tanya_ai(system, user, max_tokens=4000)
-        # ✅ FIX: pakai parse_json_toleran
         data = parse_json_toleran(raw)
         log(project_id, f"Analisis: {data.get('analysis', '-')}", "fix")
         fixed = data.get("fixed_files", {})
@@ -601,7 +628,6 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
 
         raw_plan = tanya_ai(system_plan, user_plan, max_tokens=800)
 
-        # ✅ FIX: pakai parse_json_toleran
         try:
             plan = parse_json_toleran(raw_plan)
         except Exception as e:
@@ -768,7 +794,6 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
 
         semua_file = baca_semua_file(project_dir, max_chars=400)
 
-        # ✅ Prompt dengan reminder escape yang benar
         system_lanjut = (
             "Programmer Python expert. Kembangkan project.\n\n"
             "Balas HANYA JSON valid tanpa markdown.\n"
@@ -804,11 +829,10 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
         log(project_id, "AI mengembangkan...", "loading")
         raw_lanjut = tanya_ai(system_lanjut, user_lanjut, max_tokens=5000)
 
-        # ✅ FIX: pakai parse_json_toleran
         try:
             hasil = parse_json_toleran(raw_lanjut)
         except Exception as e:
-            msg = f"JSON invalid setelah 4x retry: {e}\nRaw (500 char): {raw_lanjut[:500]}"
+            msg = f"JSON invalid: {e}\nRaw (500 char): {raw_lanjut[:500]}"
             log(project_id, msg, "error")
             projects[project_id]["status"] = "error"
             projects[project_id]["error"]  = msg
@@ -1169,6 +1193,42 @@ async def key_status_route():
 async def key_reset_route():
     key_manager.reset_errors()
     return JSONResponse({"message": "Reset OK"})
+
+# ================================================
+# ✅ HEALTH CHECK — untuk cek status Anthropic upstream
+# ================================================
+@app.get("/health-upstream")
+async def health_upstream():
+    """Test cepat ke upstream untuk cek apakah 502 masih terjadi"""
+    hasil = []
+    for i, key_info in enumerate(API_KEYS):
+        try:
+            client = buat_client(key_info["base_url"], key_info["api_key"])
+            resp   = client.messages.create(
+                model      = key_info["model"],
+                max_tokens = 10,
+                messages   = [{"role": "user", "content": "hi"}]
+            )
+            hasil.append({
+                "index" : i,
+                "model" : key_info["model"],
+                "status": "✅ healthy",
+            })
+        except anthropic.APIStatusError as e:
+            hasil.append({
+                "index" : i,
+                "model" : key_info["model"],
+                "status": f"⚠️ {e.status_code} — {'upstream down' if e.status_code in (502,503,504) else 'error'}",
+                "error" : str(e.message)[:150],
+            })
+        except Exception as e:
+            hasil.append({
+                "index" : i,
+                "model" : key_info["model"],
+                "status": "❌ error",
+                "error" : str(e)[:150],
+            })
+    return JSONResponse({"keys": hasil})
 
 # ================================================
 # RUN / STOP / LOGS API
