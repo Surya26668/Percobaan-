@@ -49,8 +49,12 @@
     .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
     .btn-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff}
     .btn-green{background:linear-gradient(135deg,#059669,#10b981);color:#fff}
-    .btn-red{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;margin-top:6px}
+    .btn-red{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff}
+    .btn-gray{background:#374151;color:#fff}
+    .btn-blue{background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff}
     .btn-sm{padding:7px 14px;font-size:.8rem;width:auto;border-radius:6px}
+
+    .btn-group{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
 
     .project-list-wrap{display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto}
     .project-card{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 12px;cursor:pointer;transition:.2s}
@@ -61,14 +65,15 @@
     .project-card .pfiles{font-size:.7rem;color:#334155;margin-top:2px}
 
     .main-panel{display:flex;flex-direction:column;overflow:hidden}
-    .tabs{display:flex;background:#1e293b;border-bottom:1px solid #334155}
-    .tab{padding:13px 22px;font-size:.82rem;font-weight:600;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;transition:.2s}
+    .tabs{display:flex;background:#1e293b;border-bottom:1px solid #334155;overflow-x:auto}
+    .tab{padding:13px 22px;font-size:.82rem;font-weight:600;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;transition:.2s;white-space:nowrap}
     .tab:hover{color:#e2e8f0}
     .tab.active{color:#818cf8;border-bottom-color:#818cf8}
+    .tab-badge{display:inline-block;background:#22c55e;color:#fff;border-radius:999px;font-size:.65rem;padding:1px 7px;margin-left:5px;font-weight:700;vertical-align:middle}
     .tab-content{flex:1;overflow-y:auto;display:none;padding:20px}
     .tab-content.active{display:block}
 
-    #log-panel{background:#020617;border-radius:10px;padding:14px;font-family:'Consolas','Courier New',monospace;font-size:.8rem;line-height:1.8;min-height:300px;white-space:pre-wrap;word-break:break-word}
+    #log-panel,#run-log-panel{background:#020617;border-radius:10px;padding:14px;font-family:'Consolas','Courier New',monospace;font-size:.8rem;line-height:1.8;min-height:300px;white-space:pre-wrap;word-break:break-word}
     .log-loading{color:#facc15}
     .log-success{color:#4ade80}
     .log-error{color:#f87171}
@@ -80,6 +85,7 @@
     .log-done{color:#34d399;font-weight:bold}
     .log-info{color:#94a3b8}
     .log-lanjut{color:#22d3ee}
+    .log-sys{color:#fbbf24;font-weight:bold}
 
     .file-tree{display:flex;flex-direction:column;gap:4px}
     .file-item{background:#1e293b;border:1px solid #334155;border-radius:8px;overflow:hidden}
@@ -99,6 +105,14 @@
     .badge-loading{background:#422006;color:#fbbf24}
     .badge-done{background:#052e16;color:#4ade80}
     .badge-error{background:#450a0a;color:#f87171}
+    .badge-running{background:#052e16;color:#4ade80;animation:pulse 2s infinite}
+    .badge-stopped{background:#1e293b;color:#94a3b8}
+
+    .running-card{background:linear-gradient(135deg,#052e16,#064e3b);border:1px solid #22c55e;border-radius:10px;padding:14px;margin-bottom:12px}
+    .running-card .r-title{color:#4ade80;font-weight:700;font-size:.9rem;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+    .running-card .r-url{background:#020617;border-radius:6px;padding:10px 14px;font-family:monospace;color:#38bdf8;font-size:.85rem;word-break:break-all;text-decoration:none;display:block;margin-bottom:8px;border:1px solid #1e293b;transition:.2s}
+    .running-card .r-url:hover{border-color:#38bdf8;background:#0c1220}
+    .running-card .r-info{font-size:.75rem;color:#94a3b8;display:flex;gap:15px;flex-wrap:wrap}
 
     .key-card{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
     .key-card.active-key{border-color:#22c55e}
@@ -140,7 +154,7 @@
 <header>
   <div>
     <h1>🎓 AI Project Maker — Claude Code</h1>
-    <p>Generate &amp; kembangkan project kuliah otomatis dengan Claude AI</p>
+    <p>Generate, kembangkan &amp; jalankan project kuliah otomatis dengan Claude AI</p>
   </div>
   <div class="header-right">
     <span id="server-status">
@@ -213,6 +227,7 @@
       <div class="tab active" data-tab="tab-log">📟 Log</div>
       <div class="tab" data-tab="tab-files">📂 Files</div>
       <div class="tab" data-tab="tab-info">📋 Info</div>
+      <div class="tab" data-tab="tab-run">▶️ Run <span id="run-badge" style="display:none" class="tab-badge">ON</span></div>
       <div class="tab" data-tab="tab-keys">🔑 API Keys</div>
     </div>
 
@@ -229,6 +244,11 @@
         <div class="empty"><div class="icon">📋</div><p>Info project akan muncul setelah proses dimulai.</p></div>
       </div>
     </div>
+    <div class="tab-content" id="tab-run">
+      <div id="run-panel">
+        <div class="empty"><div class="icon">▶️</div><p>Selesaikan project dulu, lalu klik tombol RUN di tab Info.</p></div>
+      </div>
+    </div>
     <div class="tab-content" id="tab-keys">
       <div id="key-panel">
         <div class="empty"><div class="icon">🔑</div><p>Klik tab API Keys untuk melihat status koneksi.</p></div>
@@ -237,7 +257,6 @@
   </div>
 </div>
 
-<!-- TOAST -->
 <div class="toast" id="toast"></div>
 
 <script>
@@ -273,6 +292,7 @@ const CHIPS_LANJUT = [
 // ================================================
 let currentProjectId = null;
 let pollingInterval  = null;
+let runPollingInterval = null;
 let progressMode     = 'baru';
 let progressVal      = 5;
 
@@ -303,6 +323,12 @@ function fmtSize(b) {
   if (!b || b < 1024) return (b || 0) + ' B';
   if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
   return (b / 1048576).toFixed(1) + ' MB';
+}
+
+function fmtUptime(s) {
+  if (!s || s < 60) return s + 's';
+  if (s < 3600) return Math.floor(s/60) + 'm ' + (s%60) + 's';
+  return Math.floor(s/3600) + 'h ' + Math.floor((s%3600)/60) + 'm';
 }
 
 function showToast(msg, type) {
@@ -368,9 +394,9 @@ document.getElementById('main-tabs').addEventListener('click', function(e) {
   tab.classList.add('active');
 
   if (tabId === 'tab-keys') muatKeyStatus();
+  if (tabId === 'tab-run')  mulaiRunPolling();
 });
 
-// Header buttons
 document.getElementById('btn-key-header').addEventListener('click', () => {
   switchToTab('tab-keys');
   muatKeyStatus();
@@ -383,10 +409,11 @@ function switchToTab(tabId) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById(tabId).classList.add('active');
   document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+  if (tabId === 'tab-run') mulaiRunPolling();
 }
 
 // ================================================
-// SERVER STATUS CHECK
+// SERVER STATUS
 // ================================================
 async function cekServer() {
   const el = document.getElementById('server-status');
@@ -417,9 +444,7 @@ async function testAI() {
     const data = await resp.json();
     const keys = data.keys || [];
 
-    let html = '<div class="info-card"><h3>🧪 Hasil Test AI</h3>';
-    html += '<div class="test-result">';
-
+    let html = '<div class="info-card"><h3>🧪 Hasil Test AI</h3><div class="test-result">';
     keys.forEach(k => {
       if (k.status.includes('sukses')) {
         html += `<div class="test-ok">✅ [${k.index}] ${esc(k.model)} → "${esc(k.reply)}"</div>`;
@@ -427,21 +452,18 @@ async function testAI() {
         html += `<div class="test-fail">❌ [${k.index}] ${esc(k.model)} → ${esc(k.error)}</div>`;
       }
     });
-
     html += '</div></div>';
     el.innerHTML = html;
 
     const sukses = keys.filter(k => k.status.includes('sukses')).length;
     showToast(`Test selesai: ${sukses}/${keys.length} key berhasil`, sukses > 0 ? 'ok' : 'err');
-
   } catch(e) {
     el.innerHTML = `<div class="empty"><p>❌ Gagal test: ${esc(String(e))}</p></div>`;
-    showToast('Gagal test API: ' + e, 'err');
   }
 }
 
 // ================================================
-// MUAT LIST PROJECT
+// LIST PROJECT
 // ================================================
 async function muatProjectList() {
   const el = document.getElementById('project-list');
@@ -453,14 +475,14 @@ async function muatProjectList() {
     const list = data.projects || [];
 
     if (list.length === 0) {
-      el.innerHTML = '<div class="empty"><p>Belum ada project. Buat dulu dari tab "Buat Baru".</p></div>';
+      el.innerHTML = '<div class="empty"><p>Belum ada project.</p></div>';
       return;
     }
 
     el.innerHTML = list.map(p => `
       <div class="project-card" data-nama="${escAttr(p.nama)}" title="${escAttr(p.deskripsi)}">
         <div class="pname">📁 ${esc(p.nama)}</div>
-        <div class="ptech">${esc(p.tech_stack)}</div>
+        <div class="ptech">${esc(p.tech_stack)} · ${esc(p.project_type||'script')}</div>
         <div class="pfiles">${p.file_count} file · ${esc(p.run_cmd)}</div>
       </div>
     `).join('');
@@ -472,7 +494,6 @@ async function muatProjectList() {
       el.querySelectorAll('.project-card').forEach(c => c.classList.remove('selected'));
       card.classList.add('selected');
     });
-
   } catch(e) {
     el.innerHTML = `<div class="empty"><p>❌ Gagal muat: ${esc(String(e))}</p></div>`;
   }
@@ -500,17 +521,11 @@ document.getElementById('btn-buat').addEventListener('click', async function() {
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const json = await resp.json();
 
-    if (json.error) {
-      showToast('Error: ' + json.error, 'err');
-      resetBtn();
-      return;
-    }
-
     currentProjectId = json.project_id;
-    showToast(`Project "${json.nama}" dimulai! ID: ${json.project_id}`, 'ok');
+    showToast(`Project "${json.nama}" dimulai!`, 'ok');
     mulaiPolling();
   } catch(e) {
-    showToast('Gagal menghubungi server: ' + e, 'err');
+    showToast('Gagal: ' + e, 'err');
     resetBtn();
   }
 });
@@ -523,7 +538,7 @@ document.getElementById('btn-lanjut').addEventListener('click', async function()
   const permintaan = document.getElementById('permintaan').value.trim();
 
   if (!nama) { showToast('Pilih atau ketik nama project!', 'err'); return; }
-  if (!permintaan) { showToast('Masukkan permintaan pengembangan!', 'err'); return; }
+  if (!permintaan) { showToast('Masukkan permintaan!', 'err'); return; }
 
   progressMode = 'lanjut';
   resetUI('lanjut');
@@ -536,18 +551,11 @@ document.getElementById('btn-lanjut').addEventListener('click', async function()
     const resp = await fetch('/lanjut-project', { method: 'POST', body: fd });
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const json = await resp.json();
-
-    if (json.error) {
-      showToast('Error: ' + json.error, 'err');
-      resetBtn();
-      return;
-    }
-
     currentProjectId = json.project_id;
     showToast(`Pengembangan "${json.nama}" dimulai!`, 'ok');
     mulaiPolling();
   } catch(e) {
-    showToast('Gagal menghubungi server: ' + e, 'err');
+    showToast('Gagal: ' + e, 'err');
     resetBtn();
   }
 });
@@ -557,7 +565,7 @@ document.getElementById('btn-lanjut').addEventListener('click', async function()
 // ================================================
 function resetUI(mode) {
   document.getElementById('log-panel').innerHTML = '<div class="log-loading">⏳ Memulai proses...</div>';
-  document.getElementById('file-list').innerHTML = '<div class="empty"><div class="icon">⏳</div><p>Menunggu proses selesai...</p></div>';
+  document.getElementById('file-list').innerHTML = '<div class="empty"><div class="icon">⏳</div><p>Menunggu...</p></div>';
   document.getElementById('pw-' + mode).style.display = 'block';
   document.getElementById('pb-' + mode).style.width = '5%';
   document.getElementById(mode === 'baru' ? 'btn-buat' : 'btn-lanjut').disabled = true;
@@ -573,7 +581,7 @@ function resetBtn() {
 }
 
 // ================================================
-// POLLING
+// POLLING GENERATE
 // ================================================
 function mulaiPolling() {
   if (pollingInterval) clearInterval(pollingInterval);
@@ -582,7 +590,6 @@ function mulaiPolling() {
 
 async function polling() {
   if (!currentProjectId) return;
-
   try {
     const resp = await fetch('/status/' + currentProjectId);
     if (!resp.ok) return;
@@ -590,6 +597,14 @@ async function polling() {
 
     renderLog(data.logs || []);
     renderInfo(data);
+
+    // Update running badge
+    const runBadge = document.getElementById('run-badge');
+    if (data.running && data.running.alive) {
+      runBadge.style.display = 'inline-block';
+    } else {
+      runBadge.style.display = 'none';
+    }
 
     if (data.status === 'loading') {
       progressVal = Math.min(progressVal + 1.5, 88);
@@ -605,17 +620,14 @@ async function polling() {
       if (data.status === 'done') {
         showToast('✅ Project berhasil dibuat!', 'ok');
       } else {
-        showToast('❌ Project gagal. Cek log untuk detail.', 'err');
+        showToast('❌ Project gagal.', 'err');
       }
 
-      // Load files
       try {
         const fresp = await fetch('/files/' + currentProjectId);
         const fdata = await fresp.json();
         renderFiles(fdata.files || []);
-      } catch(e) {
-        console.error('Gagal load files:', e);
-      }
+      } catch(e) {}
 
       setTimeout(() => {
         document.getElementById('pw-' + progressMode).style.display = 'none';
@@ -632,10 +644,10 @@ async function polling() {
 function renderLog(logs) {
   const panel = document.getElementById('log-panel');
   const emojiMap = {
-    '⏳': 'log-loading', '✅': 'log-success', '❌': 'log-error',
-    '⚠️': 'log-warning', '🔧': 'log-fix', '📄': 'log-file',
-    '📁': 'log-folder', '🧪': 'log-run', '🎉': 'log-done',
-    'ℹ️': 'log-info', '🔄': 'log-lanjut'
+    '⏳':'log-loading','✅':'log-success','❌':'log-error',
+    '⚠️':'log-warning','🔧':'log-fix','📄':'log-file',
+    '📁':'log-folder','🧪':'log-run','🎉':'log-done',
+    'ℹ️':'log-info','🔄':'log-lanjut'
   };
 
   if (!logs.length) {
@@ -687,7 +699,7 @@ function renderFiles(files) {
 }
 
 // ================================================
-// RENDER INFO
+// RENDER INFO — dengan tombol RUN & DOWNLOAD
 // ================================================
 function renderInfo(data) {
   const el = document.getElementById('info-panel');
@@ -699,18 +711,65 @@ function renderInfo(data) {
   const b = badgeMap[data.status] || ['badge-loading', data.status];
   const fileCount = (data.files || []).length;
 
+  // Running section
+  let runningHtml = '';
+  if (data.status === 'done') {
+    if (data.running && data.running.alive) {
+      const url = data.running.url;
+      runningHtml = `
+        <div class="running-card">
+          <div class="r-title">
+            <span class="badge badge-running">● RUNNING</span>
+            Project sedang berjalan
+          </div>
+          ${url ? `
+            <a href="${escAttr(url)}" target="_blank" class="r-url">🌐 ${esc(url)}</a>
+          ` : `
+            <div style="color:#94a3b8;font-size:.8rem;margin-bottom:8px">
+              Project tipe CLI/Script — cek tab ▶️ Run untuk output
+            </div>
+          `}
+          <div class="r-info">
+            <span>⏱️ Uptime: <b>${fmtUptime(data.running.uptime)}</b></span>
+            <span>🔌 Port: <b>${data.running.port}</b></span>
+            <span>📦 Tipe: <b>${esc(data.running.type||'script')}</b></span>
+          </div>
+          <div class="btn-group">
+            <button class="btn btn-red" onclick="stopProject()">⏹️ STOP</button>
+            <button class="btn btn-blue" onclick="switchToTab('tab-run')">📟 Lihat Log</button>
+          </div>
+        </div>
+      `;
+    } else {
+      runningHtml = `
+        <div class="info-card">
+          <h3>🚀 Jalankan Project</h3>
+          <p style="font-size:.8rem;color:#94a3b8;margin-bottom:12px">
+            Klik RUN untuk menjalankan project di server. Server akan alokasikan port otomatis.
+          </p>
+          <div class="btn-group">
+            <button class="btn btn-green" onclick="runProject()">▶️ RUN Project</button>
+            <button class="btn btn-gray" onclick="downloadProject()">📥 Download ZIP</button>
+          </div>
+        </div>
+      `;
+    }
+  }
+
   el.innerHTML = `
+    ${runningHtml}
     <div class="info-card">
       <h3>📋 Info Project</h3>
       <div class="info-row"><span class="info-label">Status</span><span><span class="badge ${b[0]}">${b[1]}</span></span></div>
       <div class="info-row"><span class="info-label">Nama</span><span class="info-value">${esc(data.nama || '-')}</span></div>
       <div class="info-row"><span class="info-label">Deskripsi</span><span class="info-value">${esc(data.desc || '-')}</span></div>
       <div class="info-row"><span class="info-label">Tech Stack</span><span class="info-value">${esc(data.tech || '-')}</span></div>
+      <div class="info-row"><span class="info-label">Tipe</span><span class="info-value">${esc(data.project_type || 'script')}</span></div>
       <div class="info-row"><span class="info-label">Files</span><span class="info-value">${fileCount} file</span></div>
       <div class="info-row"><span class="info-label">Lokasi</span><span class="info-value">${esc(data.folder || '-')}</span></div>
     </div>
     <div class="info-card">
-      <h3>⚡ Cara Jalankan</h3>
+      <h3>⚡ Cara Jalankan Manual</h3>
       <div class="cmd-box">${esc(data.run_cmd || 'Belum tersedia')}</div>
     </div>
     ${data.error ? `
@@ -722,7 +781,160 @@ function renderInfo(data) {
 }
 
 // ================================================
-// RENDER KEY STATUS
+// RUN / STOP / DOWNLOAD
+// ================================================
+async function runProject() {
+  if (!currentProjectId) {
+    showToast('Belum ada project aktif', 'err');
+    return;
+  }
+
+  showToast('🚀 Memulai project...', 'ok');
+
+  try {
+    const resp = await fetch('/run/' + currentProjectId, { method: 'POST' });
+    const data = await resp.json();
+
+    if (data.sukses) {
+      showToast(`✅ Berjalan di port ${data.port}!`, 'ok');
+      switchToTab('tab-run');
+      mulaiRunPolling();
+
+      if (data.url) {
+        setTimeout(() => {
+          if (confirm(`Buka ${data.url} di tab baru?`)) {
+            window.open(data.url, '_blank');
+          }
+        }, 1500);
+      }
+    } else {
+      showToast('❌ Gagal: ' + (data.error || 'Unknown'), 'err');
+      // Tetap ke tab Run untuk lihat log error
+      switchToTab('tab-run');
+      renderRunLog({ logs: data.logs || [], alive: false, exit_code: -1 });
+    }
+  } catch(e) {
+    showToast('❌ Error: ' + e, 'err');
+  }
+}
+
+async function stopProject() {
+  if (!currentProjectId) return;
+
+  try {
+    await fetch('/stop/' + currentProjectId, { method: 'POST' });
+    showToast('⏹️ Project dihentikan', 'ok');
+    hentikanRunPolling();
+    // Refresh info
+    setTimeout(() => {
+      if (pollingInterval) return; // masih polling generate
+      polling();
+    }, 500);
+  } catch(e) {
+    showToast('❌ Error: ' + e, 'err');
+  }
+}
+
+async function downloadProject() {
+  if (!currentProjectId) {
+    showToast('Belum ada project aktif', 'err');
+    return;
+  }
+  window.location.href = '/download/' + currentProjectId;
+  showToast('📥 Download dimulai...', 'ok');
+}
+
+// ================================================
+// RUN POLLING — live logs
+// ================================================
+function mulaiRunPolling() {
+  if (runPollingInterval) clearInterval(runPollingInterval);
+  pollRunLogs();
+  runPollingInterval = setInterval(pollRunLogs, 2000);
+}
+
+function hentikanRunPolling() {
+  if (runPollingInterval) {
+    clearInterval(runPollingInterval);
+    runPollingInterval = null;
+  }
+}
+
+async function pollRunLogs() {
+  if (!currentProjectId) return;
+
+  try {
+    const resp = await fetch('/run-logs/' + currentProjectId);
+    const data = await resp.json();
+    renderRunLog(data);
+
+    // Update badge di tab
+    const runBadge = document.getElementById('run-badge');
+    if (data.alive) {
+      runBadge.style.display = 'inline-block';
+      runBadge.textContent = 'ON';
+    } else {
+      runBadge.style.display = 'none';
+    }
+  } catch(e) {
+    console.error('Run polling error:', e);
+  }
+}
+
+function renderRunLog(data) {
+  const el = document.getElementById('run-panel');
+  const logs = data.logs || [];
+
+  if (!logs.length && !data.alive) {
+    el.innerHTML = '<div class="empty"><div class="icon">▶️</div><p>Belum ada project yang running.<br/>Klik tombol RUN di tab Info.</p></div>';
+    return;
+  }
+
+  const statusBadge = data.alive
+    ? '<span class="badge badge-running">● RUNNING</span>'
+    : `<span class="badge badge-stopped">⏹️ STOPPED${data.exit_code !== null && data.exit_code !== undefined ? ' (exit '+data.exit_code+')' : ''}</span>`;
+
+  const urlHtml = data.url && data.alive
+    ? `<a href="${escAttr(data.url)}" target="_blank" class="r-url">🌐 ${esc(data.url)}</a>`
+    : '';
+
+  const controlBtn = data.alive
+    ? `<button class="btn btn-red" onclick="stopProject()">⏹️ STOP</button>`
+    : `<button class="btn btn-green" onclick="runProject()">▶️ START ULANG</button>`;
+
+  const logsHtml = logs.map(line => {
+    let cls = 'log-info';
+    if (line.startsWith('[SYSTEM]')) cls = 'log-sys';
+    else if (/error|traceback|exception|failed/i.test(line)) cls = 'log-error';
+    else if (/warning|warn/i.test(line)) cls = 'log-warning';
+    else if (/success|ready|started|running|listening/i.test(line)) cls = 'log-success';
+    return `<div class="${cls}">${esc(line)}</div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="info-card">
+      <h3>▶️ Runtime Info</h3>
+      <div class="info-row"><span class="info-label">Status</span><span>${statusBadge}</span></div>
+      <div class="info-row"><span class="info-label">Port</span><span class="info-value">${data.port || '-'}</span></div>
+      <div class="info-row"><span class="info-label">Uptime</span><span class="info-value">${data.uptime !== undefined ? fmtUptime(data.uptime) : '-'}</span></div>
+      <div class="info-row"><span class="info-label">Tipe</span><span class="info-value">${esc(data.type || '-')}</span></div>
+      <div class="info-row"><span class="info-label">Command</span><span class="info-value" style="font-family:monospace;color:#4ade80">${esc(data.run_cmd || '-')}</span></div>
+      ${urlHtml}
+      <div style="margin-top:12px">${controlBtn}</div>
+    </div>
+    <div class="info-card">
+      <h3>📟 Live Output</h3>
+      <div id="run-log-panel">${logsHtml || '<span class="log-info">Menunggu output...</span>'}</div>
+    </div>
+  `;
+
+  // Auto scroll ke bawah
+  const logPanel = document.getElementById('run-log-panel');
+  if (logPanel) logPanel.scrollTop = logPanel.scrollHeight;
+}
+
+// ================================================
+// KEY STATUS
 // ================================================
 async function muatKeyStatus() {
   const el = document.getElementById('key-panel');
@@ -752,7 +964,7 @@ async function muatKeyStatus() {
             <div class="key-err">${k.error_count > 0 ? k.error_count + '× error' : '✓ OK'}</div>
           </div>`;
         }).join('')}
-        <button class="btn btn-red" id="btn-reset-key">🔄 Reset Error Counter</button>
+        <button class="btn btn-red" id="btn-reset-key" style="margin-top:8px">🔄 Reset Error Counter</button>
       </div>
       <div class="info-card">
         <h3>📖 Pengaturan API Key</h3>
@@ -773,7 +985,6 @@ async function muatKeyStatus() {
       showToast('Error counter direset!', 'ok');
       muatKeyStatus();
     });
-
   } catch(e) {
     el.innerHTML = `<div class="empty"><p>❌ Gagal load: ${esc(String(e))}</p></div>`;
   }
