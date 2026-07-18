@@ -87,27 +87,29 @@ for idx, k in enumerate(API_KEYS):
     print(f"   [{idx}] model={k['model']} | key={hint}")
 
 # ================================================
-# KONSTANTA
+# KONSTANTA — TUNING v2.3
 # ================================================
-MAX_FIX             = 3
-BASE_DIR            = Path("workspace")
-CACHE_DIR           = Path(".cache")
-BACKUPS_DIR         = Path("backups")
+MAX_FIX                     = 3
+BASE_DIR                    = Path("workspace")
+CACHE_DIR                   = Path(".cache")
+BACKUPS_DIR                 = Path("backups")
 BASE_DIR.mkdir(exist_ok=True)
 CACHE_DIR.mkdir(exist_ok=True)
 BACKUPS_DIR.mkdir(exist_ok=True)
 Path("templates").mkdir(exist_ok=True)
 
-REQUEST_TIMEOUT     = 180
-MAX_FILES_PER_PROJ  = 10
-MAX_LINES_PER_FILE  = 300
+REQUEST_TIMEOUT             = 180
+MAX_FILES_PER_PROJ          = 10
+MAX_LINES_PER_FILE          = 250   # ✅ Turun dari 300 → file lebih kecil, lebih cepat
 
-# ✅ PERBAIKAN: Pisahkan retry upstream vs normal agar tidak confusion
-UPSTREAM_MAX_RETRY  = 3          # dikurangi dari 6 → lebih cepat gagal + hemat waktu
-UPSTREAM_WAIT_BASE  = 5          # dikurangi dari 8 → total wait lebih reasonable
-UPSTREAM_MAX_WAIT   = 30         # cap maksimum wait time
-CIRCUIT_BREAKER_THRESHOLD = 3    # 3 502 berturut → circuit open
-CIRCUIT_BREAKER_TIMEOUT   = 120  # 2 menit sebelum retry lagi
+# ✅ UPSTREAM TUNING — fix circuit terlalu sensitif
+UPSTREAM_MAX_RETRY          = 4     # naik dari 3 → lebih sabar sebelum menyerah
+UPSTREAM_WAIT_BASE          = 8     # detik, exponential base
+UPSTREAM_MAX_WAIT           = 45    # cap maksimum wait per retry
+CIRCUIT_BREAKER_THRESHOLD   = 5     # ✅ naik dari 3 → butuh 5 failure exhausted sebelum circuit open
+CIRCUIT_BREAKER_TIMEOUT     = 60    # ✅ turun dari 120 → lebih cepat recover
+MAX_FILE_RETRY              = 2     # ✅ BARU: retry per-file jika upstream error
+MAX_UPSTREAM_FAIL_PER_BUILD = 3     # ✅ naik dari 2 → lebih toleran sebelum skip sisanya
 
 PORT_START          = 9001
 PORT_END            = 9100
@@ -116,7 +118,7 @@ RATE_LIMIT_PER_MIN  = 30
 CACHE_TTL_SECONDS   = 3600
 AUTO_CLEANUP_MIN    = 60
 
-app = FastAPI(title="AI Project Maker — ULTIMATE Edition v2.2")
+app = FastAPI(title="AI Project Maker — ULTIMATE Edition v2.3")
 
 projects: dict = {}
 STATE_FILE = Path("projects_state.json")
@@ -136,12 +138,12 @@ _rate_lock        = threading.Lock()
 websocket_connections: dict = defaultdict(set)
 _ws_lock              = threading.Lock()
 
-# ✅ BARU: Circuit breaker state
+# ✅ Circuit breaker state
 _circuit_state = {
-    "is_open"      : False,
-    "fail_count"   : 0,
-    "opened_at"    : 0.0,
-    "total_opens"  : 0,
+    "is_open"    : False,
+    "fail_count" : 0,
+    "opened_at"  : 0.0,
+    "total_opens": 0,
 }
 _circuit_lock = threading.Lock()
 
@@ -153,8 +155,7 @@ def load_state():
     if STATE_FILE.exists():
         try:
             projects = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-            # ✅ Reset stuck "loading" projects dari restart sebelumnya
-            changed = False
+            changed  = False
             for pid, pdata in projects.items():
                 if pdata.get("status") == "loading":
                     pdata["status"] = "error"
@@ -187,7 +188,7 @@ def cache_get(system: str, user: str) -> str:
     with _cache_lock:
         if key in ai_cache:
             entry = ai_cache[key]
-            age = time.time() - entry["timestamp"]
+            age   = time.time() - entry["timestamp"]
             if age < CACHE_TTL_SECONDS:
                 print(f"[CACHE] ✨ HIT (age: {int(age)}s)")
                 return entry["response"]
@@ -219,31 +220,32 @@ def check_rate_limit(client_id: str) -> bool:
         return True
 
 # ================================================
-# ✅ CIRCUIT BREAKER
+# ✅ CIRCUIT BREAKER — FIXED LOGIC
 # ================================================
 def circuit_is_open() -> bool:
-    """True = circuit terbuka = jangan panggil AI"""
     with _circuit_lock:
         if not _circuit_state["is_open"]:
             return False
-        # Auto-close setelah timeout
         if time.time() - _circuit_state["opened_at"] > CIRCUIT_BREAKER_TIMEOUT:
-            _circuit_state["is_open"]   = False
+            _circuit_state["is_open"]    = False
             _circuit_state["fail_count"] = 0
             print(f"[CIRCUIT] 🔄 Circuit CLOSED (auto-reset setelah {CIRCUIT_BREAKER_TIMEOUT}s)")
             return False
         remaining = int(CIRCUIT_BREAKER_TIMEOUT - (time.time() - _circuit_state["opened_at"]))
-        print(f"[CIRCUIT] 🔴 Circuit OPEN — skip AI call (reset dalam {remaining}s)")
+        print(f"[CIRCUIT] 🔴 Circuit OPEN (reset dalam {remaining}s)")
         return True
 
 def circuit_record_failure():
+    """Dipanggil HANYA setelah upstream_retries exhausted — bukan setiap 502"""
     with _circuit_lock:
         _circuit_state["fail_count"] += 1
-        if _circuit_state["fail_count"] >= CIRCUIT_BREAKER_THRESHOLD and not _circuit_state["is_open"]:
-            _circuit_state["is_open"]    = True
-            _circuit_state["opened_at"]  = time.time()
+        if (_circuit_state["fail_count"] >= CIRCUIT_BREAKER_THRESHOLD
+                and not _circuit_state["is_open"]):
+            _circuit_state["is_open"]     = True
+            _circuit_state["opened_at"]   = time.time()
             _circuit_state["total_opens"] += 1
-            print(f"[CIRCUIT] 🔴 Circuit OPENED! ({_circuit_state['fail_count']} consecutive failures)")
+            print(f"[CIRCUIT] 🔴 Circuit OPENED! "
+                  f"({_circuit_state['fail_count']} exhausted retries)")
 
 def circuit_record_success():
     with _circuit_lock:
@@ -270,7 +272,6 @@ class MultiKeyManager:
         self.total_time     = [0.0] * len(keys)
         self.last_error     = [""] * len(keys)
         self.last_used      = [0.0] * len(keys)
-        # ✅ BARU: track 502 per key
         self.upstream_fails = [0] * len(keys)
         self._lock          = threading.Lock()
 
@@ -284,8 +285,9 @@ class MultiKeyManager:
             best_idx   = 0
             best_score = float('inf')
             for i in range(len(self.keys)):
-                # ✅ Bobot: upstream_fails lebih berat dari error biasa
-                score = self.error_counts[i] * 5 + self.upstream_fails[i] * 15 - self.success_counts[i]
+                score = (self.error_counts[i] * 5
+                         + self.upstream_fails[i] * 15
+                         - self.success_counts[i])
                 if score < best_score:
                     best_score = score
                     best_idx   = i
@@ -303,16 +305,15 @@ class MultiKeyManager:
         self.next_key()
 
     def mark_upstream_error(self, status_code: int):
-        """Track 502/503/504 secara terpisah"""
         with self._lock:
             self.upstream_fails[self.current_idx] += 1
-            self.last_error[self.current_idx] = f"Upstream {status_code}"
+            self.last_error[self.current_idx]      = f"Upstream {status_code}"
         self.next_key()
 
     def mark_success(self, elapsed: float):
         with self._lock:
             self.success_counts[self.current_idx] += 1
-            self.total_time[self.current_idx] += elapsed
+            self.total_time[self.current_idx]     += elapsed
 
     def reset_errors(self):
         with self._lock:
@@ -324,10 +325,12 @@ class MultiKeyManager:
         with self._lock:
             result = []
             for i, key_info in enumerate(self.keys):
-                api_key   = key_info["api_key"]
-                total_req = self.success_counts[i] + self.error_counts[i]
-                avg_time  = (self.total_time[i] / self.success_counts[i]) if self.success_counts[i] > 0 else 0
-                success_rate = (self.success_counts[i] / total_req * 100) if total_req > 0 else 0
+                api_key      = key_info["api_key"]
+                total_req    = self.success_counts[i] + self.error_counts[i]
+                avg_time     = (self.total_time[i] / self.success_counts[i]
+                                if self.success_counts[i] > 0 else 0)
+                success_rate = (self.success_counts[i] / total_req * 100
+                                if total_req > 0 else 0)
                 result.append({
                     "index"          : i,
                     "base_url"       : key_info["base_url"],
@@ -356,7 +359,10 @@ def buat_client(base_url: str, api_key: str) -> anthropic.Anthropic:
         timeout     = float(REQUEST_TIMEOUT),
         max_retries = 0,
         http_client = httpx.Client(
-            timeout=httpx.Timeout(connect=15.0, read=float(REQUEST_TIMEOUT), write=15.0, pool=15.0),
+            timeout=httpx.Timeout(
+                connect=15.0, read=float(REQUEST_TIMEOUT),
+                write=15.0,   pool=15.0,
+            ),
             verify=False,
         )
     )
@@ -372,9 +378,17 @@ def ambil_text(resp) -> str:
     return hasil.strip()
 
 # ================================================
-# ✅ TANYA AI — DENGAN CIRCUIT BREAKER & IMPROVED BACKOFF
+# ✅ TANYA AI — FIXED CIRCUIT BREAKER LOGIC
+#
+# PERBAIKAN UTAMA:
+#   • circuit_record_failure() dipanggil HANYA setelah upstream_retries
+#     benar-benar habis — bukan setiap kali 502 terjadi
+#   • Setiap upstream retry → ganti key otomatis
+#   • consecutive_upstream dihapus, cukup upstream_retries
 # ================================================
-def tanya_ai(system_prompt: str, user_prompt: str, max_tokens: int = 4096, use_cache: bool = True) -> str:
+def tanya_ai(system_prompt: str, user_prompt: str,
+             max_tokens: int = 4096, use_cache: bool = True) -> str:
+
     # ── Cache check ──
     if use_cache:
         cached = cache_get(system_prompt, user_prompt)
@@ -386,16 +400,14 @@ def tanya_ai(system_prompt: str, user_prompt: str, max_tokens: int = 4096, use_c
     # ── Circuit breaker check ──
     if circuit_is_open():
         raise Exception(
-            "🔴 Provider sedang down (circuit breaker aktif). "
-            f"Coba lagi dalam {CIRCUIT_BREAKER_TIMEOUT}s atau gunakan /circuit-reset"
+            f"🔴 Provider sedang down (circuit breaker aktif). "
+            f"Coba lagi dalam {CIRCUIT_BREAKER_TIMEOUT}s atau POST /circuit-reset"
         )
 
-    last_error          = "no error"
-    upstream_retries    = 0
-    consecutive_upstream = 0  # ✅ track berurutan untuk circuit breaker
-    normal_retries_max  = len(API_KEYS) * 2
-    total_attempts      = 0
-    max_total           = normal_retries_max + UPSTREAM_MAX_RETRY
+    last_error       = "no error"
+    upstream_retries = 0
+    total_attempts   = 0
+    max_total        = len(API_KEYS) * 2 + UPSTREAM_MAX_RETRY
 
     key_manager.get_best_key()
 
@@ -404,17 +416,17 @@ def tanya_ai(system_prompt: str, user_prompt: str, max_tokens: int = 4096, use_c
         key_info = key_manager.get_info()
         model    = key_info["model"]
 
-        print(f"[AI] Try {total_attempts}/{max_total} | {model} | upstream={upstream_retries}")
+        print(f"[AI] Try {total_attempts}/{max_total} | {model} | upstream_retry={upstream_retries}")
         t_start = time.time()
 
         try:
             client   = buat_client(key_info["base_url"], key_info["api_key"])
             response = client.messages.create(
-                model=model,
-                max_tokens=max_tokens,
-                temperature=0.1,
-                system=system_prompt,
-                messages=[{"role": "user", "content": user_prompt}]
+                model      = model,
+                max_tokens = max_tokens,
+                temperature= 0.1,
+                system     = system_prompt,
+                messages   = [{"role": "user", "content": user_prompt}]
             )
 
             hasil   = ambil_text(response)
@@ -423,7 +435,7 @@ def tanya_ai(system_prompt: str, user_prompt: str, max_tokens: int = 4096, use_c
             if not hasil:
                 raise Exception("Response kosong")
 
-            # ✅ Success → reset circuit
+            # ✅ Success → reset circuit & stats
             circuit_record_success()
             key_manager.mark_success(elapsed)
             with _stats_lock:
@@ -440,82 +452,82 @@ def tanya_ai(system_prompt: str, user_prompt: str, max_tokens: int = 4096, use_c
 
         except anthropic.AuthenticationError as e:
             last_error = f"401: {str(e)[:200]}"
-            print(f"[AI] ❌ Auth error: {last_error}")
+            print(f"[AI] ❌ Auth: {last_error}")
             key_manager.mark_error(last_error)
             time.sleep(1)
-            consecutive_upstream = 0  # auth error bukan upstream issue
 
         except anthropic.RateLimitError as e:
             last_error = f"429: {str(e)[:200]}"
-            print(f"[AI] ❌ Rate limit: {last_error}")
+            print(f"[AI] ❌ RateLimit: {last_error}")
             key_manager.mark_error(last_error)
             time.sleep(5)
-            consecutive_upstream = 0
 
         except anthropic.APIStatusError as e:
             status     = e.status_code
-            last_error = f"Status {status}: {str(e.message)[:200]}"
+            last_error = f"HTTP {status}: {str(e.message)[:200]}"
             print(f"[AI] ❌ {last_error}")
 
             if status in (502, 503, 504):
-                consecutive_upstream += 1
-                upstream_retries     += 1
-
-                # ✅ Track upstream failure untuk circuit breaker
+                upstream_retries += 1
                 key_manager.mark_upstream_error(status)
-                circuit_record_failure()
 
-                # ✅ Cek circuit breaker setelah record
-                if circuit_is_open():
-                    with _stats_lock:
-                        request_stats["total"]["failed"] += 1
-                    raise Exception(
-                        f"🔴 Provider down (HTTP {status}). "
-                        f"Circuit breaker aktif setelah {consecutive_upstream} kegagalan berturut-turut. "
-                        f"Coba /circuit-reset setelah provider pulih."
-                    )
-
+                # ✅ KUNCI FIX: circuit_record_failure HANYA jika sudah exhausted
                 if upstream_retries > UPSTREAM_MAX_RETRY:
+                    circuit_record_failure()   # ← satu "failure event" ke circuit
                     with _stats_lock:
                         request_stats["total"]["failed"] += 1
+
+                    if circuit_is_open():
+                        raise Exception(
+                            f"🔴 Provider sustained down (HTTP {status}, "
+                            f"{upstream_retries}x retry habis). "
+                            f"Circuit breaker aktif. POST /circuit-reset setelah provider pulih."
+                        )
                     raise Exception(
-                        f"❌ Upstream {status} — gagal {upstream_retries}x. "
-                        f"Provider mungkin sedang maintenance. Coba lagi nanti."
+                        f"❌ Upstream {status} gagal {upstream_retries}x. "
+                        f"Provider mungkin maintenance. Coba lagi nanti."
                     )
 
-                # ✅ Exponential backoff dengan cap
-                wait_time = min(UPSTREAM_WAIT_BASE * (2 ** (upstream_retries - 1)), UPSTREAM_MAX_WAIT)
-                print(f"[AI] ⏳ Upstream wait {wait_time:.0f}s (retry {upstream_retries}/{UPSTREAM_MAX_RETRY})...")
+                # Masih dalam batas → exponential backoff + ganti key
+                wait_time = min(
+                    UPSTREAM_WAIT_BASE * (2 ** (upstream_retries - 1)),
+                    UPSTREAM_MAX_WAIT
+                )
+                print(f"[AI] ⏳ Upstream {status}, wait {wait_time:.0f}s "
+                      f"(retry {upstream_retries}/{UPSTREAM_MAX_RETRY})...")
                 time.sleep(wait_time)
+                key_manager.next_key()  # ✅ Ganti key setiap upstream retry
 
             else:
                 key_manager.mark_error(last_error)
-                consecutive_upstream = 0
                 time.sleep(2)
 
         except anthropic.APIConnectionError as e:
-            last_error = f"Connection: {str(e)[:200]}"
+            last_error       = f"Connection: {str(e)[:200]}"
+            upstream_retries += 1
             print(f"[AI] ❌ {last_error}")
             key_manager.mark_error(last_error)
-            consecutive_upstream += 1
-            circuit_record_failure()
-            if circuit_is_open():
-                raise Exception("🔴 Koneksi ke provider terputus. Circuit breaker aktif.")
+
+            if upstream_retries > UPSTREAM_MAX_RETRY:
+                circuit_record_failure()
+                if circuit_is_open():
+                    raise Exception("🔴 Koneksi terputus berulang. Circuit breaker aktif.")
+                raise Exception(f"❌ Koneksi gagal {upstream_retries}x. {last_error}")
+
             time.sleep(3)
 
         except Exception as e:
             last_error = str(e)[:200]
-            # Re-raise circuit breaker messages
-            if "circuit breaker" in last_error.lower() or "🔴" in last_error:
+            # Re-raise pesan circuit/upstream
+            if "🔴" in last_error or "circuit" in last_error.lower():
                 raise
             print(f"[AI] ❌ {last_error}")
             key_manager.mark_error(last_error)
-            consecutive_upstream = 0
             time.sleep(2)
 
     with _stats_lock:
         request_stats["total"]["failed"] += 1
-    raise Exception(f"❌ Semua percobaan gagal ({total_attempts}x). Error terakhir: {last_error}")
+    raise Exception(f"❌ Semua percobaan gagal ({total_attempts}x). Error: {last_error}")
 
 # ================================================
 # UTILS
@@ -553,13 +565,11 @@ def parse_json_toleran(text: str) -> dict:
 
     text = bersihkan_json(text)
 
-    # ── Strategi 1: Parse langsung ──
     try:
         return json.loads(text)
     except json.JSONDecodeError as e:
         print(f"[JSON] Attempt 1 failed: {e}")
 
-    # ── Strategi 2: Ekstrak JSON dari text (cari {...}) ──
     try:
         match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', text, re.DOTALL)
         if match:
@@ -567,24 +577,20 @@ def parse_json_toleran(text: str) -> dict:
     except json.JSONDecodeError as e:
         print(f"[JSON] Attempt 2 failed: {e}")
 
-    # ── Strategi 3: Ekstrak greedy — dari { pertama ke } terakhir ──
     try:
         start = text.find('{')
         end   = text.rfind('}')
         if start != -1 and end != -1 and end > start:
-            candidate = text[start:end+1]
-            return json.loads(candidate)
+            return json.loads(text[start:end+1])
     except json.JSONDecodeError as e:
         print(f"[JSON] Attempt 3 failed: {e}")
 
-    # ── Strategi 4: Fix escape sequences ──
     try:
         fixed = re.sub(r'\\(?![\\"/bfnrtu])', r'\\\\', text)
         return json.loads(fixed)
     except json.JSONDecodeError as e:
         print(f"[JSON] Attempt 4 failed: {e}")
 
-    # ── Strategi 5: Fix + remove control chars + ekstrak greedy ──
     try:
         fixed = re.sub(r'\\(?![\\"/bfnrtu])', r'\\\\', text)
         fixed = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', fixed)
@@ -595,7 +601,6 @@ def parse_json_toleran(text: str) -> dict:
     except json.JSONDecodeError as e:
         print(f"[JSON] Attempt 5 failed: {e}")
 
-    # ── Strategi 6: Regex extract manual field-by-field ──
     print("[JSON] Fallback: regex extract per field")
     result = {
         "analysis": "", "new_files": {}, "modified_files": {}, "run_cmd": "",
@@ -605,19 +610,21 @@ def parse_json_toleran(text: str) -> dict:
     for field in ["analysis", "run_cmd", "notes", "description",
                   "tech_stack", "install_cmd", "test_cmd", "project_type"]:
         m = re.search(rf'"{field}"\s*:\s*"([^"]*(?:\\.[^"]*)*)"', text)
-        if m: result[field] = m.group(1)
+        if m:
+            result[field] = m.group(1)
 
     m = re.search(r'"files"\s*:\s*\[(.*?)\]', text, re.DOTALL)
     if m:
         result["files"] = re.findall(r'"([^"]+)"', m.group(1))
 
     for match in re.finditer(
-        r'"([a-zA-Z0-9_/\-\.]+\.(?:py|js|ts|html|css|json|txt|md|yaml|yml|toml))"\s*:\s*"((?:[^"\\]|\\.)*)"',
+        r'"([a-zA-Z0-9_/\-\.]+\.(?:py|js|ts|html|css|json|txt|md|yaml|yml|toml))"'
+        r'\s*:\s*"((?:[^"\\]|\\.)*)"',
         text
     ):
         fname, fcontent = match.group(1), match.group(2)
-        fcontent = fcontent.replace('\\n', '\n').replace('\\t', '\t')
-        fcontent = fcontent.replace('\\"', '"').replace('\\\\', '\\')
+        fcontent = (fcontent.replace('\\n', '\n').replace('\\t', '\t')
+                            .replace('\\"', '"').replace('\\\\', '\\'))
         result["modified_files"][fname] = fcontent
 
     if not any([result["modified_files"], result["new_files"], result["fixed_files"],
@@ -634,12 +641,12 @@ def buat_default_plan(nama: str, deskripsi: str) -> dict:
     if any(k in desc_lower for k in ["fastapi", "rest api", "endpoint", "swagger", "web api"]):
         ptype   = "fastapi"
         run_cmd = "uvicorn main:app --host 0.0.0.0 --port 8000"
-        files   = ["main.py", "models.py", "database.py", "requirements.txt", "README.md", "tests/test_main.py"]
+        files   = ["main.py", "models.py", "database.py", "requirements.txt", "README.md"]
         tech    = "Python + FastAPI + SQLAlchemy"
     elif any(k in desc_lower for k in ["flask", "jinja"]):
         ptype   = "flask"
         run_cmd = "python main.py"
-        files   = ["main.py", "requirements.txt", "README.md", "tests/test_main.py"]
+        files   = ["main.py", "requirements.txt", "README.md"]
         tech    = "Python + Flask"
     elif any(k in desc_lower for k in ["cli", "command line", "terminal", "argparse"]):
         ptype   = "cli"
@@ -655,12 +662,12 @@ def buat_default_plan(nama: str, deskripsi: str) -> dict:
     elif any(k in desc_lower for k in ["web", "http", "server", "html"]):
         ptype   = "fastapi"
         run_cmd = "uvicorn main:app --host 0.0.0.0 --port 8000"
-        files   = ["main.py", "requirements.txt", "README.md", "tests/test_main.py"]
+        files   = ["main.py", "requirements.txt", "README.md"]
         tech    = "Python + FastAPI"
     else:
         ptype   = "script"
         run_cmd = "python main.py"
-        files   = ["main.py", "requirements.txt", "README.md", "tests/test_main.py"]
+        files   = ["main.py", "requirements.txt", "README.md"]
         tech    = "Python"
 
     return {
@@ -669,7 +676,7 @@ def buat_default_plan(nama: str, deskripsi: str) -> dict:
         "files"       : files[:MAX_FILES_PER_PROJ],
         "install_cmd" : "pip install -r requirements.txt",
         "run_cmd"     : run_cmd,
-        "test_cmd"    : "python -m pytest tests/ -v",
+        "test_cmd"    : "python -m pytest -v",
         "project_type": ptype,
     }
 
@@ -728,9 +735,10 @@ def baca_semua_file(project_dir: Path, max_chars: int = 400) -> dict:
         if fp.suffix not in READ_EXTS: continue
         if fp.name == ".ai_meta.json": continue
         try:
-            rel = str(fp.relative_to(project_dir))
+            rel        = str(fp.relative_to(project_dir))
             semua[rel] = fp.read_text(encoding="utf-8", errors="ignore")[:max_chars]
-        except Exception: pass
+        except Exception:
+            pass
     return semua
 
 def baca_file_full(project_dir: Path) -> dict:
@@ -741,9 +749,10 @@ def baca_file_full(project_dir: Path) -> dict:
         if fp.suffix not in READ_EXTS: continue
         if fp.name == ".ai_meta.json": continue
         try:
-            rel = str(fp.relative_to(project_dir))
+            rel        = str(fp.relative_to(project_dir))
             semua[rel] = fp.read_text(encoding="utf-8", errors="ignore")
-        except Exception: pass
+        except Exception:
+            pass
     return semua
 
 # ================================================
@@ -774,64 +783,150 @@ def list_backups(nama: str = None) -> list:
         if not fp.is_file() or fp.suffix != ".zip": continue
         if nama and not fp.name.startswith(nama + "_"): continue
         hasil.append({
-            "name"    : fp.name,
-            "size"    : fp.stat().st_size,
-            "created" : fp.stat().st_mtime,
-            "project" : fp.name.rsplit("_", 2)[0],
+            "name"   : fp.name,
+            "size"   : fp.stat().st_size,
+            "created": fp.stat().st_mtime,
+            "project": fp.name.rsplit("_", 2)[0],
         })
     return hasil
 
 # ================================================
-# GENERATE SATU FILE
+# ✅ GENERATE SATU FILE — DENGAN SPLIT FILE BESAR
 # ================================================
-def generate_satu_file(nama_project: str, deskripsi: str, filename: str, daftar_file: list) -> str:
+def generate_satu_file(nama_project: str, deskripsi: str,
+                       filename: str, daftar_file: list) -> str:
     if filename.endswith("__init__.py"):
         return '"""Package init."""\n'
 
-    desc_short = deskripsi[:250]
-    files_hint = ", ".join(daftar_file[:8])
+    desc_short = deskripsi[:200]   # ✅ lebih pendek dari 250 → hemat token
+    files_hint = ", ".join(daftar_file[:6])
 
     ANTI_MARKDOWN = (
         "\n\nPENTING: Balas HANYA isi file mentah TANPA ```python, TANPA ```, "
         "TANPA penjelasan. Langsung code dari baris pertama."
     )
     PORT_HINT = (
-        "\n\nCATATAN: Untuk FastAPI/Flask, WAJIB baca port dari env variable PORT. "
-        "port = int(os.environ.get('PORT', 8000)). Bind ke host 0.0.0.0."
+        "\n\nCATATAN: Untuk FastAPI/Flask baca port dari env: "
+        "port = int(os.environ.get('PORT', 8000)). Bind ke 0.0.0.0."
     )
 
+    # ── requirements.txt ──
     if filename == "requirements.txt":
-        system = "Programmer Python. Tulis requirements.txt saja."
-        user   = f"Project: {nama_project} - {desc_short}\nTulis requirements.txt (satu library per baris):" + ANTI_MARKDOWN
-        return bersihkan_code(tanya_ai(system, user, max_tokens=400))
+        system = "Tulis requirements.txt Python. Satu library per baris, tanpa versi kecuali perlu."
+        user   = f"Project: {nama_project}\n{desc_short}\nTulis requirements.txt:" + ANTI_MARKDOWN
+        return bersihkan_code(tanya_ai(system, user, max_tokens=350))
 
+    # ── README.md ──
     elif filename == "README.md":
-        system = "Tulis README.md singkat."
-        user   = f"Project: {nama_project}\nDeskripsi: {desc_short}\nTulis README.md: judul, deskripsi, install, cara pakai."
-        return bersihkan_code(tanya_ai(system, user, max_tokens=1500))
+        system = "Tulis README.md singkat dan jelas."
+        user   = (f"Project: {nama_project}\n{desc_short}\n"
+                  "Tulis README.md: judul, deskripsi, install, cara pakai. Max 60 baris.")
+        return bersihkan_code(tanya_ai(system, user, max_tokens=1000))
 
+    # ── Test files ──
     elif "test" in filename.lower():
-        system = "Programmer Python. Tulis unit test pytest SEDERHANA."
-        user   = f"Project: {nama_project}\nDeskripsi: {desc_short}\n\nTulis {filename}, 3-5 unit test. Gunakan mock." + ANTI_MARKDOWN
-        return bersihkan_code(tanya_ai(system, user, max_tokens=1800))
+        system = "Tulis unit test pytest sederhana."
+        user   = (f"Project: {nama_project}\n{desc_short}\n"
+                  f"Tulis {filename}: 3-4 test dasar, gunakan mock jika perlu. Max 60 baris."
+                  + ANTI_MARKDOWN)
+        return bersihkan_code(tanya_ai(system, user, max_tokens=1200))
 
-    elif filename in ["config.py", "database.py"]:
-        system = "Programmer Python. Tulis file konfigurasi RINGKAS."
-        user   = f"Project: {nama_project}\nDeskripsi: {desc_short}\nTulis {filename} RINGKAS (max 80 baris)." + ANTI_MARKDOWN
-        return bersihkan_code(tanya_ai(system, user, max_tokens=1500))
+    # ── Config / Database ──
+    elif filename in ["config.py", "database.py", "settings.py"]:
+        system = "Tulis file konfigurasi Python ringkas."
+        user   = (f"Project: {nama_project}\n{desc_short}\n"
+                  f"Tulis {filename} ringkas, max 60 baris." + ANTI_MARKDOWN)
+        return bersihkan_code(tanya_ai(system, user, max_tokens=1000))
 
+    # ── Models / Schemas / CRUD ──
     elif filename in ["models.py", "schemas.py", "crud.py"]:
         system = "Programmer Python expert FastAPI + SQLAlchemy."
-        user   = (f"Project: {nama_project}\nDeskripsi: {desc_short}\nFile lain: {files_hint}\n\n"
-                  f"Tulis {filename} LENGKAP (max {MAX_LINES_PER_FILE} baris)." + ANTI_MARKDOWN)
-        return bersihkan_code(tanya_ai(system, user, max_tokens=3000))
+        user   = (f"Project: {nama_project}\n{desc_short}\nFile lain: {files_hint}\n\n"
+                  f"Tulis {filename} lengkap, max 120 baris." + ANTI_MARKDOWN)
+        return bersihkan_code(tanya_ai(system, user, max_tokens=2000))
 
+    # ── File utama / kompleks ──
     else:
-        system = "Programmer Python expert. Tulis code RINGKAS, langsung jalan, ada UI HTML lengkap jika web."
-        user   = (f"Project: {nama_project}\nDeskripsi: {desc_short}\nFile di project: {files_hint}\n\n"
-                  f"Tulis {filename} LENGKAP bisa langsung dijalankan. MAKSIMAL {MAX_LINES_PER_FILE} baris."
-                  + PORT_HINT + ANTI_MARKDOWN)
-        return bersihkan_code(tanya_ai(system, user, max_tokens=4000))
+        # ✅ Deteksi file kompleks → pecah jadi 2 request lebih kecil
+        is_complex = any(kw in filename.lower() for kw in [
+            "stealth", "engine", "core", "manager", "handler",
+            "processor", "controller", "service", "worker",
+            "nexus", "main", "app",
+        ])
+
+        system = "Programmer Python expert. Tulis code ringkas, langsung jalan."
+
+        if is_complex:
+            # ── Part 1: struktur ──
+            user_p1 = (
+                f"Project: {nama_project}\n{desc_short}\nFile: {files_hint}\n\n"
+                f"Tulis {filename} BAGIAN 1: imports, constants, class/function signatures. "
+                f"Max 100 baris. Akhiri dengan komentar # === LANJUT ===\n"
+                + ANTI_MARKDOWN
+            )
+            part1 = bersihkan_code(tanya_ai(system, user_p1, max_tokens=2000))
+
+            # ── Part 2: implementasi ──
+            user_p2 = (
+                f"Project: {nama_project}\n{desc_short}\n\n"
+                f"Tulis {filename} BAGIAN 2: implementasi method dan fungsi utama. "
+                f"Lanjutan dari bagian 1. Max 100 baris. Jangan import ulang."
+                + ANTI_MARKDOWN
+            )
+            part2 = bersihkan_code(tanya_ai(system, user_p2, max_tokens=2000))
+
+            # Gabung + bersihkan marker
+            part1 = part1.replace("# === LANJUT ===", "").rstrip()
+            return part1 + "\n\n" + part2
+
+        else:
+            user = (
+                f"Project: {nama_project}\n{desc_short}\nFile lain: {files_hint}\n\n"
+                f"Tulis {filename} lengkap, langsung jalan. Max {MAX_LINES_PER_FILE} baris."
+                + PORT_HINT + ANTI_MARKDOWN
+            )
+            return bersihkan_code(tanya_ai(system, user, max_tokens=3000))
+
+# ================================================
+# ✅ GENERATE FILE DENGAN RETRY PER-FILE
+# ================================================
+def generate_satu_file_with_retry(
+    nama_project: str,
+    deskripsi: str,
+    filename: str,
+    daftar_file: list,
+) -> str:
+    """
+    Wrapper dengan retry khusus upstream error per file.
+    Jika provider 502 → tunggu + force-reset circuit → coba lagi.
+    """
+    last_err = ""
+    for attempt in range(1, MAX_FILE_RETRY + 1):
+        try:
+            return generate_satu_file(nama_project, deskripsi, filename, daftar_file)
+
+        except Exception as e:
+            last_err    = str(e)
+            is_upstream = any(k in last_err for k in [
+                "502", "503", "504", "circuit", "🔴",
+                "down", "upstream", "Connection", "maintenance",
+            ])
+
+            print(f"[FILE-RETRY] {filename} attempt {attempt}/{MAX_FILE_RETRY}: {last_err[:120]}")
+
+            if is_upstream and attempt < MAX_FILE_RETRY:
+                wait_sec = 20 * attempt   # 20s lalu 40s
+                print(f"[FILE-RETRY] Wait {wait_sec}s lalu reset circuit & coba lagi...")
+                time.sleep(wait_sec)
+                # ✅ Reset agar file berikutnya tidak langsung diblok circuit
+                circuit_force_reset()
+                key_manager.reset_errors()
+                continue
+
+            # Non-upstream atau sudah max retry → propagate ke caller
+            raise Exception(last_err)
+
+    raise Exception(last_err)
 
 # ================================================
 # PERBAIKI ERROR
@@ -839,19 +934,20 @@ def generate_satu_file(nama_project: str, deskripsi: str, filename: str, daftar_
 def perbaiki_error(project_id: str, project_dir: Path, error_msg: str):
     log(project_id, "Menganalisis error...", "fix")
     semua_file = baca_file_full(project_dir)
-    if not semua_file: return
+    if not semua_file:
+        return
 
     system = (
         "Debugger Python expert. Perbaiki error.\n"
         "Balas HANYA JSON valid tanpa markdown.\n"
-        "Escape: \\ jadi \\\\, newline jadi \\n, kutip jadi \\\".\n"
+        "Escape: \\ → \\\\, newline → \\n, kutip → \\\".\n"
         '{"analysis":"penjelasan","fixed_files":{"path/file.py":"code LENGKAP"}}'
     )
     context, total = {}, 0
     for k, v in semua_file.items():
         if total > 4000: break
         context[k] = v
-        total += len(v)
+        total      += len(v)
 
     user = f"ERROR:\n{error_msg[:600]}\n\nFILE:\n{json.dumps(context, ensure_ascii=False)}"
 
@@ -862,7 +958,8 @@ def perbaiki_error(project_id: str, project_dir: Path, error_msg: str):
         for filename, new_code in (data.get("fixed_files") or {}).items():
             filename = str(filename).strip().lstrip("/")
             target   = (project_dir / filename).resolve()
-            if not str(target).startswith(str(project_dir.resolve())): continue
+            if not str(target).startswith(str(project_dir.resolve())):
+                continue
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(bersihkan_code(new_code), encoding="utf-8")
             log(project_id, f"Diperbaiki: {filename}", "fix")
@@ -870,15 +967,14 @@ def perbaiki_error(project_id: str, project_dir: Path, error_msg: str):
         log(project_id, f"Error perbaiki: {e}", "error")
 
 # ================================================
-# ✅ BUAT PROJECT — DENGAN UPSTREAM FAILURE HANDLING
+# ✅ BUAT PROJECT — FULL FIX v2.3
 # ================================================
 def buat_project_background(project_id: str, deskripsi: str, nama: str):
     try:
         log(project_id, "Memulai pembuatan project...", "loading")
 
-        # ── Cek circuit breaker sebelum mulai ──
         if circuit_is_open():
-            msg = "🔴 Provider AI sedang down. Gunakan /circuit-reset saat provider pulih."
+            msg = "🔴 Provider AI sedang down. POST /circuit-reset saat provider pulih."
             log(project_id, msg, "error")
             with _log_lock:
                 projects[project_id]["status"] = "error"
@@ -896,76 +992,66 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
             "TUGAS: Balas HANYA dengan JSON valid. TIDAK ADA teks lain.\n"
             "TIDAK ADA ```json, TIDAK ADA penjelasan, TIDAK ADA markdown.\n"
             "Langsung mulai dengan { dan akhiri dengan }.\n\n"
-            "FORMAT WAJIB (contoh):\n"
+            "FORMAT WAJIB:\n"
             "{\n"
-            '  "description": "Sistem perpustakaan dengan CRUD buku",\n'
-            '  "tech_stack": "Python + FastAPI + SQLAlchemy",\n'
-            '  "files": ["main.py", "models.py", "requirements.txt", "README.md"],\n'
+            '  "description": "...",\n'
+            '  "tech_stack": "Python + FastAPI",\n'
+            '  "files": ["main.py", "requirements.txt", "README.md"],\n'
             '  "install_cmd": "pip install -r requirements.txt",\n'
-            '  "run_cmd": "uvicorn main:app --host 0.0.0.0 --port 8000",\n'
-            '  "test_cmd": "python -m pytest tests/ -v",\n'
-            '  "project_type": "fastapi"\n'
+            '  "run_cmd": "python main.py",\n'
+            '  "test_cmd": "pytest",\n'
+            '  "project_type": "script"\n'
             "}\n\n"
             "ATURAN:\n"
-            "- project_type WAJIB salah satu: cli, fastapi, flask, script\n"
-            "- files WAJIB array of string (nama file)\n"
-            f"- MAKSIMAL {MAX_FILES_PER_PROJ} file\n"
-            "- SEMUA field WAJIB ada\n"
-            "- Balas HANYA JSON, tidak ada kata pengantar\n"
+            "- project_type: cli | fastapi | flask | script\n"
+            "- files: array of string\n"
+            f"- MAKSIMAL {MAX_FILES_PER_PROJ} file, idealnya 4-6 file saja\n"
+            "- Balas HANYA JSON\n"
         )
         user_plan = (
-            f"Nama project: {nama}\n"
-            f"Deskripsi user: {deskripsi[:300]}\n\n"
-            "Balas JSON sesuai format di atas SEKARANG:"
+            f"Nama: {nama}\n"
+            f"Deskripsi: {deskripsi[:300]}\n\n"
+            "JSON:"
         )
 
         plan = None
         try:
-            raw_plan = tanya_ai(system_plan, user_plan, max_tokens=800, use_cache=False)
-            print(f"[PLAN] Raw response (500 chars): {raw_plan[:500]}")
+            raw_plan = tanya_ai(system_plan, user_plan, max_tokens=600, use_cache=False)
+            print(f"[PLAN] Raw (300 chars): {raw_plan[:300]}")
             plan = parse_json_toleran(raw_plan)
             log(project_id, "✓ Planning JSON valid", "success")
 
         except Exception as e:
             err_str = str(e)
-            # ✅ Upstream failure → jangan retry, langsung pakai default plan
-            if any(kw in err_str for kw in ["circuit breaker", "Provider down", "🔴", "502", "503", "504"]):
-                log(project_id, f"⚠️ Provider down: {err_str[:150]}", "warning")
-                log(project_id, "Fallback ke default plan otomatis...", "info")
+            if any(kw in err_str for kw in ["🔴", "circuit", "502", "503", "504", "down"]):
+                log(project_id, f"Provider down saat planning → default plan", "warning")
                 plan = buat_default_plan(nama, deskripsi)
             else:
-                # JSON parse error → coba retry
-                log(project_id, "Retry planning (JSON invalid)...", "warning")
-                system_retry = (
-                    "OUTPUT JSON ONLY. NO EXPLANATION. NO MARKDOWN.\n"
-                    "Start with { end with }. Nothing else before or after.\n\n"
-                    "Example:\n"
-                    '{"description":"...","tech_stack":"...","files":["main.py","requirements.txt","README.md"],'
-                    '"install_cmd":"pip install -r requirements.txt",'
-                    '"run_cmd":"python main.py","test_cmd":"pytest",'
-                    '"project_type":"fastapi"}'
-                )
-                user_retry = f"Project: {nama} - {deskripsi[:200]}\n\nJSON:"
+                log(project_id, "Retry planning...", "warning")
                 try:
-                    raw_retry = tanya_ai(system_retry, user_retry, max_tokens=600, use_cache=False)
+                    raw_retry = tanya_ai(
+                        "JSON only. Start { end }.",
+                        f"Project: {nama} - {deskripsi[:150]}\nJSON:",
+                        max_tokens=500, use_cache=False
+                    )
                     plan = parse_json_toleran(raw_retry)
-                    log(project_id, "✓ Retry berhasil!", "success")
-                except Exception as e2:
-                    log(project_id, f"Retry gagal: {str(e2)[:100]}, pakai default plan", "warning")
+                    log(project_id, "✓ Retry planning OK", "success")
+                except Exception:
+                    log(project_id, "Pakai default plan", "warning")
                     plan = buat_default_plan(nama, deskripsi)
 
         if not isinstance(plan, dict) or not plan:
             plan = buat_default_plan(nama, deskripsi)
 
-        daftar_file  = plan.get("files") or ["main.py", "requirements.txt", "README.md", "tests/test_main.py"]
+        daftar_file  = plan.get("files") or ["main.py", "requirements.txt", "README.md"]
         if not isinstance(daftar_file, list):
-            daftar_file = ["main.py", "requirements.txt", "README.md", "tests/test_main.py"]
+            daftar_file = ["main.py", "requirements.txt", "README.md"]
         if len(daftar_file) > MAX_FILES_PER_PROJ:
             daftar_file = daftar_file[:MAX_FILES_PER_PROJ]
 
         install_cmd  = plan.get("install_cmd")  or "pip install -r requirements.txt"
         run_cmd      = plan.get("run_cmd")       or "python main.py"
-        test_cmd     = plan.get("test_cmd")      or "python -m pytest tests/ -v"
+        test_cmd     = plan.get("test_cmd")      or "pytest"
         tech_stack   = plan.get("tech_stack")    or "Python"
         description  = plan.get("description")   or deskripsi
         project_type = (plan.get("project_type") or "script").lower()
@@ -991,21 +1077,29 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
         log(project_id, f"Folder: workspace/{nama}/", "folder")
         log(project_id, "Tahap 2: Generate file...", "loading")
 
-        file_berhasil, file_gagal = [], []
-        upstream_fail_count = 0  # ✅ track upstream failures per-project
+        file_berhasil       = []
+        file_gagal          = []
+        upstream_fail_count = 0
 
         for idx, filename in enumerate(daftar_file, 1):
             filename = str(filename).strip().lstrip("/")
-            if not filename: continue
+            if not filename:
+                continue
 
-            # ✅ Stop jika terlalu banyak upstream failures
-            if upstream_fail_count >= 2:
-                log(project_id, f"⚠️ Provider terus down, skip file tersisa. Coba /circuit-reset nanti.", "warning")
-                for remaining in daftar_file[idx-1:]:
+            # ✅ Skip sisanya jika terlalu banyak upstream failure
+            if upstream_fail_count >= MAX_UPSTREAM_FAIL_PER_BUILD:
+                log(project_id,
+                    f"⚠️ {upstream_fail_count}x upstream down — skip sisa file. "
+                    "POST /circuit-reset lalu 'Lanjutkan Project' untuk melanjutkan.",
+                    "warning")
+                for remaining in daftar_file[idx - 1:]:
                     remaining = str(remaining).strip().lstrip("/")
                     if remaining and remaining not in file_berhasil:
                         file_gagal.append(remaining)
-                        placeholder = f"# {remaining} — BELUM DIBUAT (provider down)\n# Jalankan 'Lanjutkan Project' saat provider pulih\n"
+                        placeholder = (
+                            f"# {remaining} — BELUM DIBUAT (provider down)\n"
+                            "# Gunakan 'Lanjutkan Project' saat provider pulih\n"
+                        )
                         target = (project_dir / remaining).resolve()
                         if str(target).startswith(str(project_dir.resolve())):
                             target.parent.mkdir(parents=True, exist_ok=True)
@@ -1014,25 +1108,40 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
 
             log(project_id, f"[{idx}/{len(daftar_file)}] {filename}...", "loading")
             t_start = time.time()
+
             try:
-                isi     = generate_satu_file(nama, deskripsi, filename, daftar_file)
+                # ✅ Pakai wrapper dengan per-file retry
+                isi     = generate_satu_file_with_retry(nama, deskripsi, filename, daftar_file)
                 elapsed = time.time() - t_start
                 log(project_id, f"  ✓ {len(isi)} chars ({elapsed:.1f}s)", "success")
                 upstream_fail_count = 0  # reset on success
 
             except Exception as e:
+                elapsed = time.time() - t_start
                 err_msg = str(e)[:200]
-                # ✅ Deteksi upstream failure
-                if any(kw in err_msg for kw in ["circuit breaker", "Provider down", "🔴", "502", "503", "504", "upstream"]):
+                is_upstream = any(kw in err_msg for kw in [
+                    "🔴", "circuit", "502", "503", "504",
+                    "down", "upstream", "maintenance",
+                ])
+
+                if is_upstream:
                     upstream_fail_count += 1
-                    log(project_id, f"  ⚠️ Provider down ({upstream_fail_count}x): {err_msg[:100]}", "warning")
+                    log(project_id,
+                        f"  ⚠️ Upstream ({upstream_fail_count}x): {err_msg[:80]}",
+                        "warning")
                 else:
-                    log(project_id, f"  ✗ Gagal: {err_msg}", "warning")
+                    log(project_id, f"  ✗ Gagal: {err_msg[:100]}", "warning")
+
                 file_gagal.append(filename)
-                isi = f'# {filename} - GAGAL GENERATE\n# Error: {err_msg}\n# Jalankan "Lanjutkan Project" untuk regenerate\n'
+                isi = (
+                    f"# {filename} — GAGAL GENERATE\n"
+                    f"# Error: {err_msg}\n"
+                    "# Gunakan 'Lanjutkan Project' untuk regenerate\n"
+                )
 
             target = (project_dir / filename).resolve()
-            if not str(target).startswith(str(project_dir.resolve())): continue
+            if not str(target).startswith(str(project_dir.resolve())):
+                continue
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(isi, encoding="utf-8")
             file_berhasil.append(filename)
@@ -1042,11 +1151,11 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
                 projects[project_id]["files"] = file_berhasil.copy()
                 save_state()
 
-        # Auto-add libs ke requirements.txt
+        # ── Auto-add libs ke requirements.txt ──
         req_file = project_dir / "requirements.txt"
         if req_file.exists():
             current_req = req_file.read_text(encoding="utf-8")
-            libs_add = []
+            libs_add    = []
             if any("test" in f.lower() for f in file_berhasil) and "pytest" not in current_req.lower():
                 libs_add.append("pytest")
             if project_type == "fastapi":
@@ -1076,29 +1185,34 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
             json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
         )
 
-        # Install deps hanya jika mayoritas file berhasil
-        if len(file_gagal) < len(daftar_file) / 2:
-            if req_file.exists():
-                log(project_id, "Install dependencies...", "loading")
-                hasil_install = jalankan_cmd(install_cmd, str(project_dir), timeout=180)
-                if hasil_install["sukses"]:
-                    log(project_id, "Dependencies OK!", "success")
-                else:
-                    log(project_id, f"Warning install: {hasil_install['error'][:200]}", "warning")
+        # ── Install deps jika mayoritas file berhasil ──
+        if len(file_gagal) < len(daftar_file) / 2 and req_file.exists():
+            log(project_id, "Install dependencies...", "loading")
+            hasil_install = jalankan_cmd(install_cmd, str(project_dir), timeout=180)
+            if hasil_install["sukses"]:
+                log(project_id, "Dependencies OK!", "success")
+            else:
+                log(project_id,
+                    f"Warning install: {hasil_install['error'][:150]}", "warning")
 
         log(project_id, "=" * 40, "info")
 
         if file_gagal:
-            log(project_id, f"Project '{nama}' selesai (partial: {len(file_gagal)} file gagal)!", "warning")
+            log(project_id,
+                f"Project '{nama}' selesai (partial: {len(file_gagal)} file gagal)!",
+                "warning")
             log(project_id, f"File gagal: {', '.join(file_gagal[:5])}", "warning")
-            log(project_id, "Gunakan 'Lanjutkan Project' untuk regenerate file yang gagal.", "info")
+            log(project_id, "Gunakan 'Lanjutkan Project' untuk regenerate.", "info")
         else:
             log(project_id, f"Project '{nama}' selesai!", "done")
 
         log(project_id, f"Tipe: {project_type} | {len(file_berhasil)} file OK", "info")
         log(project_id, "Klik ▶️ RUN untuk jalankan!", "info")
 
-        final_status = "partial" if file_gagal and len(file_gagal) >= len(daftar_file) / 2 else "done"
+        final_status = (
+            "partial" if file_gagal and len(file_gagal) >= len(daftar_file) / 2
+            else "done"
+        )
         with _log_lock:
             projects[project_id]["status"] = final_status
             save_state()
@@ -1115,7 +1229,7 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
         broadcast_ws(project_id, {"type": "status", "status": "error"})
 
 # ================================================
-# ✅ LANJUT PROJECT — DENGAN UPSTREAM HANDLING
+# ✅ LANJUT PROJECT
 # ================================================
 def lanjut_project_background(project_id: str, nama: str, permintaan: str):
     try:
@@ -1126,9 +1240,8 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
             save_state()
             return
 
-        # ✅ Cek circuit breaker
         if circuit_is_open():
-            msg = "🔴 Provider AI sedang down. Coba /circuit-reset saat provider pulih."
+            msg = "🔴 Provider AI sedang down. POST /circuit-reset saat provider pulih."
             log(project_id, msg, "error")
             projects[project_id]["status"] = "error"
             projects[project_id]["error"]  = msg
@@ -1146,50 +1259,44 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
             projects[project_id]["folder"] = str(project_dir.resolve())
             save_state()
 
-        meta = {}
+        meta      = {}
         meta_file = project_dir / ".ai_meta.json"
         if meta_file.exists():
             try:
                 meta = json.loads(meta_file.read_text(encoding="utf-8"))
-            except Exception: pass
+            except Exception:
+                pass
 
         semua_file = baca_semua_file(project_dir, max_chars=400)
 
         system_lanjut = (
             "Kamu programmer Python expert.\n\n"
             "TUGAS: Balas HANYA JSON valid. TIDAK ADA teks lain.\n"
-            "TIDAK ADA ```json, TIDAK ADA markdown, TIDAK ADA penjelasan.\n"
+            "TIDAK ADA ```json, TIDAK ADA markdown.\n"
             "Mulai dengan { akhiri dengan }.\n\n"
-            "ESCAPE aturan JSON:\n"
-            "- Backslash \\ → \\\\\n"
-            "- Newline → \\n\n"
-            "- Double quote → \\\"\n"
-            "- Tab → \\t\n\n"
-            "FORMAT (contoh):\n"
+            "ESCAPE JSON:\n"
+            "- \\ → \\\\\n- newline → \\n\n- \" → \\\"\n\n"
+            "FORMAT:\n"
             "{\n"
-            '  "analysis": "menambahkan endpoint login",\n'
-            '  "new_files": {"auth.py": "from fastapi import ..."},\n'
-            '  "modified_files": {"main.py": "from fastapi import ..."},\n'
-            '  "run_cmd": "uvicorn main:app --host 0.0.0.0 --port 8000",\n'
-            '  "notes": "auth JWT ditambahkan"\n'
+            '  "analysis": "...",\n'
+            '  "new_files": {"auth.py": "code..."},\n'
+            '  "modified_files": {"main.py": "code..."},\n'
+            '  "run_cmd": "python main.py",\n'
+            '  "notes": "..."\n'
             "}\n\n"
-            "ATURAN:\n"
-            "- new_files & modified_files: dict {path: code_lengkap}\n"
-            "- code harus escape dengan benar\n"
-            "- HANYA JSON, tidak ada kata lain\n"
+            "HANYA JSON, tidak ada kata lain.\n"
         )
 
         context, total_ch = {}, 0
         for fname, fcontent in semua_file.items():
             if total_ch > 3000: break
-            context[fname] = fcontent
-            total_ch += len(fcontent)
+            context[fname]  = fcontent
+            total_ch       += len(fcontent)
 
         user_lanjut = (
             f"Project: {nama} | Tech: {meta.get('tech_stack', 'Python')}\n"
             f"Permintaan: {permintaan}\n\n"
-            f"File ada:\n{json.dumps(context, ensure_ascii=False)}\n\n"
-            "Balas JSON sekarang:"
+            f"File:\n{json.dumps(context, ensure_ascii=False)}\n\nJSON:"
         )
 
         log(project_id, "AI mengembangkan...", "loading")
@@ -1197,18 +1304,17 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
         hasil = None
         try:
             raw_lanjut = tanya_ai(system_lanjut, user_lanjut, max_tokens=5000, use_cache=False)
-            print(f"[LANJUT] Raw (500 chars): {raw_lanjut[:500]}")
+            print(f"[LANJUT] Raw (300 chars): {raw_lanjut[:300]}")
             hasil = parse_json_toleran(raw_lanjut)
 
         except Exception as e:
             err_str = str(e)
-            # ✅ Upstream failure → beri pesan jelas, jangan crash
-            if any(kw in err_str for kw in ["circuit breaker", "Provider down", "🔴", "502", "503", "504"]):
+            if any(kw in err_str for kw in ["🔴", "circuit", "502", "503", "504", "down"]):
                 msg = (
-                    f"⚠️ Provider AI down saat mengembangkan project.\n"
-                    f"Backup sudah tersimpan: {backup_name}\n"
-                    f"Coba lagi setelah provider pulih (gunakan /circuit-reset).\n"
-                    f"Error: {err_str[:300]}"
+                    f"⚠️ Provider down saat mengembangkan.\n"
+                    f"Backup: {backup_name}\n"
+                    f"Coba lagi setelah POST /circuit-reset.\n"
+                    f"Error: {err_str[:200]}"
                 )
                 log(project_id, msg, "error")
                 projects[project_id]["status"] = "error"
@@ -1216,22 +1322,18 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
                 save_state()
                 return
 
-            # JSON parse error → retry dengan prompt lebih simple
             log(project_id, "Retry AI (JSON invalid)...", "warning")
-            system_retry = (
-                "JSON ONLY. Start { end }. No text.\n\n"
-                'Format: {"analysis":"...","modified_files":{"file.py":"code"},'
-                '"new_files":{},"run_cmd":"python main.py","notes":"..."}'
-            )
-            user_retry = (
-                f"Project: {nama}\nPermintaan: {permintaan[:200]}\n"
-                f"File: {list(semua_file.keys())[:5]}\n\nJSON:"
-            )
             try:
-                raw_retry = tanya_ai(system_retry, user_retry, max_tokens=4000, use_cache=False)
-                print(f"[LANJUT Retry] Raw: {raw_retry[:500]}")
+                raw_retry = tanya_ai(
+                    "JSON ONLY. Start { end }. No text.\n"
+                    '{"analysis":"...","modified_files":{"file.py":"code"},'
+                    '"new_files":{},"run_cmd":"python main.py","notes":"..."}',
+                    f"Project: {nama}\nPermintaan: {permintaan[:200]}\n"
+                    f"File: {list(semua_file.keys())[:5]}\nJSON:",
+                    max_tokens=4000, use_cache=False
+                )
                 hasil = parse_json_toleran(raw_retry)
-                log(project_id, "✓ Retry berhasil!", "success")
+                log(project_id, "✓ Retry OK", "success")
             except Exception as e2:
                 msg = f"AI gagal 2x: {str(e2)[:200]}"
                 log(project_id, msg, "error")
@@ -1247,17 +1349,17 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
 
         new_files = hasil.get("new_files",      {}) or {}
         mod_files = hasil.get("modified_files", {}) or {}
-
         if not isinstance(new_files, dict): new_files = {}
         if not isinstance(mod_files, dict): mod_files = {}
 
         if not new_files and not mod_files:
-            log(project_id, "AI tidak mengusulkan perubahan file.", "warning")
+            log(project_id, "AI tidak mengusulkan perubahan.", "warning")
 
         for filename, content in {**new_files, **mod_files}.items():
             filename = str(filename).strip().lstrip("/")
             target   = (project_dir / filename).resolve()
-            if not str(target).startswith(str(project_dir.resolve())): continue
+            if not str(target).startswith(str(project_dir.resolve())):
+                continue
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(bersihkan_code(str(content)), encoding="utf-8")
             label = "Baru" if filename in new_files else "Update"
@@ -1265,12 +1367,14 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
 
         all_files = list(semua_file.keys())
         for f in list(new_files.keys()) + list(mod_files.keys()):
-            if f not in all_files: all_files.append(f)
+            if f not in all_files:
+                all_files.append(f)
 
-        run_cmd = hasil.get("run_cmd") or meta.get("run_cmd", "")
-        meta["files"]         = all_files
-        meta["run_cmd"]       = run_cmd
-        meta["last_modified"] = datetime.now().isoformat()
+        run_cmd                 = hasil.get("run_cmd") or meta.get("run_cmd", "")
+        meta["files"]           = all_files
+        meta["run_cmd"]         = run_cmd
+        meta["last_modified"]   = datetime.now().isoformat()
+        meta["failed_files"]    = []  # reset setelah lanjut berhasil
         meta_file.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
         with _log_lock:
@@ -1322,8 +1426,7 @@ def cari_port_kosong() -> int:
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     s.settimeout(0.5)
-                    result = s.connect_ex(("127.0.0.1", port))
-                    if result != 0:
+                    if s.connect_ex(("127.0.0.1", port)) != 0:
                         return port
             except Exception:
                 return port
@@ -1355,14 +1458,16 @@ def stream_output(project_id: str, proc):
                 if project_id in running_processes:
                     running_processes[project_id]["logs"].append(line.rstrip())
                     if len(running_processes[project_id]["logs"]) > 500:
-                        running_processes[project_id]["logs"] = running_processes[project_id]["logs"][-500:]
+                        running_processes[project_id]["logs"] = \
+                            running_processes[project_id]["logs"][-500:]
             broadcast_ws(project_id, {"type": "runlog", "line": line.rstrip()})
     except Exception as e:
         with _proc_lock:
             if project_id in running_processes:
                 running_processes[project_id]["logs"].append(f"[STREAM ERROR] {e}")
 
-def run_project(project_id: str, project_dir: Path, run_cmd: str, project_type: str) -> dict:
+def run_project(project_id: str, project_dir: Path,
+                run_cmd: str, project_type: str) -> dict:
     stop_project(project_id)
     port = cari_port_kosong()
     env  = os.environ.copy()
@@ -1377,8 +1482,8 @@ def run_project(project_id: str, project_dir: Path, run_cmd: str, project_type: 
                     run_cmd = f"uvicorn {candidate} --host 127.0.0.1 --port {port}"
                     break
         else:
-            run_cmd = re.sub(r"--port\s+\d+", f"--port {port}", run_cmd)
-            run_cmd = re.sub(r"--host\s+\S+", "--host 127.0.0.1", run_cmd)
+            run_cmd = re.sub(r"--port\s+\d+",  f"--port {port}",      run_cmd)
+            run_cmd = re.sub(r"--host\s+\S+",  "--host 127.0.0.1",   run_cmd)
             if "--port" not in run_cmd: run_cmd += f" --port {port}"
             if "--host" not in run_cmd: run_cmd += " --host 127.0.0.1"
     elif project_type == "flask":
@@ -1397,22 +1502,28 @@ def run_project(project_id: str, project_dir: Path, run_cmd: str, project_type: 
             running_processes[project_id] = {
                 "process"    : proc,
                 "port"       : port,
-                "logs"       : [f"[SYSTEM] Menjalankan: {run_cmd}", f"[SYSTEM] Port: {port}"],
+                "logs"       : [f"[SYSTEM] {run_cmd}", f"[SYSTEM] Port: {port}"],
                 "started_at" : time.time(),
                 "run_cmd"    : run_cmd,
                 "type"       : project_type,
                 "last_access": time.time(),
             }
-        threading.Thread(target=stream_output, args=(project_id, proc), daemon=True).start()
+        threading.Thread(
+            target=stream_output, args=(project_id, proc), daemon=True
+        ).start()
         time.sleep(2)
         if proc.poll() is not None and proc.poll() != 0:
             with _proc_lock:
                 logs = running_processes.get(project_id, {}).get("logs", [])
-            return {"sukses": False, "error": f"Process berhenti (exit: {proc.poll()})", "logs": logs[-20:]}
-
+            return {
+                "sukses": False,
+                "error" : f"Process berhenti (exit: {proc.poll()})",
+                "logs"  : logs[-20:],
+            }
         is_web = project_type in ["fastapi", "flask"]
         url    = f"/proxy/{project_id}/" if is_web else None
-        return {"sukses": True, "port": port, "run_cmd": run_cmd, "type": project_type, "url": url}
+        return {"sukses": True, "port": port, "run_cmd": run_cmd,
+                "type": project_type, "url": url}
     except Exception as e:
         return {"sukses": False, "error": str(e)}
 
@@ -1423,7 +1534,7 @@ def cleanup_idle_processes():
     while True:
         try:
             time.sleep(300)
-            now      = time.time()
+            now       = time.time()
             idle_pids = []
             with _proc_lock:
                 for pid, info in running_processes.items():
@@ -1445,8 +1556,8 @@ threading.Thread(target=cleanup_idle_processes, daemon=True).start()
 async def halaman_utama():
     html_file = Path("templates/index.html")
     if not html_file.exists():
-        return HTMLResponse(content="<h1>templates/index.html tidak ada</h1>", status_code=404)
-    return HTMLResponse(content=html_file.read_text(encoding="utf-8"))
+        return HTMLResponse("<h1>templates/index.html tidak ada</h1>", status_code=404)
+    return HTMLResponse(html_file.read_text(encoding="utf-8"))
 
 @app.get("/test-ai")
 async def test_ai():
@@ -1476,16 +1587,13 @@ async def health_upstream():
             )
             hasil.append({"index": i, "model": k["model"], "status": "✅ healthy"})
         except anthropic.APIStatusError as e:
-            hasil.append({
-                "index": i, "model": k["model"],
-                "status": f"⚠️ {e.status_code}",
-                "error": str(e.message)[:150],
-            })
+            hasil.append({"index": i, "model": k["model"],
+                          "status": f"⚠️ {e.status_code}", "error": str(e.message)[:150]})
         except Exception as e:
-            hasil.append({"index": i, "model": k["model"], "status": "❌ error", "error": str(e)[:150]})
+            hasil.append({"index": i, "model": k["model"],
+                          "status": "❌ error", "error": str(e)[:150]})
     return JSONResponse({"keys": hasil})
 
-# ✅ BARU: Circuit breaker endpoints
 @app.get("/circuit-status")
 async def circuit_status():
     with _circuit_lock:
@@ -1494,13 +1602,14 @@ async def circuit_status():
     if state["is_open"]:
         remaining = max(0, int(CIRCUIT_BREAKER_TIMEOUT - (time.time() - state["opened_at"])))
     return JSONResponse({
-        "is_open"      : state["is_open"],
-        "fail_count"   : state["fail_count"],
-        "total_opens"  : state["total_opens"],
-        "reset_in_sec" : remaining,
-        "threshold"    : CIRCUIT_BREAKER_THRESHOLD,
-        "timeout_sec"  : CIRCUIT_BREAKER_TIMEOUT,
-        "message"      : "🔴 Circuit OPEN — AI calls ditolak" if state["is_open"] else "🟢 Circuit CLOSED — normal",
+        "is_open"     : state["is_open"],
+        "fail_count"  : state["fail_count"],
+        "total_opens" : state["total_opens"],
+        "reset_in_sec": remaining,
+        "threshold"   : CIRCUIT_BREAKER_THRESHOLD,
+        "timeout_sec" : CIRCUIT_BREAKER_TIMEOUT,
+        "message"     : ("🔴 Circuit OPEN — AI calls ditolak"
+                         if state["is_open"] else "🟢 Circuit CLOSED — normal"),
     })
 
 @app.post("/circuit-reset")
@@ -1509,7 +1618,7 @@ async def circuit_reset():
     key_manager.reset_errors()
     return JSONResponse({
         "success": True,
-        "message": "✅ Circuit breaker direset. Key errors direset. Coba buat project lagi.",
+        "message": "✅ Circuit & key errors direset. Coba buat project lagi.",
     })
 
 @app.get("/stats")
@@ -1523,7 +1632,7 @@ async def get_stats():
     with _circuit_lock:
         circuit_info = dict(_circuit_state)
 
-    total_projects = len(list(BASE_DIR.iterdir())) if BASE_DIR.exists() else 0
+    total_projects = len(list(BASE_DIR.iterdir()))  if BASE_DIR.exists()    else 0
     total_backups  = len(list(BACKUPS_DIR.iterdir())) if BACKUPS_DIR.exists() else 0
     avg_time       = 0
     if stats.get("total", {}).get("success", 0) > 0:
@@ -1531,11 +1640,11 @@ async def get_stats():
 
     return JSONResponse({
         "requests": {
-            "total"     : stats.get("total", {}).get("count", 0),
-            "success"   : stats.get("total", {}).get("success", 0),
-            "failed"    : stats.get("total", {}).get("failed", 0),
+            "total"     : stats.get("total", {}).get("count",      0),
+            "success"   : stats.get("total", {}).get("success",    0),
+            "failed"    : stats.get("total", {}).get("failed",     0),
             "avg_time"  : round(avg_time, 2),
-            "cache_hits": stats.get("cache_hit", {}).get("count", 0),
+            "cache_hits": stats.get("cache_hit", {}).get("count",  0),
         },
         "cache"   : {"size": cache_size, "max": 200},
         "projects": {"total": total_projects, "running": running_count, "backups": total_backups},
@@ -1545,10 +1654,13 @@ async def get_stats():
             "total_opens": circuit_info["total_opens"],
         },
         "system"  : {
-            "port_range"      : f"{PORT_START}-{PORT_END}",
-            "rate_limit"      : f"{RATE_LIMIT_PER_MIN}/min",
-            "cache_ttl"       : f"{CACHE_TTL_SECONDS}s",
+            "port_range"        : f"{PORT_START}-{PORT_END}",
+            "rate_limit"        : f"{RATE_LIMIT_PER_MIN}/min",
+            "cache_ttl"         : f"{CACHE_TTL_SECONDS}s",
             "upstream_max_retry": UPSTREAM_MAX_RETRY,
+            "circuit_threshold" : CIRCUIT_BREAKER_THRESHOLD,
+            "circuit_timeout"   : CIRCUIT_BREAKER_TIMEOUT,
+            "max_file_retry"    : MAX_FILE_RETRY,
         },
     })
 
@@ -1591,17 +1703,20 @@ async def clear_cache():
     return JSONResponse({"cleared": count})
 
 @app.post("/buat-project")
-async def buat_project_route(request: Request, deskripsi: str = Form(...), nama: str = Form(...)):
+async def buat_project_route(request: Request,
+                              deskripsi: str = Form(...), nama: str = Form(...)):
     client_ip = request.client.host
     if not check_rate_limit(client_ip):
-        return JSONResponse({"error": f"Rate limit! Max {RATE_LIMIT_PER_MIN}/menit"}, status_code=429)
+        return JSONResponse({"error": f"Rate limit! Max {RATE_LIMIT_PER_MIN}/menit"},
+                            status_code=429)
 
-    # ✅ Cek circuit sebelum enqueue
     if circuit_is_open():
         with _circuit_lock:
-            remaining = max(0, int(CIRCUIT_BREAKER_TIMEOUT - (time.time() - _circuit_state["opened_at"])))
+            remaining = max(0, int(
+                CIRCUIT_BREAKER_TIMEOUT - (time.time() - _circuit_state["opened_at"])
+            ))
         return JSONResponse({
-            "error": f"🔴 Provider AI sedang down. Coba lagi dalam {remaining}s atau POST /circuit-reset saat provider pulih."
+            "error": f"🔴 Provider AI down. Coba dalam {remaining}s atau POST /circuit-reset."
         }, status_code=503)
 
     nama       = re.sub(r"[^a-zA-Z0-9_\-]", "_", nama.strip())[:50] or "project_kuliah"
@@ -1614,20 +1729,26 @@ async def buat_project_route(request: Request, deskripsi: str = Form(...), nama:
             "created_at": datetime.now().isoformat(),
         }
         save_state()
-    threading.Thread(target=buat_project_background, args=(project_id, deskripsi, nama), daemon=True).start()
+    threading.Thread(
+        target=buat_project_background, args=(project_id, deskripsi, nama), daemon=True
+    ).start()
     return JSONResponse({"project_id": project_id, "nama": nama})
 
 @app.post("/lanjut-project")
-async def lanjut_project_route(request: Request, nama: str = Form(...), permintaan: str = Form(...)):
+async def lanjut_project_route(request: Request,
+                                nama: str = Form(...), permintaan: str = Form(...)):
     client_ip = request.client.host
     if not check_rate_limit(client_ip):
-        return JSONResponse({"error": f"Rate limit! Max {RATE_LIMIT_PER_MIN}/menit"}, status_code=429)
+        return JSONResponse({"error": f"Rate limit! Max {RATE_LIMIT_PER_MIN}/menit"},
+                            status_code=429)
 
     if circuit_is_open():
         with _circuit_lock:
-            remaining = max(0, int(CIRCUIT_BREAKER_TIMEOUT - (time.time() - _circuit_state["opened_at"])))
+            remaining = max(0, int(
+                CIRCUIT_BREAKER_TIMEOUT - (time.time() - _circuit_state["opened_at"])
+            ))
         return JSONResponse({
-            "error": f"🔴 Provider AI sedang down. Coba lagi dalam {remaining}s."
+            "error": f"🔴 Provider AI down. Coba dalam {remaining}s."
         }, status_code=503)
 
     nama       = re.sub(r"[^a-zA-Z0-9_\-]", "_", nama.strip())[:50] or "project"
@@ -1640,7 +1761,9 @@ async def lanjut_project_route(request: Request, nama: str = Form(...), perminta
             "created_at": datetime.now().isoformat(),
         }
         save_state()
-    threading.Thread(target=lanjut_project_background, args=(project_id, nama, permintaan), daemon=True).start()
+    threading.Thread(
+        target=lanjut_project_background, args=(project_id, nama, permintaan), daemon=True
+    ).start()
     return JSONResponse({"project_id": project_id, "nama": nama})
 
 @app.get("/status/{project_id}")
@@ -1687,7 +1810,8 @@ async def lihat_files(project_id: str):
     return JSONResponse({"files": hasil})
 
 @app.post("/files/{project_id}/save")
-async def save_file_route(project_id: str, path: str = Form(...), content: str = Form(...)):
+async def save_file_route(project_id: str,
+                          path: str = Form(...), content: str = Form(...)):
     if project_id not in projects:
         return JSONResponse({"error": "Not found"}, status_code=404)
     folder = projects[project_id].get("folder", "")
@@ -1730,23 +1854,25 @@ async def list_projects_route():
         if meta_file.exists():
             try: meta = json.loads(meta_file.read_text(encoding="utf-8"))
             except Exception: pass
-        file_count = sum(1 for f in folder.rglob("*")
-                        if f.is_file() and f.name != ".ai_meta.json"
-                        and not any(s in f.parts for s in SKIP_DIRS))
+        file_count = sum(
+            1 for f in folder.rglob("*")
+            if f.is_file() and f.name != ".ai_meta.json"
+            and not any(s in f.parts for s in SKIP_DIRS)
+        )
         is_running = False
         with _proc_lock:
-            for pid, info in running_processes.items():
+            for pid in running_processes:
                 if projects.get(pid, {}).get("nama") == folder.name:
                     is_running = True
                     break
         hasil.append({
             "nama"         : folder.name,
-            "tech_stack"   : meta.get("tech_stack", "-"),
-            "deskripsi"    : meta.get("deskripsi", "-"),
-            "run_cmd"      : meta.get("run_cmd", "-"),
+            "tech_stack"   : meta.get("tech_stack",   "-"),
+            "deskripsi"    : meta.get("deskripsi",    "-"),
+            "run_cmd"      : meta.get("run_cmd",      "-"),
             "project_type" : meta.get("project_type", "script"),
             "file_count"   : file_count,
-            "created_at"   : meta.get("created_at", ""),
+            "created_at"   : meta.get("created_at",   ""),
             "last_modified": meta.get("last_modified", ""),
             "is_running"   : is_running,
             "failed_files" : meta.get("failed_files", []),
@@ -1759,8 +1885,10 @@ async def delete_project(nama: str):
     if not project_dir.exists():
         return JSONResponse({"error": "Not found"}, status_code=404)
     with _proc_lock:
-        pids_to_stop = [pid for pid, info in running_processes.items()
-                        if projects.get(pid, {}).get("nama") == nama]
+        pids_to_stop = [
+            pid for pid in running_processes
+            if projects.get(pid, {}).get("nama") == nama
+        ]
     for pid in pids_to_stop:
         stop_project(pid)
     backup_project(project_dir, nama + "_before_delete")
@@ -1772,7 +1900,8 @@ async def delete_project(nama: str):
 
 @app.get("/key-status")
 async def key_status_route():
-    return JSONResponse({"current_index": key_manager.current_idx, "keys": key_manager.status()})
+    return JSONResponse({"current_index": key_manager.current_idx,
+                         "keys": key_manager.status()})
 
 @app.post("/key-reset")
 async def key_reset_route():
@@ -1802,7 +1931,8 @@ async def run_project_route(project_id: str):
 @app.post("/stop/{project_id}")
 async def stop_project_route(project_id: str):
     stopped = stop_project(project_id)
-    return JSONResponse({"success": stopped, "message": "Dihentikan" if stopped else "No process"})
+    return JSONResponse({"success": stopped,
+                         "message": "Dihentikan" if stopped else "No process"})
 
 @app.post("/restart/{project_id}")
 async def restart_project_route(project_id: str):
@@ -1844,12 +1974,10 @@ async def download_project(project_id: str):
         for fp in project_dir.rglob("*"):
             if not fp.is_file(): continue
             if any(s in fp.parts for s in SKIP_DIRS): continue
-            arcname = str(fp.relative_to(project_dir))
-            zf.write(fp, arcname)
+            zf.write(fp, str(fp.relative_to(project_dir)))
     zip_buffer.seek(0)
     return StreamingResponse(
-        zip_buffer,
-        media_type="application/zip",
+        zip_buffer, media_type="application/zip",
         headers={"Content-Disposition": f'attachment; filename="{nama}.zip"'},
     )
 
@@ -1893,9 +2021,9 @@ async def websocket_endpoint(websocket: WebSocket, project_id: str):
 # PROXY
 # ================================================
 @app.api_route("/proxy/{project_id}",
-    methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
+    methods=["GET","POST","PUT","DELETE","PATCH","OPTIONS","HEAD"])
 @app.api_route("/proxy/{project_id}/{path:path}",
-    methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
+    methods=["GET","POST","PUT","DELETE","PATCH","OPTIONS","HEAD"])
 async def proxy_to_project(project_id: str, request: Request, path: str = ""):
     with _proc_lock:
         info = running_processes.get(project_id)
@@ -1929,17 +2057,18 @@ async def proxy_to_project(project_id: str, request: Request, path: str = ""):
         headers.pop(h, None)
 
     try:
-        async with httpx.AsyncClient(timeout=30.0, verify=False, follow_redirects=False) as client:
+        async with httpx.AsyncClient(
+            timeout=30.0, verify=False, follow_redirects=False
+        ) as client:
             resp = await client.request(
                 method=request.method, url=target_url,
                 headers=headers, content=body
             )
         resp_headers = {}
         for k, v in resp.headers.items():
-            lk = k.lower()
-            if lk in ["content-encoding", "transfer-encoding", "connection",
-                      "x-frame-options", "content-security-policy",
-                      "content-security-policy-report-only"]:
+            if k.lower() in ["content-encoding", "transfer-encoding", "connection",
+                              "x-frame-options", "content-security-policy",
+                              "content-security-policy-report-only"]:
                 continue
             resp_headers[k] = v
         if resp.status_code in (301, 302, 303, 307, 308):
@@ -1958,12 +2087,14 @@ async def proxy_to_project(project_id: str, request: Request, path: str = ""):
         <html><body style="font-family:sans-serif;padding:40px;background:#0f172a;color:#e2e8f0">
           <h2>⏳ Loading...</h2>
           <p>Server belum siap di port {port}. Reload beberapa detik lagi.</p>
-          <button onclick="location.reload()" style="padding:10px 20px;background:#6366f1;color:#fff;border:none;border-radius:6px;cursor:pointer">🔄 Reload</button>
+          <button onclick="location.reload()"
+            style="padding:10px 20px;background:#6366f1;color:#fff;border:none;
+                   border-radius:6px;cursor:pointer">🔄 Reload</button>
         </body></html>""", status_code=503)
     except httpx.TimeoutException:
-        return HTMLResponse(content="<h2>Timeout</h2>", status_code=504)
+        return HTMLResponse("<h2>Timeout</h2>", status_code=504)
     except Exception as e:
-        return HTMLResponse(content=f"<h2>Error</h2><pre>{str(e)[:500]}</pre>", status_code=500)
+        return HTMLResponse(f"<h2>Error</h2><pre>{str(e)[:500]}</pre>", status_code=500)
 
 @app.on_event("shutdown")
 def cleanup_on_shutdown():
@@ -1975,19 +2106,23 @@ def cleanup_on_shutdown():
                 if proc.poll() is None:
                     proc.terminate()
                     proc.wait(timeout=3)
-            except Exception: pass
+            except Exception:
+                pass
         running_processes.clear()
 
+# ================================================
 print("=" * 60)
-print("🚀 AI Project Maker ULTIMATE Edition v2.2")
+print("🚀 AI Project Maker ULTIMATE Edition v2.3")
 print("=" * 60)
-print(f"✨ Cache system: TTL {CACHE_TTL_SECONDS}s")
-print(f"🛡️  Rate limit: {RATE_LIMIT_PER_MIN}/menit per IP")
-print(f"💾 Auto backup: sebelum modifikasi")
-print(f"🧹 Auto cleanup: idle {AUTO_CLEANUP_MIN} menit")
-print(f"📊 Stats: /stats  ·  Backup: /backups")
-print(f"🔌 WebSocket: /ws/{{project_id}}")
-print(f"🔴 Circuit breaker: /circuit-status  ·  /circuit-reset")
-print(f"⚡ Upstream retry: {UPSTREAM_MAX_RETRY}x, backoff cap {UPSTREAM_MAX_WAIT}s")
-print(f"🎯 4-tier fallback: AI → Retry → Default Plan → Partial Build")
+print(f"✨ Cache TTL       : {CACHE_TTL_SECONDS}s")
+print(f"🛡️  Rate limit     : {RATE_LIMIT_PER_MIN}/menit per IP")
+print(f"💾 Auto backup     : sebelum modifikasi")
+print(f"🧹 Auto cleanup    : idle {AUTO_CLEANUP_MIN} menit")
+print(f"🔴 Circuit breaker : threshold={CIRCUIT_BREAKER_THRESHOLD} | "
+      f"timeout={CIRCUIT_BREAKER_TIMEOUT}s")
+print(f"⚡ Upstream retry  : {UPSTREAM_MAX_RETRY}x | backoff cap {UPSTREAM_MAX_WAIT}s")
+print(f"🔁 File retry      : {MAX_FILE_RETRY}x per file (upstream error)")
+print(f"⛔ Skip threshold  : {MAX_UPSTREAM_FAIL_PER_BUILD}x upstream fail → skip sisanya")
+print(f"✂️  Max lines/file  : {MAX_LINES_PER_FILE} | split file kompleks otomatis")
+print(f"📊 Stats           : /stats | Circuit: /circuit-status | /circuit-reset")
 print("=" * 60)
