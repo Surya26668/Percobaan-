@@ -1,3 +1,18 @@
+# ================================================
+# LOAD ENV — HARUS DI PALING ATAS
+# ================================================
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    print("⚠️  python-dotenv belum terinstall, jalankan: pip install python-dotenv")
+
+try:
+    from cryptography.fernet import Fernet
+except ImportError:
+    print("⚠️  cryptography belum terinstall, jalankan: pip install cryptography")
+    Fernet = None
+
 import os
 import json
 import subprocess
@@ -10,40 +25,96 @@ from pathlib import Path
 
 from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse, JSONResponse
-from openai import OpenAI
+import anthropic
 
 # ================================================
-# SETTING — MULTI API KEY
+# DECRYPT API KEY
 # ================================================
-API_KEYS = [
-    (
-        "https://freetokenfaucet.com/v1",
-        "tf_deb549c018ab46ee9128e3a6d42449f6",
-        "gpt-5.6-luna",
-    ),
-    (
-        "https://freetokenfaucet.com/v1",
-        "tf_c908113f2e9c45f091efd1f39a803a24",
-        "gpt-5.6-luna",
-    ),
-    (
-        "https://freetokenfaucet.com/v1",
-        "tf_deb549c018ab46ee9128e3a6d42449f6",
-        "qwen3.6-flash",
-    ),
-    (
-        "https://freetokenfaucet.com/v1",
-        "tf_c908113f2e9c45f091efd1f39a803a24",
-        "mimo-v2.5",
-    ),
-]
+def decrypt_key(encrypted: str) -> str:
+    """Decrypt API key dari .env menggunakan ENCRYPTION_KEY"""
+    if not encrypted:
+        return ""
+    if Fernet is None:
+        print("[DECRYPT] ❌ cryptography tidak terinstall")
+        return ""
+    try:
+        enc_key = os.getenv("ENCRYPTION_KEY", "")
+        if not enc_key:
+            # Jika tidak ada ENCRYPTION_KEY, anggap key tidak dienkripsi
+            return encrypted
+        f = Fernet(enc_key.encode())
+        return f.decrypt(encrypted.encode()).decode()
+    except Exception as e:
+        print(f"[DECRYPT] ❌ Gagal decrypt: {e}")
+        print("[DECRYPT] ⚠️  Pastikan ENCRYPTION_KEY di .env benar")
+        return ""
 
+# ================================================
+# SETTING — BACA DARI .env
+# ================================================
+BASE_URL = os.getenv("BASE_URL", "https://ai.bluepack.my.id/anthropic")
+
+# Ambil semua API key dari .env
+# Format .env:
+#   API_KEY_1_ENC=gAAAAAB...   ← terenkripsi
+#   API_KEY_2_ENC=gAAAAAB...
+#   MODEL_1=claude-opus-4-5
+#   MODEL_2=claude-sonnet-4-5
+_raw_keys = []
+i = 1
+while True:
+    enc = os.getenv(f"API_KEY_{i}_ENC", "")
+    raw = os.getenv(f"API_KEY_{i}", "")      # fallback tanpa enkripsi
+    mdl = os.getenv(f"MODEL_{i}", "")
+
+    if not enc and not raw:
+        break  # tidak ada key lagi
+
+    api_key = decrypt_key(enc) if enc else raw
+    model   = mdl or "claude-sonnet-4-5"
+
+    if api_key:
+        _raw_keys.append({
+            "base_url" : BASE_URL,
+            "api_key"  : api_key,
+            "model"    : model,
+        })
+    i += 1
+
+# Fallback jika .env kosong — pakai hardcode (tidak disarankan)
+if not _raw_keys:
+    print("⚠️  Tidak ada API Key di .env, menggunakan fallback hardcode")
+    _raw_keys = [
+        {
+            "base_url" : BASE_URL,
+            "api_key"  : os.getenv("API_KEY_1", ""),
+            "model"    : "claude-sonnet-4-5",
+        },
+    ]
+
+API_KEYS = [k for k in _raw_keys if k["api_key"]]
+
+if not API_KEYS:
+    raise ValueError(
+        "❌ Tidak ada API Key yang valid!\n"
+        "   Pastikan file .env sudah diisi dengan benar.\n"
+        "   Jalankan encrypt_keys.py untuk membuat API Key terenkripsi."
+    )
+
+print(f"✅ {len(API_KEYS)} API Key berhasil dimuat")
+for idx, k in enumerate(API_KEYS):
+    hint = k["api_key"][:8] + "..." if len(k["api_key"]) > 8 else k["api_key"]
+    print(f"   [{idx}] model={k['model']} | key={hint}")
+
+# ================================================
+# KONSTANTA
+# ================================================
 MAX_FIX  = 2
 BASE_DIR = Path("workspace")
 BASE_DIR.mkdir(exist_ok=True)
 Path("templates").mkdir(exist_ok=True)
 
-app = FastAPI(title="AI Project Maker")
+app = FastAPI(title="AI Project Maker — Claude Code")
 
 projects: dict = {}
 STATE_FILE = Path("projects_state.json")
@@ -82,7 +153,7 @@ class MultiKeyManager:
         self.error_counts = [0] * len(keys)
         self._lock        = threading.Lock()
 
-    def get_info(self) -> tuple:
+    def get_info(self) -> dict:
         with self._lock:
             return self.keys[self.current_idx]
 
@@ -106,12 +177,13 @@ class MultiKeyManager:
     def status(self) -> list:
         with self._lock:
             result = []
-            for i, (base_url, api_key, model) in enumerate(self.keys):
+            for i, key_info in enumerate(self.keys):
+                api_key = key_info["api_key"]
                 result.append({
                     "index"       : i,
-                    "base_url"    : base_url,
-                    "model"       : model,
-                    "api_key_hint": api_key[:10] + "..." if len(api_key) > 10 else api_key,
+                    "base_url"    : key_info["base_url"],
+                    "model"       : key_info["model"],
+                    "api_key_hint": api_key[:8] + "..." if len(api_key) > 8 else api_key,
                     "error_count" : self.error_counts[i],
                     "active"      : i == self.current_idx,
                 })
@@ -120,48 +192,88 @@ class MultiKeyManager:
 key_manager = MultiKeyManager(API_KEYS)
 
 # ================================================
-# BUAT CLIENT
+# BUAT CLIENT ANTHROPIC
 # ================================================
-def buat_client(base_url: str, api_key: str) -> OpenAI:
-    return OpenAI(
-        base_url=base_url,
-        api_key=api_key,
-        timeout=90.0,
-        http_client=httpx.Client(timeout=90.0, verify=False)
+def buat_client(base_url: str, api_key: str) -> anthropic.Anthropic:
+    return anthropic.Anthropic(
+        base_url   = base_url,
+        api_key    = api_key,
+        timeout    = 3000.0,
+        http_client= httpx.Client(
+            timeout= httpx.Timeout(
+                connect = 30.0,
+                read    = 3000.0,
+                write   = 30.0,
+                pool    = 30.0,
+            ),
+            verify = False,
+        )
     )
 
 # ================================================
-# TANYA AI — PROMPT PENDEK, ROTATE OTOMATIS
+# TANYA AI
 # ================================================
 def tanya_ai(system_prompt: str, user_prompt: str) -> str:
     last_error  = "tidak ada error"
     max_retries = len(API_KEYS) * 3
 
     for attempt in range(max_retries):
-        base_url, api_key, model = key_manager.get_info()
+        key_info = key_manager.get_info()
+        base_url = key_info["base_url"]
+        api_key  = key_info["api_key"]
+        model    = key_info["model"]
+
         print(f"[AI] Attempt {attempt+1}/{max_retries} | model={model}")
 
         try:
             client   = buat_client(base_url, api_key)
-            response = client.chat.completions.create(
-                model=model,
-                temperature=0.1,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user",   "content": user_prompt},
-                ]
+            response = client.messages.create(
+                model      = model,
+                max_tokens = 8096,
+                temperature= 0.1,
+                system     = system_prompt,
+                messages   = [{"role": "user", "content": user_prompt}]
             )
-            hasil = (response.choices[0].message.content or "").strip()
+
+            hasil = ""
+            for block in response.content:
+                if hasattr(block, "text"):
+                    hasil += block.text
+
+            hasil = hasil.strip()
             print(f"[AI] ✅ Sukses! {len(hasil)} karakter | model={model}")
             return hasil
+
+        except anthropic.AuthenticationError as e:
+            last_error = f"401 AuthenticationError: {e}"
+            print(f"[AI] ❌ {last_error}")
+            key_manager.mark_error()
+            time.sleep(1)
+
+        except anthropic.RateLimitError as e:
+            last_error = f"429 RateLimitError: {e}"
+            print(f"[AI] ❌ {last_error}")
+            key_manager.mark_error()
+            time.sleep(5)
+
+        except anthropic.APIStatusError as e:
+            last_error = f"APIStatusError {e.status_code}: {e.message}"
+            print(f"[AI] ❌ {last_error}")
+            key_manager.mark_error()
+            time.sleep(2)
+
+        except anthropic.APIConnectionError as e:
+            last_error = f"ConnectionError: {e}"
+            print(f"[AI] ❌ {last_error}")
+            key_manager.mark_error()
+            time.sleep(3)
 
         except Exception as e:
             last_error = str(e)
             print(f"[AI] ❌ Error: {last_error}")
             key_manager.mark_error()
-
-            err_str = last_error.lower()
-            if any(k in err_str for k in ["connection","timeout","ssl","refused"]):
+            err_lower = last_error.lower()
+            if any(k in err_lower for k in ["connection", "timeout", "ssl", "refused"]):
                 time.sleep(3)
             else:
                 time.sleep(1)
@@ -224,9 +336,9 @@ def jalankan_cmd(cmd: str, cwd: str, timeout: int = 60) -> dict:
 # ================================================
 # BACA FILE
 # ================================================
-SKIP_DIRS = {"node_modules","__pycache__",".git","venv",".venv",".mypy_cache"}
-READ_EXTS  = {".py",".js",".ts",".html",".css",".json",".txt",
-              ".md",".env",".yaml",".yml",".toml"}
+SKIP_DIRS = {"node_modules", "__pycache__", ".git", "venv", ".venv", ".mypy_cache"}
+READ_EXTS  = {".py", ".js", ".ts", ".html", ".css", ".json", ".txt",
+              ".md", ".env", ".yaml", ".yml", ".toml"}
 
 def baca_semua_file(project_dir: Path, max_chars: int = 400) -> dict:
     semua = {}
@@ -257,14 +369,10 @@ def baca_file_full(project_dir: Path) -> dict:
     return semua
 
 # ================================================
-# GENERATE SATU FILE — PROMPT KECIL
+# GENERATE SATU FILE
 # ================================================
 def generate_satu_file(nama_project: str, deskripsi: str,
                         filename: str, daftar_file: list) -> str:
-    """Generate isi satu file saja — prompt kecil agar tidak timeout"""
-
-    ext = Path(filename).suffix.lower()
-
     if filename == "requirements.txt":
         system = "Kamu adalah programmer Python. Tulis requirements.txt saja."
         user   = (
@@ -296,7 +404,6 @@ def generate_satu_file(nama_project: str, deskripsi: str,
             f"Tulis HANYA isi file {filename} secara LENGKAP dan bisa langsung dijalankan. "
             "Gunakan best practice Python. Komentar dalam bahasa Indonesia."
         )
-
     return tanya_ai(system, user)
 
 # ================================================
@@ -314,7 +421,6 @@ def perbaiki_error(project_id: str, project_dir: Path, error_msg: str):
         "Perbaiki error. Balas HANYA JSON valid tanpa markdown:\n"
         '{"analysis":"penjelasan","fixed_files":{"path/file.py":"code LENGKAP"}}'
     )
-
     context = {}
     total   = 0
     for k, v in semua_file.items():
@@ -330,7 +436,7 @@ def perbaiki_error(project_id: str, project_dir: Path, error_msg: str):
     try:
         raw  = tanya_ai(system, user)
         data = json.loads(bersihkan_json(raw))
-        log(project_id, f"Analisis: {data.get('analysis','-')}", "fix")
+        log(project_id, f"Analisis: {data.get('analysis', '-')}", "fix")
         fixed = data.get("fixed_files", {})
         if not fixed:
             log(project_id, "AI tidak mengusulkan perubahan.", "warning")
@@ -373,7 +479,7 @@ def jalankan_test(project_id: str, project_dir: Path,
                 err = (hasil["error"] or hasil["output"] or "Unknown error")
                 log(project_id, f"Gagal:\n{err[:300]}", "error")
                 if attempt < MAX_FIX:
-                    log(project_id, f"AI mencoba perbaiki...", "fix")
+                    log(project_id, "AI mencoba perbaiki...", "fix")
                     perbaiki_error(project_id, project_dir, err)
                 else:
                     log(project_id, "Batas auto-fix tercapai.", "warning")
@@ -381,15 +487,13 @@ def jalankan_test(project_id: str, project_dir: Path,
 
 # ================================================
 # BUAT PROJECT — BACKGROUND
-# TAHAP 1: Planning (JSON kecil)
-# TAHAP 2: Generate tiap file satu per satu
 # ================================================
 def buat_project_background(project_id: str, deskripsi: str, nama: str):
     try:
         log(project_id, "Memulai pembuatan project...", "loading")
-        log(project_id, f"Model: {key_manager.get_info()[2]}", "info")
+        key_info = key_manager.get_info()
+        log(project_id, f"Model: {key_info['model']}", "info")
 
-        # ── TAHAP 1: PLANNING — hanya minta struktur, bukan isi file ──
         log(project_id, "Tahap 1: AI merancang struktur...", "loading")
 
         system_plan = (
@@ -405,7 +509,6 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
             '  "test_cmd": "python -m pytest tests/ -v"\n'
             "}"
         )
-
         user_plan = (
             f"Project: {nama}\n"
             f"Deskripsi: {deskripsi}\n"
@@ -424,27 +527,21 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
             save_state()
             return
 
-        daftar_file  = plan.get("files", [
-            "main.py", "requirements.txt", "README.md", "tests/test_main.py"
-        ])
-        install_cmd  = plan.get("install_cmd", "pip install -r requirements.txt")
-        run_cmd      = plan.get("run_cmd", "python main.py")
-        test_cmd     = plan.get("test_cmd", "python -m pytest tests/ -v")
-        tech_stack   = plan.get("tech_stack", "Python")
-        description  = plan.get("description", deskripsi)
+        daftar_file = plan.get("files", ["main.py","requirements.txt","README.md","tests/test_main.py"])
+        install_cmd = plan.get("install_cmd", "pip install -r requirements.txt")
+        run_cmd     = plan.get("run_cmd",     "python main.py")
+        test_cmd    = plan.get("test_cmd",    "python -m pytest tests/ -v")
+        tech_stack  = plan.get("tech_stack",  "Python")
+        description = plan.get("description", deskripsi)
 
         log(project_id, f"Struktur: {len(daftar_file)} file akan dibuat", "info")
         for f in daftar_file:
             log(project_id, f"  → {f}", "info")
 
-        # Buat folder project
         project_dir = BASE_DIR / nama
         project_dir.mkdir(parents=True, exist_ok=True)
-
-        # Buat subfolder
         for f in daftar_file:
-            subfolder = (project_dir / f).parent
-            subfolder.mkdir(parents=True, exist_ok=True)
+            (project_dir / f).parent.mkdir(parents=True, exist_ok=True)
 
         with _log_lock:
             projects[project_id]["folder"] = str(project_dir.resolve())
@@ -453,18 +550,14 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
             save_state()
 
         log(project_id, f"Folder: workspace/{nama}/", "folder")
-
-        # ── TAHAP 2: GENERATE TIAP FILE — satu per satu ──
         log(project_id, "Tahap 2: Generate file satu per satu...", "loading")
-        file_berhasil = []
 
+        file_berhasil = []
         for filename in daftar_file:
             filename = str(filename).strip().lstrip("/")
-            if not filename:
-                continue
+            if not filename: continue
 
             log(project_id, f"Generating: {filename}...", "loading")
-
             try:
                 isi = generate_satu_file(nama, deskripsi, filename, daftar_file)
             except Exception as e:
@@ -486,21 +579,16 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
             projects[project_id]["run_cmd"] = run_cmd
             save_state()
 
-        # Simpan metadata
         meta = {
-            "nama"       : nama,
-            "deskripsi"  : deskripsi,
-            "tech_stack" : tech_stack,
-            "run_cmd"    : run_cmd,
-            "install_cmd": install_cmd,
-            "test_cmd"   : test_cmd,
-            "files"      : file_berhasil,
+            "nama": nama, "deskripsi": deskripsi,
+            "tech_stack": tech_stack, "run_cmd": run_cmd,
+            "install_cmd": install_cmd, "test_cmd": test_cmd,
+            "files": file_berhasil,
         }
         (project_dir / ".ai_meta.json").write_text(
             json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
         )
 
-        # ── TAHAP 3: INSTALL ──
         req_file = project_dir / "requirements.txt"
         if req_file.exists():
             log(project_id, "Menginstall dependencies...", "loading")
@@ -511,10 +599,8 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
                 err_i = hasil_install["error"] or hasil_install["output"]
                 log(project_id, f"Warning install: {err_i[:200]}", "warning")
 
-        # ── TAHAP 4: TEST ──
         jalankan_test(project_id, project_dir, test_cmd, run_cmd)
 
-        # ── SELESAI ──
         log(project_id, "=" * 40, "info")
         log(project_id, f"Project '{nama}' berhasil dibuat!", "done")
         log(project_id, f"Tech Stack : {tech_stack}", "info")
@@ -528,8 +614,7 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
 
     except Exception as e:
         import traceback
-        tb  = traceback.format_exc()
-        msg = f"{str(e)}\n\n{tb[:800]}"
+        msg = f"{str(e)}\n\n{traceback.format_exc()[:800]}"
         log(project_id, f"Error tidak terduga: {str(e)}", "error")
         with _log_lock:
             projects[project_id]["status"] = "error"
@@ -551,7 +636,7 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
             return
 
         log(project_id, f"Membaca project: {nama}", "lanjut")
-        log(project_id, f"Model: {key_manager.get_info()[2]}", "info")
+        log(project_id, f"Model: {key_manager.get_info()['model']}", "info")
 
         with _log_lock:
             projects[project_id]["folder"] = str(project_dir.resolve())
@@ -562,7 +647,7 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
         if meta_file.exists():
             try:
                 meta = json.loads(meta_file.read_text(encoding="utf-8"))
-                log(project_id, f"Tech Stack: {meta.get('tech_stack','-')}", "info")
+                log(project_id, f"Tech Stack: {meta.get('tech_stack', '-')}", "info")
             except Exception:
                 pass
 
@@ -592,7 +677,7 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
             total_ch += len(fcontent)
 
         user_lanjut = (
-            f"Project: {nama} | Tech: {meta.get('tech_stack','Python')}\n"
+            f"Project: {nama} | Tech: {meta.get('tech_stack', 'Python')}\n"
             f"Permintaan: {permintaan}\n\n"
             f"File ada:\n{json.dumps(context, ensure_ascii=False)}"
         )
@@ -610,7 +695,7 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
             save_state()
             return
 
-        log(project_id, f"Analisis: {hasil.get('analysis','-')}", "info")
+        log(project_id, f"Analisis: {hasil.get('analysis', '-')}", "info")
 
         new_files = hasil.get("new_files",      {}) or {}
         mod_files = hasil.get("modified_files", {}) or {}
@@ -654,11 +739,11 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
                 str(project_dir), timeout=120,
             )
 
-        jalankan_test(project_id, project_dir, meta.get("test_cmd",""), run_cmd)
+        jalankan_test(project_id, project_dir, meta.get("test_cmd", ""), run_cmd)
 
         log(project_id, "=" * 40, "info")
         log(project_id, "Pengembangan selesai!", "done")
-        log(project_id, f"Notes: {hasil.get('notes','-')}", "info")
+        log(project_id, f"Notes: {hasil.get('notes', '-')}", "info")
         log(project_id, f"Baru: {len(new_files)} | Update: {len(mod_files)}", "info")
 
         with _log_lock:
@@ -668,8 +753,7 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
 
     except Exception as e:
         import traceback
-        tb  = traceback.format_exc()
-        msg = f"{str(e)}\n\n{tb[:800]}"
+        msg = f"{str(e)}\n\n{traceback.format_exc()[:800]}"
         log(project_id, f"Error: {str(e)}", "error")
         with _log_lock:
             projects[project_id]["status"] = "error"
@@ -679,7 +763,6 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
 # ================================================
 # ROUTES
 # ================================================
-
 @app.get("/", response_class=HTMLResponse)
 async def halaman_utama():
     html_file = Path("templates/index.html")
@@ -694,22 +777,23 @@ async def halaman_utama():
 @app.get("/test-ai")
 async def test_ai():
     hasil_cek = []
-    for i, (base_url, api_key, model) in enumerate(API_KEYS):
+    for i, key_info in enumerate(API_KEYS):
         try:
-            client = buat_client(base_url, api_key)
-            resp   = client.chat.completions.create(
-                model=model,
-                temperature=0.1,
-                messages=[{"role": "user", "content": "Balas: OK"}]
+            client = buat_client(key_info["base_url"], key_info["api_key"])
+            resp   = client.messages.create(
+                model      = key_info["model"],
+                max_tokens = 64,
+                messages   = [{"role": "user", "content": "Balas dengan kata: OK"}]
             )
+            reply = resp.content[0].text if resp.content else ""
             hasil_cek.append({
                 "index" : i, "status": "✅ sukses",
-                "model" : model, "reply": resp.choices[0].message.content,
+                "model" : key_info["model"], "reply": reply,
             })
         except Exception as e:
             hasil_cek.append({
                 "index" : i, "status": "❌ gagal",
-                "model" : model, "error": str(e),
+                "model" : key_info["model"], "error": str(e),
             })
     return JSONResponse({"keys": hasil_cek})
 
@@ -717,9 +801,9 @@ async def test_ai():
 @app.get("/list-models")
 async def list_models():
     try:
-        base_url, api_key, _ = API_KEYS[0]
-        client = buat_client(base_url, api_key)
-        models = client.models.list()
+        key_info = API_KEYS[0]
+        client   = buat_client(key_info["base_url"], key_info["api_key"])
+        models   = client.models.list()
         return JSONResponse({
             "total" : len(models.data),
             "models": sorted([m.id for m in models.data])
@@ -731,22 +815,16 @@ async def list_models():
 @app.post("/buat-project")
 async def buat_project_route(
     deskripsi: str = Form(...),
-    nama: str      = Form(...),
+    nama     : str = Form(...),
 ):
     nama       = re.sub(r"[^a-zA-Z0-9_\-]", "_", nama.strip())[:50] or "project_kuliah"
     project_id = str(uuid.uuid4())[:8]
 
     with _log_lock:
         projects[project_id] = {
-            "status" : "loading",
-            "logs"   : [],
-            "files"  : [],
-            "folder" : "",
-            "error"  : "",
-            "run_cmd": "",
-            "tech"   : "",
-            "desc"   : "",
-            "nama"   : nama,
+            "status": "loading", "logs": [], "files": [],
+            "folder": "", "error": "", "run_cmd": "",
+            "tech": "", "desc": "", "nama": nama,
         }
         save_state()
 
@@ -769,15 +847,9 @@ async def lanjut_project_route(
 
     with _log_lock:
         projects[project_id] = {
-            "status" : "loading",
-            "logs"   : [],
-            "files"  : [],
-            "folder" : "",
-            "error"  : "",
-            "run_cmd": "",
-            "tech"   : "",
-            "desc"   : "",
-            "nama"   : nama,
+            "status": "loading", "logs": [], "files": [],
+            "folder": "", "error": "", "run_cmd": "",
+            "tech": "", "desc": "", "nama": nama,
         }
         save_state()
 
@@ -823,11 +895,7 @@ async def lihat_files(project_id: str):
             isi = fp.read_text(encoding="utf-8", errors="ignore")
         except Exception:
             isi = "(tidak bisa dibaca)"
-        hasil.append({
-            "path"   : rel,
-            "content": isi,
-            "size"   : fp.stat().st_size,
-        })
+        hasil.append({"path": rel, "content": isi, "size": fp.stat().st_size})
 
     return JSONResponse({"files": hasil})
 
