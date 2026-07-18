@@ -107,12 +107,11 @@ UPSTREAM_WAIT_BASE  = 8
 PORT_START          = 9001
 PORT_END            = 9100
 
-# ✅ RATE LIMITING
-RATE_LIMIT_PER_MIN  = 30       # Max 30 request per menit per IP
-CACHE_TTL_SECONDS   = 3600     # Cache AI response 1 jam
-AUTO_CLEANUP_MIN    = 60       # Auto cleanup process idle 60 menit
+RATE_LIMIT_PER_MIN  = 30
+CACHE_TTL_SECONDS   = 3600
+AUTO_CLEANUP_MIN    = 60
 
-app = FastAPI(title="AI Project Maker — ULTIMATE Edition v2.0")
+app = FastAPI(title="AI Project Maker — ULTIMATE Edition v2.1")
 
 projects: dict = {}
 STATE_FILE = Path("projects_state.json")
@@ -120,8 +119,7 @@ STATE_FILE = Path("projects_state.json")
 running_processes: dict = {}
 _proc_lock = threading.Lock()
 
-# ✅ CACHE & STATS
-ai_cache          : dict = {}   # {hash: {response, timestamp}}
+ai_cache          : dict = {}
 _cache_lock       = threading.Lock()
 
 request_stats     : dict = defaultdict(lambda: {"count": 0, "success": 0, "failed": 0, "total_time": 0})
@@ -130,8 +128,7 @@ _stats_lock       = threading.Lock()
 rate_limit_store  : dict = defaultdict(lambda: deque(maxlen=100))
 _rate_lock        = threading.Lock()
 
-# ✅ WEBSOCKET CONNECTIONS
-websocket_connections: dict = defaultdict(set)   # {project_id: {websockets}}
+websocket_connections: dict = defaultdict(set)
 _ws_lock              = threading.Lock()
 
 # ================================================
@@ -156,15 +153,13 @@ def save_state():
 load_state()
 
 # ================================================
-# ✅ CACHE SYSTEM — Hemat token AI
+# CACHE SYSTEM
 # ================================================
 def cache_key(system: str, user: str) -> str:
-    """Generate hash untuk cache key"""
     content = f"{system}||{user}"
     return hashlib.sha256(content.encode()).hexdigest()[:16]
 
 def cache_get(system: str, user: str) -> str:
-    """Ambil dari cache jika masih valid"""
     key = cache_key(system, user)
     with _cache_lock:
         if key in ai_cache:
@@ -178,29 +173,21 @@ def cache_get(system: str, user: str) -> str:
     return None
 
 def cache_set(system: str, user: str, response: str):
-    """Simpan ke cache"""
     key = cache_key(system, user)
     with _cache_lock:
-        ai_cache[key] = {
-            "response" : response,
-            "timestamp": time.time(),
-        }
-        # Cleanup jika terlalu banyak
+        ai_cache[key] = {"response": response, "timestamp": time.time()}
         if len(ai_cache) > 200:
-            # Hapus 50 entry tertua
             sorted_items = sorted(ai_cache.items(), key=lambda x: x[1]["timestamp"])
             for k, _ in sorted_items[:50]:
                 del ai_cache[k]
 
 # ================================================
-# ✅ RATE LIMITING
+# RATE LIMITING
 # ================================================
 def check_rate_limit(client_id: str) -> bool:
-    """Return True jika masih boleh, False jika kena limit"""
     now = time.time()
     with _rate_lock:
         history = rate_limit_store[client_id]
-        # Hapus request lama (> 1 menit)
         while history and history[0] < now - 60:
             history.popleft()
         if len(history) >= RATE_LIMIT_PER_MIN:
@@ -209,7 +196,7 @@ def check_rate_limit(client_id: str) -> bool:
         return True
 
 # ================================================
-# MULTI KEY MANAGER — Enhanced
+# MULTI KEY MANAGER
 # ================================================
 class MultiKeyManager:
     def __init__(self, keys: list):
@@ -228,12 +215,10 @@ class MultiKeyManager:
             return self.keys[self.current_idx]
 
     def get_best_key(self) -> int:
-        """Pilih key dengan error paling sedikit"""
         with self._lock:
             best_idx = 0
             best_score = float('inf')
             for i in range(len(self.keys)):
-                # Score: error_count * 10 - success_count
                 score = self.error_counts[i] * 10 - self.success_counts[i]
                 if score < best_score:
                     best_score = score
@@ -312,10 +297,9 @@ def ambil_text(resp) -> str:
     return hasil.strip()
 
 # ================================================
-# ✅ TANYA AI — Cache + Smart Retry + Stats
+# TANYA AI
 # ================================================
 def tanya_ai(system_prompt: str, user_prompt: str, max_tokens: int = 4096, use_cache: bool = True) -> str:
-    # ✅ CEK CACHE
     if use_cache:
         cached = cache_get(system_prompt, user_prompt)
         if cached:
@@ -329,7 +313,6 @@ def tanya_ai(system_prompt: str, user_prompt: str, max_tokens: int = 4096, use_c
     total_attempts = 0
     max_total      = normal_retries_max + UPSTREAM_MAX_RETRY
 
-    # ✅ Mulai dari best key
     key_manager.get_best_key()
 
     while total_attempts < max_total:
@@ -357,7 +340,6 @@ def tanya_ai(system_prompt: str, user_prompt: str, max_tokens: int = 4096, use_c
                 raise Exception("Response kosong")
 
             key_manager.mark_success(elapsed)
-            
             with _stats_lock:
                 request_stats["total"]["count"] += 1
                 request_stats["total"]["success"] += 1
@@ -365,7 +347,6 @@ def tanya_ai(system_prompt: str, user_prompt: str, max_tokens: int = 4096, use_c
 
             print(f"[AI] ✅ {elapsed:.1f}s | {len(hasil)} chars")
 
-            # ✅ SIMPAN KE CACHE
             if use_cache:
                 cache_set(system_prompt, user_prompt, hasil)
 
@@ -446,25 +427,60 @@ def bersihkan_code(text: str) -> str:
         cleaned.append(line)
     return "\n".join(cleaned).strip()
 
+# ================================================
+# ✅ ULTRA TOLERAN JSON PARSER
+# ================================================
 def parse_json_toleran(text: str) -> dict:
+    if not text or not text.strip():
+        raise Exception("Empty response")
+
     text = bersihkan_json(text)
+
+    # ── Strategi 1: Parse langsung ──
     try:
         return json.loads(text)
-    except json.JSONDecodeError:
-        pass
+    except json.JSONDecodeError as e:
+        print(f"[JSON] Attempt 1 failed: {e}")
+
+    # ── Strategi 2: Ekstrak JSON dari text (cari {...}) ──
+    try:
+        # Cari JSON object pertama yang valid
+        match = re.search(r'\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}', text, re.DOTALL)
+        if match:
+            return json.loads(match.group(0))
+    except json.JSONDecodeError as e:
+        print(f"[JSON] Attempt 2 failed: {e}")
+
+    # ── Strategi 3: Ekstrak greedy — dari { pertama ke } terakhir ──
+    try:
+        start = text.find('{')
+        end   = text.rfind('}')
+        if start != -1 and end != -1 and end > start:
+            candidate = text[start:end+1]
+            return json.loads(candidate)
+    except json.JSONDecodeError as e:
+        print(f"[JSON] Attempt 3 failed: {e}")
+
+    # ── Strategi 4: Fix escape sequences ──
     try:
         fixed = re.sub(r'\\(?![\\"/bfnrtu])', r'\\\\', text)
         return json.loads(fixed)
-    except json.JSONDecodeError:
-        pass
+    except json.JSONDecodeError as e:
+        print(f"[JSON] Attempt 4 failed: {e}")
+
+    # ── Strategi 5: Fix + remove control chars + ekstrak greedy ──
     try:
         fixed = re.sub(r'\\(?![\\"/bfnrtu])', r'\\\\', text)
         fixed = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', fixed)
-        return json.loads(fixed)
-    except json.JSONDecodeError:
-        pass
+        start = fixed.find('{')
+        end   = fixed.rfind('}')
+        if start != -1 and end != -1:
+            return json.loads(fixed[start:end+1])
+    except json.JSONDecodeError as e:
+        print(f"[JSON] Attempt 5 failed: {e}")
 
-    print("[JSON] Fallback regex extract")
+    # ── Strategi 6: Regex extract manual field-by-field ──
+    print("[JSON] Fallback: regex extract per field")
     result = {
         "analysis": "", "new_files": {}, "modified_files": {}, "run_cmd": "",
         "notes": "", "description": "", "tech_stack": "", "files": [],
@@ -488,12 +504,64 @@ def parse_json_toleran(text: str) -> dict:
         fcontent = fcontent.replace('\\"', '"').replace('\\\\', '\\')
         result["modified_files"][fname] = fcontent
 
-    if not any([result["modified_files"], result["new_files"], result["fixed_files"], result["files"]]):
+    if not any([result["modified_files"], result["new_files"], result["fixed_files"],
+                result["files"], result["description"], result["run_cmd"]]):
         raise Exception("Tidak bisa parse JSON")
     return result
 
 # ================================================
-# LOG + WEBSOCKET BROADCAST
+# ✅ DEFAULT PLAN FALLBACK
+# ================================================
+def buat_default_plan(nama: str, deskripsi: str) -> dict:
+    """Auto-detect tipe project + generate default plan"""
+    desc_lower = deskripsi.lower()
+
+    # Deteksi tipe project
+    if any(k in desc_lower for k in ["fastapi", "rest api", "endpoint", "swagger", "web api"]):
+        ptype = "fastapi"
+        run_cmd = "uvicorn main:app --host 0.0.0.0 --port 8000"
+        files = ["main.py", "models.py", "database.py", "requirements.txt", "README.md", "tests/test_main.py"]
+        tech_stack = "Python + FastAPI + SQLAlchemy"
+    elif any(k in desc_lower for k in ["flask", "jinja"]):
+        ptype = "flask"
+        run_cmd = "python main.py"
+        files = ["main.py", "requirements.txt", "README.md", "tests/test_main.py"]
+        tech_stack = "Python + Flask"
+    elif any(k in desc_lower for k in ["cli", "command line", "terminal", "argparse"]):
+        ptype = "cli"
+        run_cmd = "python main.py"
+        files = ["main.py", "cli.py", "requirements.txt", "README.md"]
+        tech_stack = "Python + Click/Argparse"
+    elif any(k in desc_lower for k in ["ml ", "machine learning", "sklearn", "pandas",
+                                        "tensorflow", "prediksi", "klasifikasi"]):
+        ptype = "script"
+        run_cmd = "python main.py"
+        files = ["main.py", "train.py", "predict.py", "requirements.txt", "README.md"]
+        tech_stack = "Python + scikit-learn + pandas"
+    elif any(k in desc_lower for k in ["web", "http", "server", "html"]):
+        # Default web ke FastAPI
+        ptype = "fastapi"
+        run_cmd = "uvicorn main:app --host 0.0.0.0 --port 8000"
+        files = ["main.py", "requirements.txt", "README.md", "tests/test_main.py"]
+        tech_stack = "Python + FastAPI"
+    else:
+        ptype = "script"
+        run_cmd = "python main.py"
+        files = ["main.py", "requirements.txt", "README.md", "tests/test_main.py"]
+        tech_stack = "Python"
+
+    return {
+        "description" : deskripsi[:150],
+        "tech_stack"  : tech_stack,
+        "files"       : files[:MAX_FILES_PER_PROJ],
+        "install_cmd" : "pip install -r requirements.txt",
+        "run_cmd"     : run_cmd,
+        "test_cmd"    : "python -m pytest tests/ -v",
+        "project_type": ptype,
+    }
+
+# ================================================
+# LOG + WEBSOCKET
 # ================================================
 _log_lock = threading.Lock()
 
@@ -511,19 +579,14 @@ def log(project_id: str, pesan: str, level: str = "info"):
             projects[project_id]["logs"].append(entry)
             save_state()
     print(f"[{project_id}] {entry}")
-    # ✅ Broadcast ke websocket
     broadcast_ws(project_id, {"type": "log", "message": entry, "level": level})
 
 def broadcast_ws(project_id: str, data: dict):
-    """Kirim update ke semua websocket client yang subscribe"""
     with _ws_lock:
         conns = list(websocket_connections.get(project_id, set()))
     for ws in conns:
         try:
-            asyncio.run_coroutine_threadsafe(
-                ws.send_json(data),
-                asyncio.get_event_loop()
-            )
+            asyncio.run_coroutine_threadsafe(ws.send_json(data), asyncio.get_event_loop())
         except Exception:
             pass
 
@@ -571,10 +634,9 @@ def baca_file_full(project_dir: Path) -> dict:
     return semua
 
 # ================================================
-# ✅ BACKUP SYSTEM
+# BACKUP SYSTEM
 # ================================================
 def backup_project(project_dir: Path, nama: str) -> str:
-    """Backup project sebelum modifikasi"""
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup_name = f"{nama}_{timestamp}.zip"
     backup_path = BACKUPS_DIR / backup_name
@@ -592,7 +654,6 @@ def backup_project(project_dir: Path, nama: str) -> str:
         return ""
 
 def list_backups(nama: str = None) -> list:
-    """List semua backup, optional filter by nama project"""
     hasil = []
     if not BACKUPS_DIR.exists():
         return hasil
@@ -600,10 +661,10 @@ def list_backups(nama: str = None) -> list:
         if not fp.is_file() or fp.suffix != ".zip": continue
         if nama and not fp.name.startswith(nama + "_"): continue
         hasil.append({
-            "name"     : fp.name,
-            "size"     : fp.stat().st_size,
-            "created"  : fp.stat().st_mtime,
-            "project"  : fp.name.rsplit("_", 2)[0],
+            "name"    : fp.name,
+            "size"    : fp.stat().st_size,
+            "created" : fp.stat().st_mtime,
+            "project" : fp.name.rsplit("_", 2)[0],
         })
     return hasil
 
@@ -628,12 +689,12 @@ def generate_satu_file(nama_project: str, deskripsi: str, filename: str, daftar_
 
     if filename == "requirements.txt":
         system = "Programmer Python. Tulis requirements.txt saja."
-        user = f"Project: {nama_project} - {desc_short}\nTulis requirements.txt (satu library per baris, no komentar):" + ANTI_MARKDOWN
+        user = f"Project: {nama_project} - {desc_short}\nTulis requirements.txt (satu library per baris):" + ANTI_MARKDOWN
         return bersihkan_code(tanya_ai(system, user, max_tokens=400))
 
     elif filename == "README.md":
-        system = "Tulis README.md singkat dan padat."
-        user = f"Project: {nama_project}\nDeskripsi: {desc_short}\nTulis README.md: judul, deskripsi, install, cara pakai, fitur."
+        system = "Tulis README.md singkat."
+        user = f"Project: {nama_project}\nDeskripsi: {desc_short}\nTulis README.md: judul, deskripsi, install, cara pakai."
         return bersihkan_code(tanya_ai(system, user, max_tokens=1500))
 
     elif "test" in filename.lower():
@@ -696,7 +757,7 @@ def perbaiki_error(project_id: str, project_dir: Path, error_msg: str):
         log(project_id, f"Error perbaiki: {e}", "error")
 
 # ================================================
-# BUAT PROJECT
+# ✅ BUAT PROJECT — DENGAN RETRY & FALLBACK PLANNING
 # ================================================
 def buat_project_background(project_id: str, deskripsi: str, nama: str):
     try:
@@ -705,47 +766,91 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
         log(project_id, f"Model: {key_info['model']}", "info")
         log(project_id, "Tahap 1: AI merancang struktur...", "loading")
 
+        # ✅ Prompt sangat tegas dengan contoh lengkap
         system_plan = (
-            "Kamu arsitek software Python. Rancang struktur project SEDERHANA.\n\n"
-            "Balas HANYA JSON valid tanpa markdown:\n"
+            "Kamu arsitek software Python profesional.\n\n"
+            "TUGAS: Balas HANYA dengan JSON valid. TIDAK ADA teks lain.\n"
+            "TIDAK ADA ```json, TIDAK ADA penjelasan, TIDAK ADA markdown.\n"
+            "Langsung mulai dengan { dan akhiri dengan }.\n\n"
+            "FORMAT WAJIB (contoh):\n"
             "{\n"
-            '  "description": "deskripsi singkat",\n'
-            '  "tech_stack": "teknologi",\n'
-            '  "files": ["main.py","requirements.txt","README.md","tests/test_main.py"],\n'
+            '  "description": "Sistem perpustakaan dengan CRUD buku",\n'
+            '  "tech_stack": "Python + FastAPI + SQLAlchemy",\n'
+            '  "files": ["main.py", "models.py", "requirements.txt", "README.md"],\n'
             '  "install_cmd": "pip install -r requirements.txt",\n'
-            '  "run_cmd": "python main.py",\n'
+            '  "run_cmd": "uvicorn main:app --host 0.0.0.0 --port 8000",\n'
             '  "test_cmd": "python -m pytest tests/ -v",\n'
-            '  "project_type": "cli|fastapi|flask|script"\n'
-            "}"
+            '  "project_type": "fastapi"\n'
+            "}\n\n"
+            "ATURAN:\n"
+            "- project_type WAJIB salah satu: cli, fastapi, flask, script\n"
+            "- files WAJIB array of string (nama file)\n"
+            f"- MAKSIMAL {MAX_FILES_PER_PROJ} file\n"
+            "- SEMUA field WAJIB ada\n"
+            "- Balas HANYA JSON, tidak ada kata pengantar\n"
         )
         user_plan = (
-            f"Project: {nama}\nDeskripsi: {deskripsi[:300]}\n"
-            f"MAKSIMAL {MAX_FILES_PER_PROJ} file. project_type dipilih: cli, fastapi, flask, atau script."
+            f"Nama project: {nama}\n"
+            f"Deskripsi user: {deskripsi[:300]}\n\n"
+            "Balas JSON sesuai format di atas SEKARANG:"
         )
 
-        raw_plan = tanya_ai(system_plan, user_plan, max_tokens=800)
+        raw_plan = tanya_ai(system_plan, user_plan, max_tokens=800, use_cache=False)
+        print(f"[PLAN] Raw response (500 chars): {raw_plan[:500]}")
 
+        # ✅ ATTEMPT 1: Parse dengan strategi normal
+        plan = None
         try:
             plan = parse_json_toleran(raw_plan)
+            log(project_id, "✓ Planning JSON valid", "success")
         except Exception as e:
-            msg = f"Gagal parse planning: {e}"
-            log(project_id, msg, "error")
-            projects[project_id]["status"] = "error"
-            projects[project_id]["error"]  = msg
-            save_state()
-            broadcast_ws(project_id, {"type": "status", "status": "error"})
-            return
+            print(f"[PLAN] Attempt 1 failed: {e}")
+            log(project_id, "Retry planning (JSON invalid)...", "warning")
+
+            # ✅ ATTEMPT 2: Prompt lebih ketat
+            system_retry = (
+                "OUTPUT JSON ONLY. NO EXPLANATION. NO MARKDOWN.\n"
+                "Start with { end with }. Nothing else before or after.\n\n"
+                "Example:\n"
+                '{"description":"...","tech_stack":"...","files":["main.py","requirements.txt","README.md"],'
+                '"install_cmd":"pip install -r requirements.txt",'
+                '"run_cmd":"python main.py","test_cmd":"pytest",'
+                '"project_type":"fastapi"}'
+            )
+            user_retry = f"Project: {nama} - {deskripsi[:200]}\n\nJSON:"
+
+            try:
+                raw_retry = tanya_ai(system_retry, user_retry, max_tokens=600, use_cache=False)
+                print(f"[PLAN Retry] Raw: {raw_retry[:500]}")
+                plan = parse_json_toleran(raw_retry)
+                log(project_id, "✓ Retry berhasil!", "success")
+            except Exception as e2:
+                print(f"[PLAN] Retry failed: {e2}")
+                # ✅ ATTEMPT 3: FALLBACK ke default plan
+                log(project_id, "AI tidak mau balas JSON, pakai default plan otomatis...", "warning")
+                plan = buat_default_plan(nama, deskripsi)
+                log(project_id, "✓ Default plan dibuat", "success")
+
+        # Ensure plan is dict
+        if not isinstance(plan, dict) or not plan:
+            plan = buat_default_plan(nama, deskripsi)
 
         daftar_file = plan.get("files") or ["main.py","requirements.txt","README.md","tests/test_main.py"]
+        if not isinstance(daftar_file, list):
+            daftar_file = ["main.py","requirements.txt","README.md","tests/test_main.py"]
         if len(daftar_file) > MAX_FILES_PER_PROJ:
             daftar_file = daftar_file[:MAX_FILES_PER_PROJ]
 
-        install_cmd  = plan.get("install_cmd", "pip install -r requirements.txt")
-        run_cmd      = plan.get("run_cmd",     "python main.py")
-        test_cmd     = plan.get("test_cmd",    "python -m pytest tests/ -v")
-        tech_stack   = plan.get("tech_stack",  "Python")
-        description  = plan.get("description", deskripsi)
+        install_cmd  = plan.get("install_cmd") or "pip install -r requirements.txt"
+        run_cmd      = plan.get("run_cmd") or "python main.py"
+        test_cmd     = plan.get("test_cmd") or "python -m pytest tests/ -v"
+        tech_stack   = plan.get("tech_stack") or "Python"
+        description  = plan.get("description") or deskripsi
         project_type = (plan.get("project_type") or "script").lower()
+
+        # Validate project_type
+        if project_type not in ["cli", "fastapi", "flask", "script"]:
+            project_type = "script"
 
         log(project_id, f"Struktur: {len(daftar_file)} file", "info")
         log(project_id, f"Tipe: {project_type}", "info")
@@ -854,7 +959,7 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
         broadcast_ws(project_id, {"type": "status", "status": "error"})
 
 # ================================================
-# LANJUT PROJECT — dengan BACKUP otomatis
+# ✅ LANJUT PROJECT — DENGAN RETRY & BACKUP
 # ================================================
 def lanjut_project_background(project_id: str, nama: str, permintaan: str):
     try:
@@ -865,8 +970,8 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
             save_state()
             return
 
-        # ✅ BACKUP DULU
-        log(project_id, "Backup project sebelum modifikasi...", "loading")
+        # Backup dulu
+        log(project_id, "Backup project...", "loading")
         backup_name = backup_project(project_dir, nama)
         if backup_name:
             log(project_id, f"Backup: {backup_name}", "info")
@@ -886,17 +991,29 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
 
         semua_file = baca_semua_file(project_dir, max_chars=400)
 
+        # ✅ Prompt sangat tegas
         system_lanjut = (
-            "Programmer Python expert. Kembangkan project sesuai permintaan.\n\n"
-            "Balas HANYA JSON valid tanpa markdown.\n"
-            "PENTING escape: \\ jadi \\\\, newline jadi \\n, kutip jadi \\\".\n\n"
+            "Kamu programmer Python expert.\n\n"
+            "TUGAS: Balas HANYA JSON valid. TIDAK ADA teks lain.\n"
+            "TIDAK ADA ```json, TIDAK ADA markdown, TIDAK ADA penjelasan.\n"
+            "Mulai dengan { akhiri dengan }.\n\n"
+            "ESCAPE aturan JSON:\n"
+            "- Backslash \\ → \\\\\n"
+            "- Newline → \\n\n"
+            "- Double quote → \\\"\n"
+            "- Tab → \\t\n\n"
+            "FORMAT (contoh):\n"
             "{\n"
-            '  "analysis": "singkat",\n'
-            '  "new_files": {"path/file.py": "code"},\n'
-            '  "modified_files": {"path/file.py": "code"},\n'
-            '  "run_cmd": "perintah",\n'
-            '  "notes": "ringkasan"\n'
-            "}"
+            '  "analysis": "menambahkan endpoint login",\n'
+            '  "new_files": {"auth.py": "from fastapi import ..."},\n'
+            '  "modified_files": {"main.py": "from fastapi import ..."},\n'
+            '  "run_cmd": "uvicorn main:app --host 0.0.0.0 --port 8000",\n'
+            '  "notes": "auth JWT ditambahkan"\n'
+            "}\n\n"
+            "ATURAN:\n"
+            "- new_files & modified_files: dict {path: code_lengkap}\n"
+            "- code harus escape dengan benar\n"
+            "- HANYA JSON, tidak ada kata lain\n"
         )
 
         context, total_ch = {}, 0
@@ -908,29 +1025,59 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
         user_lanjut = (
             f"Project: {nama} | Tech: {meta.get('tech_stack', 'Python')}\n"
             f"Permintaan: {permintaan}\n\n"
-            f"File ada:\n{json.dumps(context, ensure_ascii=False)}"
+            f"File ada:\n{json.dumps(context, ensure_ascii=False)}\n\n"
+            "Balas JSON sekarang:"
         )
 
         log(project_id, "AI mengembangkan...", "loading")
         raw_lanjut = tanya_ai(system_lanjut, user_lanjut, max_tokens=5000, use_cache=False)
+        print(f"[LANJUT] Raw (500 chars): {raw_lanjut[:500]}")
 
+        # ✅ ATTEMPT 1
+        hasil = None
         try:
             hasil = parse_json_toleran(raw_lanjut)
         except Exception as e:
-            msg = f"JSON invalid: {e}"
-            log(project_id, msg, "error")
-            projects[project_id]["status"] = "error"
-            projects[project_id]["error"]  = msg
-            save_state()
-            return
+            print(f"[LANJUT] Attempt 1 failed: {e}")
+            log(project_id, "Retry AI (JSON invalid)...", "warning")
+
+            # ✅ ATTEMPT 2: Prompt lebih simple
+            system_retry = (
+                "JSON ONLY. Start { end }. No text.\n\n"
+                'Format: {"analysis":"...","modified_files":{"file.py":"code"},'
+                '"new_files":{},"run_cmd":"python main.py","notes":"..."}'
+            )
+            user_retry = (
+                f"Project: {nama}\nPermintaan: {permintaan[:200]}\n"
+                f"File: {list(semua_file.keys())[:5]}\n\nJSON:"
+            )
+
+            try:
+                raw_retry = tanya_ai(system_retry, user_retry, max_tokens=4000, use_cache=False)
+                print(f"[LANJUT Retry] Raw: {raw_retry[:500]}")
+                hasil = parse_json_toleran(raw_retry)
+                log(project_id, "✓ Retry berhasil!", "success")
+            except Exception as e2:
+                msg = f"AI gagal 2x: {e2}\nRaw: {raw_lanjut[:300]}"
+                log(project_id, msg, "error")
+                projects[project_id]["status"] = "error"
+                projects[project_id]["error"]  = msg
+                save_state()
+                return
+
+        if not isinstance(hasil, dict):
+            hasil = {}
 
         log(project_id, f"Analisis: {hasil.get('analysis', '-')}", "info")
 
         new_files = hasil.get("new_files", {}) or {}
         mod_files = hasil.get("modified_files", {}) or {}
 
+        if not isinstance(new_files, dict): new_files = {}
+        if not isinstance(mod_files, dict): mod_files = {}
+
         if not new_files and not mod_files:
-            log(project_id, "AI tidak mengusulkan perubahan.", "warning")
+            log(project_id, "AI tidak mengusulkan perubahan file.", "warning")
 
         for filename, content in {**new_files, **mod_files}.items():
             filename = str(filename).strip().lstrip("/")
@@ -963,15 +1110,15 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
             jalankan_cmd(meta.get("install_cmd", "pip install -r requirements.txt"),
                         str(project_dir), timeout=180)
 
-        # ✅ Auto-restart jika sedang running
+        # Auto-restart jika sedang running
         was_running = project_id in running_processes
         if was_running:
-            log(project_id, "Auto-restart karena project sedang running...", "info")
+            log(project_id, "Auto-restart...", "info")
             stop_project(project_id)
             time.sleep(1)
             run_project(project_id, project_dir, run_cmd,
                        meta.get("project_type", "script"))
-            log(project_id, "Project restarted!", "success")
+            log(project_id, "Restarted!", "success")
 
         log(project_id, "Pengembangan selesai!", "done")
         with _log_lock:
@@ -997,12 +1144,11 @@ def cari_port_kosong() -> int:
             used_ports.add(pinfo.get("port", 0))
     for port in range(PORT_START, PORT_END):
         if port not in used_ports:
-            # Cek juga apakah port beneran kosong
             try:
                 with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                     s.settimeout(0.5)
                     result = s.connect_ex(("127.0.0.1", port))
-                    if result != 0:  # port kosong
+                    if result != 0:
                         return port
             except Exception:
                 return port
@@ -1035,7 +1181,6 @@ def stream_output(project_id: str, proc):
                     running_processes[project_id]["logs"].append(line.rstrip())
                     if len(running_processes[project_id]["logs"]) > 500:
                         running_processes[project_id]["logs"] = running_processes[project_id]["logs"][-500:]
-            # ✅ Broadcast log realtime
             broadcast_ws(project_id, {"type": "runlog", "line": line.rstrip()})
     except Exception as e:
         with _proc_lock:
@@ -1094,13 +1239,12 @@ def run_project(project_id: str, project_dir: Path, run_cmd: str, project_type: 
         return {"sukses": False, "error": str(e)}
 
 # ================================================
-# ✅ AUTO CLEANUP idle processes
+# AUTO CLEANUP
 # ================================================
 def cleanup_idle_processes():
-    """Hentikan process yang idle > AUTO_CLEANUP_MIN menit"""
     while True:
         try:
-            time.sleep(300)  # cek tiap 5 menit
+            time.sleep(300)
             now = time.time()
             idle_pids = []
             with _proc_lock:
@@ -1156,7 +1300,6 @@ async def health_upstream():
             hasil.append({"index": i, "model": k["model"], "status": "❌ error", "error": str(e)[:150]})
     return JSONResponse({"keys": hasil})
 
-# ✅ Stats endpoint
 @app.get("/stats")
 async def get_stats():
     with _stats_lock:
@@ -1187,25 +1330,20 @@ async def get_stats():
         }
     })
 
-# ✅ Backup endpoints
 @app.get("/backups")
 async def list_backups_route(nama: str = None):
     return JSONResponse({"backups": list_backups(nama)})
 
 @app.post("/restore/{backup_name}")
 async def restore_backup(backup_name: str):
-    """Restore project dari backup"""
     backup_path = BACKUPS_DIR / backup_name
     if not backup_path.exists():
         return JSONResponse({"error": "Backup tidak ada"}, status_code=404)
     try:
-        # Ekstrak nama project dari backup filename
         project_name = backup_name.rsplit("_", 2)[0]
         target_dir = BASE_DIR / project_name
-        # Buat backup dari state saat ini dulu
         if target_dir.exists():
             backup_project(target_dir, project_name + "_before_restore")
-        # Ekstrak backup
         with zipfile.ZipFile(backup_path, "r") as zf:
             zf.extractall(target_dir)
         return JSONResponse({"success": True, "restored_to": str(target_dir)})
@@ -1223,7 +1361,6 @@ async def delete_backup(backup_name: str):
     except Exception as e:
         return JSONResponse({"error": str(e)}, status_code=500)
 
-# ✅ Cache management
 @app.post("/cache/clear")
 async def clear_cache():
     with _cache_lock:
@@ -1233,7 +1370,6 @@ async def clear_cache():
 
 @app.post("/buat-project")
 async def buat_project_route(request: Request, deskripsi: str = Form(...), nama: str = Form(...)):
-    # ✅ RATE LIMIT
     client_ip = request.client.host
     if not check_rate_limit(client_ip):
         return JSONResponse({"error": f"Rate limit! Max {RATE_LIMIT_PER_MIN}/menit"}, status_code=429)
@@ -1312,7 +1448,6 @@ async def lihat_files(project_id: str):
         hasil.append({"path": rel, "content": isi, "size": fp.stat().st_size})
     return JSONResponse({"files": hasil})
 
-# ✅ Edit file langsung dari web
 @app.post("/files/{project_id}/save")
 async def save_file_route(project_id: str, path: str = Form(...), content: str = Form(...)):
     if project_id not in projects:
@@ -1324,7 +1459,6 @@ async def save_file_route(project_id: str, path: str = Form(...), content: str =
     target = (project_dir / path.lstrip("/")).resolve()
     if not str(target).startswith(str(project_dir.resolve())):
         return JSONResponse({"error": "Path unsafe"}, status_code=400)
-    # Backup dulu
     backup_project(project_dir, projects[project_id]["nama"])
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(content, encoding="utf-8")
@@ -1361,7 +1495,6 @@ async def list_projects_route():
         file_count = sum(1 for f in folder.rglob("*")
                         if f.is_file() and f.name != ".ai_meta.json"
                         and not any(s in f.parts for s in SKIP_DIRS))
-        # Cek apakah running
         is_running = False
         with _proc_lock:
             for pid, info in running_processes.items():
@@ -1383,17 +1516,14 @@ async def list_projects_route():
 
 @app.delete("/project/{nama}")
 async def delete_project(nama: str):
-    """Hapus project"""
     project_dir = BASE_DIR / nama
     if not project_dir.exists():
         return JSONResponse({"error": "Not found"}, status_code=404)
-    # Stop semua process untuk project ini
     with _proc_lock:
         pids_to_stop = [pid for pid, info in running_processes.items()
                        if projects.get(pid, {}).get("nama") == nama]
     for pid in pids_to_stop:
         stop_project(pid)
-    # Backup dulu sebelum hapus
     backup_project(project_dir, nama + "_before_delete")
     try:
         shutil.rmtree(project_dir)
@@ -1433,12 +1563,10 @@ async def run_project_route(project_id: str):
 @app.post("/stop/{project_id}")
 async def stop_project_route(project_id: str):
     stopped = stop_project(project_id)
-    return JSONResponse({"success": stopped,
-                        "message": "Dihentikan" if stopped else "No process"})
+    return JSONResponse({"success": stopped, "message": "Dihentikan" if stopped else "No process"})
 
 @app.post("/restart/{project_id}")
 async def restart_project_route(project_id: str):
-    """Stop + Run lagi"""
     stop_project(project_id)
     time.sleep(1)
     return await run_project_route(project_id)
@@ -1449,7 +1577,6 @@ async def run_logs_route(project_id: str):
         info = running_processes.get(project_id)
         if not info:
             return JSONResponse({"logs": [], "alive": False})
-        # Update last_access
         info["last_access"] = time.time()
         proc = info["process"]
         is_web = info.get("type") in ["fastapi", "flask"]
@@ -1498,7 +1625,7 @@ async def running_list_route():
     return JSONResponse({"running": hasil})
 
 # ================================================
-# ✅ WEBSOCKET untuk realtime updates
+# WEBSOCKET
 # ================================================
 @app.websocket("/ws/{project_id}")
 async def websocket_endpoint(websocket: WebSocket, project_id: str):
@@ -1507,7 +1634,6 @@ async def websocket_endpoint(websocket: WebSocket, project_id: str):
         websocket_connections[project_id].add(websocket)
     try:
         while True:
-            # Keep alive
             await websocket.receive_text()
     except WebSocketDisconnect:
         with _ws_lock:
@@ -1527,7 +1653,7 @@ async def proxy_to_project(project_id: str, request: Request, path: str = ""):
     with _proc_lock:
         info = running_processes.get(project_id)
         if info:
-            info["last_access"] = time.time()   # Update access
+            info["last_access"] = time.time()
 
     if not info:
         return HTMLResponse(content=f"""
@@ -1601,13 +1727,14 @@ def cleanup_on_shutdown():
             except Exception: pass
         running_processes.clear()
 
-print("=" * 50)
-print("🚀 AI Project Maker ULTIMATE Edition v2.0")
-print("=" * 50)
+print("=" * 60)
+print("🚀 AI Project Maker ULTIMATE Edition v2.1")
+print("=" * 60)
 print(f"✨ Cache system: TTL {CACHE_TTL_SECONDS}s")
 print(f"🛡️  Rate limit: {RATE_LIMIT_PER_MIN}/menit per IP")
 print(f"💾 Auto backup: sebelum modifikasi")
 print(f"🧹 Auto cleanup: idle {AUTO_CLEANUP_MIN} menit")
-print(f"📊 Stats endpoint: /stats")
-print(f"🔄 WebSocket: /ws/{{project_id}}")
-print("=" * 50)
+print(f"📊 Stats: /stats  ·  Backup: /backups")
+print(f"🔌 WebSocket: /ws/{{project_id}}")
+print(f"🎯 Smart planning: 3-tier fallback (AI → Retry → Default)")
+print("=" * 60)
