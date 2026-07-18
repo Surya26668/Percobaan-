@@ -1,5 +1,5 @@
 fastapi
 uvicorn[standard]
 openai
-jinja2
+httpx
 python-multipart
