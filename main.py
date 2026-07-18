@@ -8,7 +8,7 @@ import time
 import httpx
 from pathlib import Path
 
-from fastapi import FastAPI, Request, Form
+from fastapi import FastAPI, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from openai import OpenAI
 
@@ -24,7 +24,7 @@ API_KEYS = [
     (
         "https://freetokenfaucet.com/v1",
         "tf_c908113f2e9c45f091efd1f39a803a24",
-        "gpt-5.6-terra",
+        "gpt-5.6-luna",
     ),
     (
         "https://freetokenfaucet.com/v1",
@@ -38,7 +38,7 @@ API_KEYS = [
     ),
 ]
 
-MAX_FIX  = 3
+MAX_FIX  = 2
 BASE_DIR = Path("workspace")
 BASE_DIR.mkdir(exist_ok=True)
 Path("templates").mkdir(exist_ok=True)
@@ -82,19 +82,9 @@ class MultiKeyManager:
         self.error_counts = [0] * len(keys)
         self._lock        = threading.Lock()
 
-    def get_client(self) -> tuple:
+    def get_info(self) -> tuple:
         with self._lock:
-            base_url, api_key, model = self.keys[self.current_idx]
-        client = OpenAI(
-            base_url=base_url,
-            api_key=api_key,
-            timeout=120.0,
-            http_client=httpx.Client(
-                timeout=120.0,
-                verify=False,
-            )
-        )
-        return client, model
+            return self.keys[self.current_idx]
 
     def next_key(self):
         with self._lock:
@@ -130,18 +120,29 @@ class MultiKeyManager:
 key_manager = MultiKeyManager(API_KEYS)
 
 # ================================================
-# TANYA AI
+# BUAT CLIENT
+# ================================================
+def buat_client(base_url: str, api_key: str) -> OpenAI:
+    return OpenAI(
+        base_url=base_url,
+        api_key=api_key,
+        timeout=90.0,
+        http_client=httpx.Client(timeout=90.0, verify=False)
+    )
+
+# ================================================
+# TANYA AI — PROMPT PENDEK, ROTATE OTOMATIS
 # ================================================
 def tanya_ai(system_prompt: str, user_prompt: str) -> str:
-    last_error = "tidak ada error"
-    max_retries = len(API_KEYS) * 2
+    last_error  = "tidak ada error"
+    max_retries = len(API_KEYS) * 3
 
     for attempt in range(max_retries):
-        base_url, api_key, model = API_KEYS[key_manager.current_idx]
+        base_url, api_key, model = key_manager.get_info()
         print(f"[AI] Attempt {attempt+1}/{max_retries} | model={model}")
 
         try:
-            client, model = key_manager.get_client()
+            client   = buat_client(base_url, api_key)
             response = client.chat.completions.create(
                 model=model,
                 temperature=0.1,
@@ -151,38 +152,26 @@ def tanya_ai(system_prompt: str, user_prompt: str) -> str:
                 ]
             )
             hasil = (response.choices[0].message.content or "").strip()
-            print(f"[AI] ✅ Sukses! {len(hasil)} karakter")
+            print(f"[AI] ✅ Sukses! {len(hasil)} karakter | model={model}")
             return hasil
 
         except Exception as e:
             last_error = str(e)
-            err_str    = last_error.lower()
             print(f"[AI] ❌ Error: {last_error}")
+            key_manager.mark_error()
 
-            if any(k in err_str for k in [
-                "rate_limit","rate limit","quota","exceeded",
-                "unauthorized","invalid_api_key","insufficient",
-                "429","401","403",
-            ]):
-                key_manager.mark_error()
-                time.sleep(1)
-            elif any(k in err_str for k in [
-                "connection","timeout","network","ssl",
-                "connect","refused","unreachable",
-            ]):
+            err_str = last_error.lower()
+            if any(k in err_str for k in ["connection","timeout","ssl","refused"]):
                 time.sleep(3)
             else:
-                time.sleep(2)
+                time.sleep(1)
 
-    raise Exception(
-        f"Semua API key gagal. Error terakhir: {last_error}"
-    )
+    raise Exception(f"Semua key/model gagal. Error terakhir: {last_error}")
 
 def bersihkan_json(text: str) -> str:
     text = text.strip()
     if "```" in text:
-        lines = text.splitlines()
-        lines = [l for l in lines if not l.strip().startswith("```")]
+        lines = [l for l in text.splitlines() if not l.strip().startswith("```")]
         text  = "\n".join(lines).strip()
     return text
 
@@ -239,7 +228,7 @@ SKIP_DIRS = {"node_modules","__pycache__",".git","venv",".venv",".mypy_cache"}
 READ_EXTS  = {".py",".js",".ts",".html",".css",".json",".txt",
               ".md",".env",".yaml",".yml",".toml"}
 
-def baca_semua_file(project_dir: Path, max_chars: int = 500) -> dict:
+def baca_semua_file(project_dir: Path, max_chars: int = 400) -> dict:
     semua = {}
     for fp in sorted(project_dir.rglob("*")):
         if not fp.is_file(): continue
@@ -268,6 +257,49 @@ def baca_file_full(project_dir: Path) -> dict:
     return semua
 
 # ================================================
+# GENERATE SATU FILE — PROMPT KECIL
+# ================================================
+def generate_satu_file(nama_project: str, deskripsi: str,
+                        filename: str, daftar_file: list) -> str:
+    """Generate isi satu file saja — prompt kecil agar tidak timeout"""
+
+    ext = Path(filename).suffix.lower()
+
+    if filename == "requirements.txt":
+        system = "Kamu adalah programmer Python. Tulis requirements.txt saja."
+        user   = (
+            f"Project: {nama_project}\n"
+            f"Deskripsi: {deskripsi}\n"
+            f"File lain di project: {', '.join(daftar_file)}\n\n"
+            "Tulis HANYA isi requirements.txt (satu library per baris, tanpa komentar)."
+        )
+    elif filename == "README.md":
+        system = "Kamu adalah technical writer. Tulis README.md saja."
+        user   = (
+            f"Project: {nama_project}\n"
+            f"Deskripsi: {deskripsi}\n\n"
+            "Tulis README.md dengan: deskripsi, cara install, cara pakai, struktur file."
+        )
+    elif "test" in filename:
+        system = "Kamu adalah programmer Python expert. Tulis file unit test saja."
+        user   = (
+            f"Project: {nama_project}\n"
+            f"Deskripsi: {deskripsi}\n\n"
+            f"Tulis HANYA isi file {filename} berisi unit test pytest yang relevan. "
+            "Jangan import modul yang belum tentu ada, gunakan mock jika perlu."
+        )
+    else:
+        system = "Kamu adalah programmer Python expert. Tulis satu file Python saja."
+        user   = (
+            f"Project: {nama_project}\n"
+            f"Deskripsi: {deskripsi}\n\n"
+            f"Tulis HANYA isi file {filename} secara LENGKAP dan bisa langsung dijalankan. "
+            "Gunakan best practice Python. Komentar dalam bahasa Indonesia."
+        )
+
+    return tanya_ai(system, user)
+
+# ================================================
 # PERBAIKI ERROR
 # ================================================
 def perbaiki_error(project_id: str, project_dir: Path, error_msg: str):
@@ -278,19 +310,22 @@ def perbaiki_error(project_id: str, project_dir: Path, error_msg: str):
         return
 
     system = (
-        "Kamu adalah debugger Python. "
-        "Perbaiki error. Balas HANYA JSON valid:\n"
-        '{"analysis":"penjelasan","fixed_files":{"path/file.py":"code lengkap"}}'
+        "Kamu adalah debugger Python expert.\n"
+        "Perbaiki error. Balas HANYA JSON valid tanpa markdown:\n"
+        '{"analysis":"penjelasan","fixed_files":{"path/file.py":"code LENGKAP"}}'
     )
 
     context = {}
     total   = 0
     for k, v in semua_file.items():
-        if total > 6000: break
+        if total > 4000: break
         context[k] = v
         total += len(v)
 
-    user = f"ERROR:\n{error_msg[:1000]}\n\nFILE:\n{json.dumps(context, ensure_ascii=False)}"
+    user = (
+        f"ERROR:\n{error_msg[:600]}\n\n"
+        f"FILE:\n{json.dumps(context, ensure_ascii=False)}"
+    )
 
     try:
         raw  = tanya_ai(system, user)
@@ -308,13 +343,11 @@ def perbaiki_error(project_id: str, project_dir: Path, error_msg: str):
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(new_code, encoding="utf-8")
             log(project_id, f"Diperbaiki: {filename}", "fix")
-    except json.JSONDecodeError as e:
-        log(project_id, f"Gagal parse JSON: {e}", "error")
     except Exception as e:
         log(project_id, f"Error perbaiki: {e}", "error")
 
 # ================================================
-# TEST OTOMATIS + AUTO FIX
+# TEST OTOMATIS
 # ================================================
 def jalankan_test(project_id: str, project_dir: Path,
                   test_cmd: str, run_cmd: str) -> bool:
@@ -334,14 +367,13 @@ def jalankan_test(project_id: str, project_dir: Path,
                 output = (hasil["output"] or "").strip()
                 log(project_id, "Berhasil dijalankan!", "success")
                 if output:
-                    log(project_id, f"Output:\n{output[:600]}", "success")
+                    log(project_id, f"Output:\n{output[:400]}", "success")
                 return True
             else:
                 err = (hasil["error"] or hasil["output"] or "Unknown error")
-                log(project_id, f"Gagal:\n{err[:400]}", "error")
+                log(project_id, f"Gagal:\n{err[:300]}", "error")
                 if attempt < MAX_FIX:
-                    log(project_id,
-                        f"AI mencoba perbaiki... (sisa {MAX_FIX-attempt}x)", "fix")
+                    log(project_id, f"AI mencoba perbaiki...", "fix")
                     perbaiki_error(project_id, project_dir, err)
                 else:
                     log(project_id, "Batas auto-fix tercapai.", "warning")
@@ -349,135 +381,146 @@ def jalankan_test(project_id: str, project_dir: Path,
 
 # ================================================
 # BUAT PROJECT — BACKGROUND
+# TAHAP 1: Planning (JSON kecil)
+# TAHAP 2: Generate tiap file satu per satu
 # ================================================
 def buat_project_background(project_id: str, deskripsi: str, nama: str):
     try:
         log(project_id, "Memulai pembuatan project...", "loading")
-        log(project_id, f"API key index: {key_manager.current_idx}", "info")
-        log(project_id, "AI sedang merancang project...", "loading")
+        log(project_id, f"Model: {key_manager.get_info()[2]}", "info")
 
-        # ✅ PROMPT RINGKAS — tidak overload token
+        # ── TAHAP 1: PLANNING — hanya minta struktur, bukan isi file ──
+        log(project_id, "Tahap 1: AI merancang struktur...", "loading")
+
         system_plan = (
-            "Kamu adalah programmer expert Python.\n"
-            "Buat project kuliah S1 yang lengkap dan siap dijalankan.\n\n"
+            "Kamu adalah arsitek software Python.\n"
+            "Rancang struktur project kuliah S1.\n\n"
             "Balas HANYA JSON valid tanpa markdown:\n"
             "{\n"
             '  "description": "deskripsi singkat",\n'
             '  "tech_stack": "teknologi",\n'
-            '  "folders": ["tests"],\n'
-            '  "files": {\n'
-            '    "main.py": "code lengkap",\n'
-            '    "requirements.txt": "library per baris",\n'
-            '    "README.md": "dokumentasi",\n'
-            '    "tests/test_main.py": "unit test pytest"\n'
-            "  },\n"
+            '  "files": ["main.py","models.py","requirements.txt","README.md","tests/test_main.py"],\n'
             '  "install_cmd": "pip install -r requirements.txt",\n'
             '  "run_cmd": "python main.py",\n'
             '  "test_cmd": "python -m pytest tests/ -v"\n'
-            "}\n\n"
-            "WAJIB: setiap file berisi code LENGKAP yang bisa langsung dijalankan."
+            "}"
         )
 
         user_plan = (
-            f"Buat project Python bernama '{nama}'.\n"
+            f"Project: {nama}\n"
             f"Deskripsi: {deskripsi}\n"
-            "Syarat: minimal 4 file, best practice, siap dijalankan tanpa konfigurasi tambahan."
+            "Tentukan daftar file yang dibutuhkan (minimal 4 file)."
         )
 
         raw_plan = tanya_ai(system_plan, user_plan)
 
         try:
-            data = json.loads(bersihkan_json(raw_plan))
+            plan = json.loads(bersihkan_json(raw_plan))
         except json.JSONDecodeError as e:
-            msg = f"AI tidak mengembalikan JSON valid: {e}\nRaw: {raw_plan[:300]}"
+            msg = f"Gagal parse planning: {e}\nRaw: {raw_plan[:400]}"
             log(project_id, msg, "error")
             projects[project_id]["status"] = "error"
             projects[project_id]["error"]  = msg
             save_state()
             return
 
-        if not data.get("files"):
-            msg = "AI tidak menghasilkan file apapun."
-            log(project_id, msg, "error")
-            projects[project_id]["status"] = "error"
-            projects[project_id]["error"]  = msg
-            save_state()
-            return
+        daftar_file  = plan.get("files", [
+            "main.py", "requirements.txt", "README.md", "tests/test_main.py"
+        ])
+        install_cmd  = plan.get("install_cmd", "pip install -r requirements.txt")
+        run_cmd      = plan.get("run_cmd", "python main.py")
+        test_cmd     = plan.get("test_cmd", "python -m pytest tests/ -v")
+        tech_stack   = plan.get("tech_stack", "Python")
+        description  = plan.get("description", deskripsi)
 
+        log(project_id, f"Struktur: {len(daftar_file)} file akan dibuat", "info")
+        for f in daftar_file:
+            log(project_id, f"  → {f}", "info")
+
+        # Buat folder project
         project_dir = BASE_DIR / nama
         project_dir.mkdir(parents=True, exist_ok=True)
+
+        # Buat subfolder
+        for f in daftar_file:
+            subfolder = (project_dir / f).parent
+            subfolder.mkdir(parents=True, exist_ok=True)
+
         with _log_lock:
             projects[project_id]["folder"] = str(project_dir.resolve())
+            projects[project_id]["tech"]   = tech_stack
+            projects[project_id]["desc"]   = description
             save_state()
 
         log(project_id, f"Folder: workspace/{nama}/", "folder")
 
-        for folder in data.get("folders", []):
-            folder = str(folder).strip().lstrip("/")
-            if folder:
-                target = (project_dir / folder).resolve()
-                if str(target).startswith(str(project_dir.resolve())):
-                    target.mkdir(parents=True, exist_ok=True)
-                    log(project_id, f"Folder: {folder}/", "folder")
+        # ── TAHAP 2: GENERATE TIAP FILE — satu per satu ──
+        log(project_id, "Tahap 2: Generate file satu per satu...", "loading")
+        file_berhasil = []
 
-        log(project_id, "Menulis semua file...", "loading")
-        daftar_file = []
-
-        for filename, content in data.get("files", {}).items():
+        for filename in daftar_file:
             filename = str(filename).strip().lstrip("/")
-            if not filename: continue
+            if not filename:
+                continue
+
+            log(project_id, f"Generating: {filename}...", "loading")
+
+            try:
+                isi = generate_satu_file(nama, deskripsi, filename, daftar_file)
+            except Exception as e:
+                log(project_id, f"Gagal generate {filename}: {e}", "warning")
+                isi = f"# File {filename} - gagal digenerate\n# Error: {e}\n"
+
             target = (project_dir / filename).resolve()
             if not str(target).startswith(str(project_dir.resolve())):
                 log(project_id, f"Path tidak aman: {filename}", "warning")
                 continue
+
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(str(content), encoding="utf-8")
-            daftar_file.append(filename)
+            target.write_text(isi, encoding="utf-8")
+            file_berhasil.append(filename)
             log(project_id, f"File dibuat: {filename}", "file")
 
         with _log_lock:
-            projects[project_id]["files"]   = daftar_file
-            projects[project_id]["run_cmd"] = data.get("run_cmd", "")
-            projects[project_id]["tech"]    = data.get("tech_stack", "")
-            projects[project_id]["desc"]    = data.get("description", "")
+            projects[project_id]["files"]   = file_berhasil
+            projects[project_id]["run_cmd"] = run_cmd
             save_state()
 
+        # Simpan metadata
         meta = {
             "nama"       : nama,
             "deskripsi"  : deskripsi,
-            "tech_stack" : data.get("tech_stack", ""),
-            "run_cmd"    : data.get("run_cmd", ""),
-            "install_cmd": data.get("install_cmd", ""),
-            "test_cmd"   : data.get("test_cmd", ""),
-            "files"      : daftar_file,
+            "tech_stack" : tech_stack,
+            "run_cmd"    : run_cmd,
+            "install_cmd": install_cmd,
+            "test_cmd"   : test_cmd,
+            "files"      : file_berhasil,
         }
         (project_dir / ".ai_meta.json").write_text(
             json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
         )
 
-        install_cmd = data.get("install_cmd", "").strip()
-        req_file    = project_dir / "requirements.txt"
-        if install_cmd and req_file.exists():
+        # ── TAHAP 3: INSTALL ──
+        req_file = project_dir / "requirements.txt"
+        if req_file.exists():
             log(project_id, "Menginstall dependencies...", "loading")
             hasil_install = jalankan_cmd(install_cmd, str(project_dir), timeout=120)
             if hasil_install["sukses"]:
                 log(project_id, "Dependencies berhasil diinstall!", "success")
             else:
                 err_i = hasil_install["error"] or hasil_install["output"]
-                log(project_id, f"Warning install: {err_i[:300]}", "warning")
+                log(project_id, f"Warning install: {err_i[:200]}", "warning")
 
-        jalankan_test(
-            project_id, project_dir,
-            data.get("test_cmd", ""),
-            data.get("run_cmd", ""),
-        )
+        # ── TAHAP 4: TEST ──
+        jalankan_test(project_id, project_dir, test_cmd, run_cmd)
 
-        log(project_id, "=" * 45, "info")
+        # ── SELESAI ──
+        log(project_id, "=" * 40, "info")
         log(project_id, f"Project '{nama}' berhasil dibuat!", "done")
-        log(project_id, f"Tech Stack : {data.get('tech_stack','-')}", "info")
-        log(project_id, f"Total file : {len(daftar_file)} file", "info")
+        log(project_id, f"Tech Stack : {tech_stack}", "info")
+        log(project_id, f"Total file : {len(file_berhasil)} file", "info")
         log(project_id, f"Lokasi     : workspace/{nama}/", "info")
-        log(project_id, f"Jalankan   : {data.get('run_cmd','-')}", "info")
+        log(project_id, f"Jalankan   : {run_cmd}", "info")
 
         with _log_lock:
             projects[project_id]["status"] = "done"
@@ -486,7 +529,7 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
     except Exception as e:
         import traceback
         tb  = traceback.format_exc()
-        msg = f"{str(e)}\n\n{tb[:1000]}"
+        msg = f"{str(e)}\n\n{tb[:800]}"
         log(project_id, f"Error tidak terduga: {str(e)}", "error")
         with _log_lock:
             projects[project_id]["status"] = "error"
@@ -508,7 +551,7 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
             return
 
         log(project_id, f"Membaca project: {nama}", "lanjut")
-        log(project_id, f"API key index: {key_manager.current_idx}", "info")
+        log(project_id, f"Model: {key_manager.get_info()[2]}", "info")
 
         with _log_lock:
             projects[project_id]["folder"] = str(project_dir.resolve())
@@ -528,36 +571,33 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
         for f in semua_file:
             log(project_id, f"File ada: {f}", "file")
 
-        # ✅ PROMPT RINGKAS
         system_lanjut = (
-            "Kamu adalah programmer expert yang melanjutkan project Python.\n"
-            "Tambahkan fitur sesuai permintaan tanpa menghapus kode yang ada.\n\n"
+            "Kamu adalah programmer Python expert.\n"
+            "Kembangkan project sesuai permintaan.\n\n"
             "Balas HANYA JSON valid tanpa markdown:\n"
             "{\n"
-            '  "analysis": "apa yang akan ditambahkan",\n'
-            '  "new_files": {"path/file.py": "code lengkap"},\n'
-            '  "modified_files": {"path/file.py": "code lengkap"},\n'
+            '  "analysis": "apa yang ditambahkan",\n'
+            '  "new_files": {"path/file.py": "code LENGKAP"},\n'
+            '  "modified_files": {"path/file.py": "code LENGKAP"},\n'
             '  "run_cmd": "perintah jalankan",\n'
-            '  "notes": "ringkasan perubahan"\n'
-            "}\n\n"
-            "WAJIB: tulis isi file LENGKAP, bukan snippet."
+            '  "notes": "ringkasan"\n'
+            "}"
         )
 
         context  = {}
         total_ch = 0
         for fname, fcontent in semua_file.items():
-            if total_ch > 5000: break
+            if total_ch > 3000: break
             context[fname] = fcontent
             total_ch += len(fcontent)
 
         user_lanjut = (
-            f"Project: {nama}\n"
-            f"Tech: {meta.get('tech_stack','Python')}\n"
+            f"Project: {nama} | Tech: {meta.get('tech_stack','Python')}\n"
             f"Permintaan: {permintaan}\n\n"
-            f"File yang ada:\n{json.dumps(context, ensure_ascii=False)}"
+            f"File ada:\n{json.dumps(context, ensure_ascii=False)}"
         )
 
-        log(project_id, "AI sedang mengembangkan project...", "loading")
+        log(project_id, "AI sedang mengembangkan...", "loading")
         raw_lanjut = tanya_ai(system_lanjut, user_lanjut)
 
         try:
@@ -570,7 +610,7 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
             save_state()
             return
 
-        log(project_id, f"Analisis AI: {hasil.get('analysis','-')}", "info")
+        log(project_id, f"Analisis: {hasil.get('analysis','-')}", "info")
 
         new_files = hasil.get("new_files",      {}) or {}
         mod_files = hasil.get("modified_files", {}) or {}
@@ -578,23 +618,15 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
         if not new_files and not mod_files:
             log(project_id, "AI tidak mengusulkan perubahan.", "warning")
 
-        for filename, content in new_files.items():
+        for filename, content in {**new_files, **mod_files}.items():
             filename = str(filename).strip().lstrip("/")
             target   = (project_dir / filename).resolve()
             if not str(target).startswith(str(project_dir.resolve())):
                 continue
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(str(content), encoding="utf-8")
-            log(project_id, f"File baru: {filename}", "file")
-
-        for filename, content in mod_files.items():
-            filename = str(filename).strip().lstrip("/")
-            target   = (project_dir / filename).resolve()
-            if not str(target).startswith(str(project_dir.resolve())):
-                continue
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(str(content), encoding="utf-8")
-            log(project_id, f"File diupdate: {filename}", "file")
+            label = "File baru" if filename in new_files else "Diupdate"
+            log(project_id, f"{label}: {filename}", "file")
 
         all_files = list(semua_file.keys())
         for f in list(new_files.keys()) + list(mod_files.keys()):
@@ -615,12 +647,8 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
             projects[project_id]["nama"]    = nama
             save_state()
 
-        req_berubah = (
-            "requirements.txt" in mod_files or
-            "requirements.txt" in new_files
-        )
-        if req_berubah:
-            log(project_id, "requirements.txt berubah, reinstall...", "loading")
+        if "requirements.txt" in mod_files or "requirements.txt" in new_files:
+            log(project_id, "Reinstall dependencies...", "loading")
             jalankan_cmd(
                 meta.get("install_cmd", "pip install -r requirements.txt"),
                 str(project_dir), timeout=120,
@@ -628,12 +656,10 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
 
         jalankan_test(project_id, project_dir, meta.get("test_cmd",""), run_cmd)
 
-        log(project_id, "=" * 45, "info")
-        log(project_id, "Pengembangan project selesai!", "done")
-        log(project_id, f"Notes    : {hasil.get('notes','-')}", "info")
-        log(project_id, f"File baru: {len(new_files)}", "info")
-        log(project_id, f"Diupdate : {len(mod_files)}", "info")
-        log(project_id, f"Jalankan : {run_cmd}", "info")
+        log(project_id, "=" * 40, "info")
+        log(project_id, "Pengembangan selesai!", "done")
+        log(project_id, f"Notes: {hasil.get('notes','-')}", "info")
+        log(project_id, f"Baru: {len(new_files)} | Update: {len(mod_files)}", "info")
 
         with _log_lock:
             projects[project_id]["status"] = "done"
@@ -643,7 +669,7 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
     except Exception as e:
         import traceback
         tb  = traceback.format_exc()
-        msg = f"{str(e)}\n\n{tb[:1000]}"
+        msg = f"{str(e)}\n\n{tb[:800]}"
         log(project_id, f"Error: {str(e)}", "error")
         with _log_lock:
             projects[project_id]["status"] = "error"
@@ -670,32 +696,20 @@ async def test_ai():
     hasil_cek = []
     for i, (base_url, api_key, model) in enumerate(API_KEYS):
         try:
-            client = OpenAI(
-                base_url=base_url,
-                api_key=api_key,
-                timeout=30.0,
-                http_client=httpx.Client(timeout=30.0, verify=False)
-            )
-            resp = client.chat.completions.create(
+            client = buat_client(base_url, api_key)
+            resp   = client.chat.completions.create(
                 model=model,
                 temperature=0.1,
-                messages=[{"role": "user", "content": "Balas dengan kata: OK"}]
+                messages=[{"role": "user", "content": "Balas: OK"}]
             )
-            reply = resp.choices[0].message.content
             hasil_cek.append({
-                "index"   : i,
-                "status"  : "✅ sukses",
-                "model"   : model,
-                "base_url": base_url,
-                "reply"   : reply,
+                "index" : i, "status": "✅ sukses",
+                "model" : model, "reply": resp.choices[0].message.content,
             })
         except Exception as e:
             hasil_cek.append({
-                "index"   : i,
-                "status"  : "❌ gagal",
-                "model"   : model,
-                "base_url": base_url,
-                "error"   : str(e),
+                "index" : i, "status": "❌ gagal",
+                "model" : model, "error": str(e),
             })
     return JSONResponse({"keys": hasil_cek})
 
@@ -703,14 +717,13 @@ async def test_ai():
 @app.get("/list-models")
 async def list_models():
     try:
-        client = OpenAI(
-            base_url=API_KEYS[0][0],
-            api_key=API_KEYS[0][1],
-            timeout=30.0,
-            http_client=httpx.Client(timeout=30.0, verify=False)
-        )
+        base_url, api_key, _ = API_KEYS[0]
+        client = buat_client(base_url, api_key)
         models = client.models.list()
-        return JSONResponse({"models": [m.id for m in models.data]})
+        return JSONResponse({
+            "total" : len(models.data),
+            "models": sorted([m.id for m in models.data])
+        })
     except Exception as e:
         return JSONResponse({"error": str(e)})
 
