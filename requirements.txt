@@ -1,3 +1,5 @@
 fastapi
-uvicorn
+uvicorn[standard]
 openai
+jinja2
+python-multipart
