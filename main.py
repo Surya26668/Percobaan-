@@ -5,6 +5,7 @@ import threading
 import re
 import uuid
 import time
+import httpx
 from pathlib import Path
 
 from fastapi import FastAPI, Request, Form
@@ -74,7 +75,15 @@ class MultiKeyManager:
     def get_client(self) -> tuple:
         with self._lock:
             base_url, api_key, model = self.keys[self.current_idx]
-        client = OpenAI(base_url=base_url, api_key=api_key)
+        client = OpenAI(
+            base_url=base_url,
+            api_key=api_key,
+            timeout=60.0,
+            http_client=httpx.Client(
+                timeout=60.0,
+                verify=False,          # ← skip SSL verify jika server pakai self-signed
+            )
+        )
         return client, model
 
     def next_key(self):
@@ -111,11 +120,19 @@ class MultiKeyManager:
 key_manager = MultiKeyManager(API_KEYS)
 
 # ================================================
-# TANYA AI
+# TANYA AI — VERBOSE ERROR
 # ================================================
 def tanya_ai(system_prompt: str, user_prompt: str) -> str:
+    last_error = "tidak ada error"
     max_retries = len(API_KEYS) * 2
+
     for attempt in range(max_retries):
+        base_url, api_key, model = API_KEYS[key_manager.current_idx]
+        print(f"[AI] Attempt {attempt+1}/{max_retries}")
+        print(f"[AI] URL   : {base_url}")
+        print(f"[AI] Model : {model}")
+        print(f"[AI] Key   : {api_key[:12]}...")
+
         try:
             client, model = key_manager.get_client()
             response = client.chat.completions.create(
@@ -126,20 +143,37 @@ def tanya_ai(system_prompt: str, user_prompt: str) -> str:
                     {"role": "user",   "content": user_prompt},
                 ]
             )
-            return (response.choices[0].message.content or "").strip()
+            hasil = (response.choices[0].message.content or "").strip()
+            print(f"[AI] ✅ Sukses! Panjang response: {len(hasil)} karakter")
+            return hasil
+
         except Exception as e:
-            err_str = str(e).lower()
-            print(f"[AI] Attempt {attempt+1} error: {e}")
+            last_error = str(e)
+            err_str    = last_error.lower()
+            print(f"[AI] ❌ Error: {last_error}")
+
             if any(k in err_str for k in [
                 "rate_limit","rate limit","quota","exceeded",
                 "unauthorized","invalid_api_key","insufficient",
                 "429","401","403",
             ]):
+                print(f"[AI] → Auth/Rate error, ganti key")
                 key_manager.mark_error()
                 time.sleep(1)
+            elif any(k in err_str for k in [
+                "connection","timeout","network","ssl",
+                "connect","refused","unreachable","name or service"
+            ]):
+                print(f"[AI] → Connection error, tunggu 3 detik")
+                time.sleep(3)
             else:
+                print(f"[AI] → Error lain, tunggu 2 detik")
                 time.sleep(2)
-    raise Exception("Semua API key gagal. Cek koneksi atau tambah key baru.")
+
+    raise Exception(
+        f"Semua API key gagal setelah {max_retries} percobaan. "
+        f"Error terakhir: {last_error}"
+    )
 
 def bersihkan_json(text: str) -> str:
     text = text.strip()
@@ -673,7 +707,6 @@ Kembangkan project sesuai permintaan di atas.
 # ROUTES
 # ================================================
 
-# ✅ FIX UTAMA — tidak pakai Jinja2, baca HTML langsung
 @app.get("/", response_class=HTMLResponse)
 async def halaman_utama():
     html_file = Path("templates/index.html")
@@ -683,6 +716,46 @@ async def halaman_utama():
             status_code=404
         )
     return HTMLResponse(content=html_file.read_text(encoding="utf-8"))
+
+
+# ✅ ENDPOINT DEBUG — buka /test-ai di browser untuk cek koneksi AI
+@app.get("/test-ai")
+async def test_ai():
+    hasil_cek = []
+    for i, (base_url, api_key, model) in enumerate(API_KEYS):
+        try:
+            client = OpenAI(
+                base_url=base_url,
+                api_key=api_key,
+                timeout=30.0,
+                http_client=httpx.Client(
+                    timeout=30.0,
+                    verify=False,
+                )
+            )
+            resp = client.chat.completions.create(
+                model=model,
+                temperature=0.1,
+                messages=[{"role": "user", "content": "Balas dengan kata: OK"}]
+            )
+            reply = resp.choices[0].message.content
+            hasil_cek.append({
+                "index"  : i,
+                "status" : "✅ sukses",
+                "model"  : model,
+                "base_url": base_url,
+                "reply"  : reply,
+            })
+        except Exception as e:
+            hasil_cek.append({
+                "index"  : i,
+                "status" : "❌ gagal",
+                "model"  : model,
+                "base_url": base_url,
+                "error"  : str(e),
+            })
+
+    return JSONResponse({"keys": hasil_cek})
 
 
 @app.post("/buat-project")
