@@ -9,12 +9,10 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request, Form
 from fastapi.responses import HTMLResponse, JSONResponse
-from fastapi.templating import Jinja2Templates
 from openai import OpenAI
 
 # ================================================
 # SETTING — MULTI API KEY
-# Format: ("base_url", "api_key", "model")
 # ================================================
 API_KEYS = [
     (
@@ -29,11 +27,9 @@ BASE_DIR = Path("workspace")
 BASE_DIR.mkdir(exist_ok=True)
 Path("templates").mkdir(exist_ok=True)
 
-app       = FastAPI(title="AI Project Maker")
-templates = Jinja2Templates(directory="templates")
+app = FastAPI(title="AI Project Maker")
 
 projects: dict = {}
-
 STATE_FILE = Path("projects_state.json")
 
 # ================================================
@@ -403,7 +399,6 @@ SYARAT:
             save_state()
             return
 
-        # Buat folder project
         project_dir = BASE_DIR / nama
         project_dir.mkdir(parents=True, exist_ok=True)
         with _log_lock:
@@ -420,7 +415,6 @@ SYARAT:
                     target.mkdir(parents=True, exist_ok=True)
                     log(project_id, f"Folder: {folder}/", "folder")
 
-        # Tulis file
         log(project_id, "Menulis semua file...", "loading")
         daftar_file = []
 
@@ -443,7 +437,6 @@ SYARAT:
             projects[project_id]["desc"]    = data.get("description", "")
             save_state()
 
-        # Simpan metadata
         meta = {
             "nama"       : nama,
             "deskripsi"  : deskripsi,
@@ -457,7 +450,6 @@ SYARAT:
             json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
         )
 
-        # Install dependencies
         install_cmd = data.get("install_cmd", "").strip()
         req_file    = project_dir / "requirements.txt"
         if install_cmd and req_file.exists():
@@ -469,7 +461,6 @@ SYARAT:
                 err_i = hasil_install["error"] or hasil_install["output"]
                 log(project_id, f"Warning install: {err_i[:300]}", "warning")
 
-        # Test otomatis
         jalankan_test(
             project_id, project_dir,
             data.get("test_cmd", ""),
@@ -677,9 +668,16 @@ Kembangkan project sesuai permintaan di atas.
 # ROUTES
 # ================================================
 
+# ✅ FIX UTAMA — tidak pakai Jinja2, baca HTML langsung
 @app.get("/", response_class=HTMLResponse)
-async def halaman_utama(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+async def halaman_utama():
+    html_file = Path("templates/index.html")
+    if not html_file.exists():
+        return HTMLResponse(
+            content="<h1>Error: templates/index.html tidak ditemukan</h1>",
+            status_code=404
+        )
+    return HTMLResponse(content=html_file.read_text(encoding="utf-8"))
 
 
 @app.post("/buat-project")
