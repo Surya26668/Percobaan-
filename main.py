@@ -1,16 +1,16 @@
 # ================================================
-# LOAD ENV — HARUS DI PALING ATAS
+# LOAD ENV
 # ================================================
 try:
     from dotenv import load_dotenv
     load_dotenv()
 except ImportError:
-    print("⚠️  python-dotenv belum terinstall, jalankan: pip install python-dotenv")
+    print("⚠️  python-dotenv belum terinstall")
 
 try:
     from cryptography.fernet import Fernet
 except ImportError:
-    print("⚠️  cryptography belum terinstall, jalankan: pip install cryptography")
+    print("⚠️  cryptography belum terinstall")
     Fernet = None
 
 import os
@@ -25,10 +25,15 @@ import uuid
 import time
 import signal
 import shutil
+import hashlib
+import asyncio
+import socket
 import httpx
 from pathlib import Path
+from datetime import datetime, timedelta
+from collections import defaultdict, deque
 
-from fastapi import FastAPI, Form, Request
+from fastapi import FastAPI, Form, Request, WebSocket, WebSocketDisconnect, BackgroundTasks
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, Response
 import anthropic
 
@@ -39,7 +44,6 @@ def decrypt_key(encrypted: str) -> str:
     if not encrypted:
         return ""
     if Fernet is None:
-        print("[DECRYPT] ❌ cryptography tidak terinstall")
         return ""
     try:
         enc_key = os.getenv("ENCRYPTION_KEY", "")
@@ -48,11 +52,11 @@ def decrypt_key(encrypted: str) -> str:
         f = Fernet(enc_key.encode())
         return f.decrypt(encrypted.encode()).decode()
     except Exception as e:
-        print(f"[DECRYPT] ❌ Gagal decrypt: {e}")
+        print(f"[DECRYPT] ❌ {e}")
         return ""
 
 # ================================================
-# SETTING — BACA DARI .env
+# SETTING
 # ================================================
 BASE_URL = os.getenv("BASE_URL", "https://ai.bluepack.my.id/anthropic")
 
@@ -62,32 +66,20 @@ while True:
     enc = os.getenv(f"API_KEY_{i}_ENC", "")
     raw = os.getenv(f"API_KEY_{i}", "")
     mdl = os.getenv(f"MODEL_{i}", "")
-
     if not enc and not raw:
         break
-
     api_key = decrypt_key(enc) if enc else raw
     model   = mdl or "claude-sonnet-4-5"
-
     if api_key:
-        _raw_keys.append({
-            "base_url" : BASE_URL,
-            "api_key"  : api_key,
-            "model"    : model,
-        })
+        _raw_keys.append({"base_url": BASE_URL, "api_key": api_key, "model": model})
     i += 1
 
 if not _raw_keys:
-    _raw_keys = [{
-        "base_url" : BASE_URL,
-        "api_key"  : os.getenv("API_KEY_1", ""),
-        "model"    : "claude-sonnet-4-5",
-    }]
+    _raw_keys = [{"base_url": BASE_URL, "api_key": os.getenv("API_KEY_1", ""), "model": "claude-sonnet-4-5"}]
 
 API_KEYS = [k for k in _raw_keys if k["api_key"]]
-
 if not API_KEYS:
-    raise ValueError("❌ Tidak ada API Key yang valid! Cek .env")
+    raise ValueError("❌ Tidak ada API Key valid!")
 
 print(f"✅ {len(API_KEYS)} API Key berhasil dimuat")
 for idx, k in enumerate(API_KEYS):
@@ -97,29 +89,50 @@ for idx, k in enumerate(API_KEYS):
 # ================================================
 # KONSTANTA
 # ================================================
-MAX_FIX             = 2
+MAX_FIX             = 3
 BASE_DIR            = Path("workspace")
+CACHE_DIR           = Path(".cache")
+BACKUPS_DIR         = Path("backups")
 BASE_DIR.mkdir(exist_ok=True)
+CACHE_DIR.mkdir(exist_ok=True)
+BACKUPS_DIR.mkdir(exist_ok=True)
 Path("templates").mkdir(exist_ok=True)
 
 REQUEST_TIMEOUT     = 180
-MAX_FILES_PER_PROJ  = 8
-MAX_LINES_PER_FILE  = 250
-
-# ✅ Retry setting untuk upstream error (502/503/504)
-UPSTREAM_MAX_RETRY  = 6      # Total retry saat upstream error
-UPSTREAM_WAIT_BASE  = 8      # Base wait time (detik)
+MAX_FILES_PER_PROJ  = 10
+MAX_LINES_PER_FILE  = 300
+UPSTREAM_MAX_RETRY  = 6
+UPSTREAM_WAIT_BASE  = 8
 
 PORT_START          = 9001
 PORT_END            = 9100
 
-app = FastAPI(title="AI Project Maker — Claude Code")
+# ✅ RATE LIMITING
+RATE_LIMIT_PER_MIN  = 30       # Max 30 request per menit per IP
+CACHE_TTL_SECONDS   = 3600     # Cache AI response 1 jam
+AUTO_CLEANUP_MIN    = 60       # Auto cleanup process idle 60 menit
+
+app = FastAPI(title="AI Project Maker — ULTIMATE Edition v2.0")
 
 projects: dict = {}
 STATE_FILE = Path("projects_state.json")
 
 running_processes: dict = {}
 _proc_lock = threading.Lock()
+
+# ✅ CACHE & STATS
+ai_cache          : dict = {}   # {hash: {response, timestamp}}
+_cache_lock       = threading.Lock()
+
+request_stats     : dict = defaultdict(lambda: {"count": 0, "success": 0, "failed": 0, "total_time": 0})
+_stats_lock       = threading.Lock()
+
+rate_limit_store  : dict = defaultdict(lambda: deque(maxlen=100))
+_rate_lock        = threading.Lock()
+
+# ✅ WEBSOCKET CONNECTIONS
+websocket_connections: dict = defaultdict(set)   # {project_id: {websockets}}
+_ws_lock              = threading.Lock()
 
 # ================================================
 # STATE
@@ -129,60 +142,144 @@ def load_state():
     if STATE_FILE.exists():
         try:
             projects = json.loads(STATE_FILE.read_text(encoding="utf-8"))
-            print(f"[STATE] Loaded {len(projects)} project.")
+            print(f"[STATE] Loaded {len(projects)} project")
         except Exception as e:
-            print(f"[STATE] Gagal load: {e}")
+            print(f"[STATE] Gagal: {e}")
             projects = {}
 
 def save_state():
     try:
-        STATE_FILE.write_text(
-            json.dumps(projects, ensure_ascii=False, indent=2),
-            encoding="utf-8"
-        )
+        STATE_FILE.write_text(json.dumps(projects, ensure_ascii=False, indent=2), encoding="utf-8")
     except Exception as e:
         print(f"[STATE] Gagal simpan: {e}")
 
 load_state()
 
 # ================================================
-# MULTI KEY MANAGER
+# ✅ CACHE SYSTEM — Hemat token AI
+# ================================================
+def cache_key(system: str, user: str) -> str:
+    """Generate hash untuk cache key"""
+    content = f"{system}||{user}"
+    return hashlib.sha256(content.encode()).hexdigest()[:16]
+
+def cache_get(system: str, user: str) -> str:
+    """Ambil dari cache jika masih valid"""
+    key = cache_key(system, user)
+    with _cache_lock:
+        if key in ai_cache:
+            entry = ai_cache[key]
+            age = time.time() - entry["timestamp"]
+            if age < CACHE_TTL_SECONDS:
+                print(f"[CACHE] ✨ HIT (age: {int(age)}s)")
+                return entry["response"]
+            else:
+                del ai_cache[key]
+    return None
+
+def cache_set(system: str, user: str, response: str):
+    """Simpan ke cache"""
+    key = cache_key(system, user)
+    with _cache_lock:
+        ai_cache[key] = {
+            "response" : response,
+            "timestamp": time.time(),
+        }
+        # Cleanup jika terlalu banyak
+        if len(ai_cache) > 200:
+            # Hapus 50 entry tertua
+            sorted_items = sorted(ai_cache.items(), key=lambda x: x[1]["timestamp"])
+            for k, _ in sorted_items[:50]:
+                del ai_cache[k]
+
+# ================================================
+# ✅ RATE LIMITING
+# ================================================
+def check_rate_limit(client_id: str) -> bool:
+    """Return True jika masih boleh, False jika kena limit"""
+    now = time.time()
+    with _rate_lock:
+        history = rate_limit_store[client_id]
+        # Hapus request lama (> 1 menit)
+        while history and history[0] < now - 60:
+            history.popleft()
+        if len(history) >= RATE_LIMIT_PER_MIN:
+            return False
+        history.append(now)
+        return True
+
+# ================================================
+# MULTI KEY MANAGER — Enhanced
 # ================================================
 class MultiKeyManager:
     def __init__(self, keys: list):
         self.keys         = keys
         self.current_idx  = 0
         self.error_counts = [0] * len(keys)
+        self.success_counts = [0] * len(keys)
+        self.total_time   = [0.0] * len(keys)
+        self.last_error   = [""] * len(keys)
+        self.last_used    = [0.0] * len(keys)
         self._lock        = threading.Lock()
 
     def get_info(self) -> dict:
         with self._lock:
+            self.last_used[self.current_idx] = time.time()
             return self.keys[self.current_idx]
+
+    def get_best_key(self) -> int:
+        """Pilih key dengan error paling sedikit"""
+        with self._lock:
+            best_idx = 0
+            best_score = float('inf')
+            for i in range(len(self.keys)):
+                # Score: error_count * 10 - success_count
+                score = self.error_counts[i] * 10 - self.success_counts[i]
+                if score < best_score:
+                    best_score = score
+                    best_idx = i
+            self.current_idx = best_idx
+            return best_idx
 
     def next_key(self):
         with self._lock:
             self.current_idx = (self.current_idx + 1) % len(self.keys)
 
-    def mark_error(self):
+    def mark_error(self, error: str = ""):
         with self._lock:
             self.error_counts[self.current_idx] += 1
+            self.last_error[self.current_idx] = error[:100]
         self.next_key()
+
+    def mark_success(self, elapsed: float):
+        with self._lock:
+            self.success_counts[self.current_idx] += 1
+            self.total_time[self.current_idx] += elapsed
 
     def reset_errors(self):
         with self._lock:
             self.error_counts = [0] * len(self.keys)
+            self.last_error   = [""] * len(self.keys)
 
     def status(self) -> list:
         with self._lock:
             result = []
             for i, key_info in enumerate(self.keys):
                 api_key = key_info["api_key"]
+                total_req = self.success_counts[i] + self.error_counts[i]
+                avg_time = (self.total_time[i] / self.success_counts[i]) if self.success_counts[i] > 0 else 0
+                success_rate = (self.success_counts[i] / total_req * 100) if total_req > 0 else 0
                 result.append({
                     "index"       : i,
                     "base_url"    : key_info["base_url"],
                     "model"       : key_info["model"],
                     "api_key_hint": api_key[:8] + "..." if len(api_key) > 8 else api_key,
                     "error_count" : self.error_counts[i],
+                    "success_count": self.success_counts[i],
+                    "success_rate": round(success_rate, 1),
+                    "avg_time"    : round(avg_time, 2),
+                    "last_error"  : self.last_error[i],
+                    "last_used"   : self.last_used[i],
                     "active"      : i == self.current_idx,
                 })
         return result
@@ -199,13 +296,8 @@ def buat_client(base_url: str, api_key: str) -> anthropic.Anthropic:
         timeout     = float(REQUEST_TIMEOUT),
         max_retries = 0,
         http_client = httpx.Client(
-            timeout = httpx.Timeout(
-                connect = 15.0,
-                read    = float(REQUEST_TIMEOUT),
-                write   = 15.0,
-                pool    = 15.0,
-            ),
-            verify = False,
+            timeout=httpx.Timeout(connect=15.0, read=float(REQUEST_TIMEOUT), write=15.0, pool=15.0),
+            verify=False,
         )
     )
 
@@ -216,37 +308,46 @@ def ambil_text(resp) -> str:
         if block_type == "text":
             hasil += getattr(block, "text", "")
         elif block_type == "thinking":
-            thinking_len = len(getattr(block, "thinking", ""))
-            print(f"[AI] 💭 ThinkingBlock ({thinking_len} chars), diskip")
+            print(f"[AI] 💭 ThinkingBlock diskip")
     return hasil.strip()
 
 # ================================================
-# ✅ TANYA AI — AUTO RETRY 502/503/504
+# ✅ TANYA AI — Cache + Smart Retry + Stats
 # ================================================
-def tanya_ai(system_prompt: str, user_prompt: str, max_tokens: int = 4096) -> str:
-    last_error         = "tidak ada error"
-    upstream_retries   = 0                            # Counter khusus upstream error
-    normal_retries_max = len(API_KEYS) * 2
+def tanya_ai(system_prompt: str, user_prompt: str, max_tokens: int = 4096, use_cache: bool = True) -> str:
+    # ✅ CEK CACHE
+    if use_cache:
+        cached = cache_get(system_prompt, user_prompt)
+        if cached:
+            with _stats_lock:
+                request_stats["cache_hit"]["count"] += 1
+            return cached
 
+    last_error       = "no error"
+    upstream_retries = 0
+    normal_retries_max = len(API_KEYS) * 2
     total_attempts = 0
     max_total      = normal_retries_max + UPSTREAM_MAX_RETRY
+
+    # ✅ Mulai dari best key
+    key_manager.get_best_key()
 
     while total_attempts < max_total:
         total_attempts += 1
         key_info = key_manager.get_info()
         model    = key_info["model"]
 
-        print(f"[AI] Attempt {total_attempts}/{max_total} | model={model} | upstream_retry={upstream_retries}")
+        print(f"[AI] Try {total_attempts}/{max_total} | {model} | upstream={upstream_retries}")
         t_start = time.time()
 
         try:
             client   = buat_client(key_info["base_url"], key_info["api_key"])
             response = client.messages.create(
-                model      = model,
-                max_tokens = max_tokens,
-                temperature= 0.1,
-                system     = system_prompt,
-                messages   = [{"role": "user", "content": user_prompt}]
+                model=model,
+                max_tokens=max_tokens,
+                temperature=0.1,
+                system=system_prompt,
+                messages=[{"role": "user", "content": user_prompt}]
             )
 
             hasil   = ambil_text(response)
@@ -255,19 +356,31 @@ def tanya_ai(system_prompt: str, user_prompt: str, max_tokens: int = 4096) -> st
             if not hasil:
                 raise Exception("Response kosong")
 
-            print(f"[AI] ✅ Sukses {elapsed:.1f}s | {len(hasil)} chars")
+            key_manager.mark_success(elapsed)
+            
+            with _stats_lock:
+                request_stats["total"]["count"] += 1
+                request_stats["total"]["success"] += 1
+                request_stats["total"]["total_time"] += elapsed
+
+            print(f"[AI] ✅ {elapsed:.1f}s | {len(hasil)} chars")
+
+            # ✅ SIMPAN KE CACHE
+            if use_cache:
+                cache_set(system_prompt, user_prompt, hasil)
+
             return hasil
 
         except anthropic.AuthenticationError as e:
             last_error = f"401: {str(e)[:200]}"
             print(f"[AI] ❌ {last_error}")
-            key_manager.mark_error()
+            key_manager.mark_error(last_error)
             time.sleep(1)
 
         except anthropic.RateLimitError as e:
             last_error = f"429: {str(e)[:200]}"
             print(f"[AI] ❌ {last_error}")
-            key_manager.mark_error()
+            key_manager.mark_error(last_error)
             time.sleep(5)
 
         except anthropic.APIStatusError as e:
@@ -275,41 +388,40 @@ def tanya_ai(system_prompt: str, user_prompt: str, max_tokens: int = 4096) -> st
             last_error = f"Status {status}: {str(e.message)[:200]}"
             print(f"[AI] ❌ {last_error}")
 
-            # ✅ 502/503/504 = upstream error — retry lebih lama, jangan mark_error
             if status in (502, 503, 504):
                 if upstream_retries >= UPSTREAM_MAX_RETRY:
-                    print(f"[AI] ⚠️ Upstream retry limit tercapai ({UPSTREAM_MAX_RETRY})")
-                    raise Exception(
-                        f"Anthropic upstream error {status} — sudah retry {UPSTREAM_MAX_RETRY}x. "
-                        f"Provider sedang down. Coba lagi beberapa menit."
-                    )
-
+                    with _stats_lock:
+                        request_stats["total"]["failed"] += 1
+                    raise Exception(f"Upstream {status} — retry {UPSTREAM_MAX_RETRY}x. Provider down.")
                 upstream_retries += 1
-                # Exponential backoff: 8, 16, 24, 32, 40, 48 detik
                 wait_time = UPSTREAM_WAIT_BASE * upstream_retries
-                print(f"[AI] ⏳ Upstream error, tunggu {wait_time}s sebelum retry #{upstream_retries}...")
+                print(f"[AI] ⏳ Upstream wait {wait_time}s...")
                 time.sleep(wait_time)
-                # Coba key lain juga siapa tahu key ini yang bermasalah
                 if upstream_retries > 2:
                     key_manager.next_key()
             else:
-                key_manager.mark_error()
+                key_manager.mark_error(last_error)
                 time.sleep(2)
 
         except anthropic.APIConnectionError as e:
             last_error = f"Connection: {str(e)[:200]}"
             print(f"[AI] ❌ {last_error}")
-            key_manager.mark_error()
+            key_manager.mark_error(last_error)
             time.sleep(3)
 
         except Exception as e:
             last_error = f"{str(e)[:200]}"
             print(f"[AI] ❌ {last_error}")
-            key_manager.mark_error()
+            key_manager.mark_error(last_error)
             time.sleep(2)
 
+    with _stats_lock:
+        request_stats["total"]["failed"] += 1
     raise Exception(f"Semua key gagal. Error terakhir: {last_error}")
 
+# ================================================
+# UTILS
+# ================================================
 def bersihkan_json(text: str) -> str:
     text = text.strip()
     if "```" in text:
@@ -334,56 +446,38 @@ def bersihkan_code(text: str) -> str:
         cleaned.append(line)
     return "\n".join(cleaned).strip()
 
-# ================================================
-# PARSE JSON TOLERAN
-# ================================================
 def parse_json_toleran(text: str) -> dict:
     text = bersihkan_json(text)
-
     try:
         return json.loads(text)
-    except json.JSONDecodeError as e:
-        print(f"[JSON] Attempt 1 failed: {e}")
-
+    except json.JSONDecodeError:
+        pass
     try:
         fixed = re.sub(r'\\(?![\\"/bfnrtu])', r'\\\\', text)
         return json.loads(fixed)
-    except json.JSONDecodeError as e:
-        print(f"[JSON] Attempt 2 failed: {e}")
-
+    except json.JSONDecodeError:
+        pass
     try:
         fixed = re.sub(r'\\(?![\\"/bfnrtu])', r'\\\\', text)
         fixed = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', fixed)
         return json.loads(fixed)
-    except json.JSONDecodeError as e:
-        print(f"[JSON] Attempt 3 failed: {e}")
+    except json.JSONDecodeError:
+        pass
 
-    print("[JSON] Fallback: ekstrak field manual pakai regex")
+    print("[JSON] Fallback regex extract")
     result = {
-        "analysis"      : "",
-        "new_files"     : {},
-        "modified_files": {},
-        "run_cmd"       : "",
-        "notes"         : "",
-        "description"   : "",
-        "tech_stack"    : "",
-        "files"         : [],
-        "install_cmd"   : "",
-        "test_cmd"      : "",
-        "project_type"  : "script",
-        "fixed_files"   : {},
+        "analysis": "", "new_files": {}, "modified_files": {}, "run_cmd": "",
+        "notes": "", "description": "", "tech_stack": "", "files": [],
+        "install_cmd": "", "test_cmd": "", "project_type": "script", "fixed_files": {},
     }
-
     for field in ["analysis", "run_cmd", "notes", "description",
                   "tech_stack", "install_cmd", "test_cmd", "project_type"]:
         m = re.search(rf'"{field}"\s*:\s*"([^"]*(?:\\.[^"]*)*)"', text)
-        if m:
-            result[field] = m.group(1)
+        if m: result[field] = m.group(1)
 
     m = re.search(r'"files"\s*:\s*\[(.*?)\]', text, re.DOTALL)
     if m:
-        files_str = m.group(1)
-        result["files"] = re.findall(r'"([^"]+)"', files_str)
+        result["files"] = re.findall(r'"([^"]+)"', m.group(1))
 
     for match in re.finditer(
         r'"([a-zA-Z0-9_/\-\.]+\.(?:py|js|ts|html|css|json|txt|md|yaml|yml|toml))"\s*:\s*"((?:[^"\\]|\\.)*)"',
@@ -394,23 +488,21 @@ def parse_json_toleran(text: str) -> dict:
         fcontent = fcontent.replace('\\"', '"').replace('\\\\', '\\')
         result["modified_files"][fname] = fcontent
 
-    if (not result["modified_files"] and not result["new_files"]
-        and not result["fixed_files"] and not result["files"]):
-        raise Exception("Tidak bisa parse JSON sama sekali")
-
+    if not any([result["modified_files"], result["new_files"], result["fixed_files"], result["files"]]):
+        raise Exception("Tidak bisa parse JSON")
     return result
 
 # ================================================
-# LOG
+# LOG + WEBSOCKET BROADCAST
 # ================================================
 _log_lock = threading.Lock()
 
 def log(project_id: str, pesan: str, level: str = "info"):
     emoji_map = {
-        "info"   : "ℹ️", "success": "✅", "error": "❌",
-        "warning": "⚠️", "loading": "⏳", "fix"  : "🔧",
-        "file"   : "📄", "folder" : "📁", "run"  : "🧪",
-        "done"   : "🎉", "lanjut" : "🔄",
+        "info": "ℹ️", "success": "✅", "error": "❌",
+        "warning": "⚠️", "loading": "⏳", "fix": "🔧",
+        "file": "📄", "folder": "📁", "run": "🧪",
+        "done": "🎉", "lanjut": "🔄", "cache": "✨",
     }
     icon  = emoji_map.get(level, "•")
     entry = f"{icon} {pesan}"
@@ -419,29 +511,35 @@ def log(project_id: str, pesan: str, level: str = "info"):
             projects[project_id]["logs"].append(entry)
             save_state()
     print(f"[{project_id}] {entry}")
+    # ✅ Broadcast ke websocket
+    broadcast_ws(project_id, {"type": "log", "message": entry, "level": level})
+
+def broadcast_ws(project_id: str, data: dict):
+    """Kirim update ke semua websocket client yang subscribe"""
+    with _ws_lock:
+        conns = list(websocket_connections.get(project_id, set()))
+    for ws in conns:
+        try:
+            asyncio.run_coroutine_threadsafe(
+                ws.send_json(data),
+                asyncio.get_event_loop()
+            )
+        except Exception:
+            pass
 
 # ================================================
-# JALANKAN COMMAND
+# COMMAND & FILE UTILS
 # ================================================
 def jalankan_cmd(cmd: str, cwd: str, timeout: int = 60) -> dict:
     try:
-        hasil = subprocess.run(
-            cmd, cwd=cwd, shell=True,
-            capture_output=True, text=True, timeout=timeout,
-        )
-        return {
-            "sukses": hasil.returncode == 0,
-            "output": hasil.stdout,
-            "error" : hasil.stderr,
-        }
+        hasil = subprocess.run(cmd, cwd=cwd, shell=True,
+                               capture_output=True, text=True, timeout=timeout)
+        return {"sukses": hasil.returncode == 0, "output": hasil.stdout, "error": hasil.stderr}
     except subprocess.TimeoutExpired:
         return {"sukses": False, "output": "", "error": f"TIMEOUT: '{cmd}'"}
     except Exception as e:
         return {"sukses": False, "output": "", "error": str(e)}
 
-# ================================================
-# BACA FILE
-# ================================================
 SKIP_DIRS = {"node_modules", "__pycache__", ".git", "venv", ".venv", ".mypy_cache"}
 READ_EXTS = {".py", ".js", ".ts", ".html", ".css", ".json", ".txt",
              ".md", ".env", ".yaml", ".yml", ".toml"}
@@ -456,8 +554,7 @@ def baca_semua_file(project_dir: Path, max_chars: int = 400) -> dict:
         try:
             rel = str(fp.relative_to(project_dir))
             semua[rel] = fp.read_text(encoding="utf-8", errors="ignore")[:max_chars]
-        except Exception:
-            pass
+        except Exception: pass
     return semua
 
 def baca_file_full(project_dir: Path) -> dict:
@@ -470,92 +567,97 @@ def baca_file_full(project_dir: Path) -> dict:
         try:
             rel = str(fp.relative_to(project_dir))
             semua[rel] = fp.read_text(encoding="utf-8", errors="ignore")
-        except Exception:
-            pass
+        except Exception: pass
     return semua
+
+# ================================================
+# ✅ BACKUP SYSTEM
+# ================================================
+def backup_project(project_dir: Path, nama: str) -> str:
+    """Backup project sebelum modifikasi"""
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_name = f"{nama}_{timestamp}.zip"
+    backup_path = BACKUPS_DIR / backup_name
+    try:
+        with zipfile.ZipFile(backup_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for fp in project_dir.rglob("*"):
+                if not fp.is_file(): continue
+                if any(s in fp.parts for s in SKIP_DIRS): continue
+                arcname = str(fp.relative_to(project_dir))
+                zf.write(fp, arcname)
+        print(f"[BACKUP] ✅ {backup_name}")
+        return backup_name
+    except Exception as e:
+        print(f"[BACKUP] ❌ {e}")
+        return ""
+
+def list_backups(nama: str = None) -> list:
+    """List semua backup, optional filter by nama project"""
+    hasil = []
+    if not BACKUPS_DIR.exists():
+        return hasil
+    for fp in sorted(BACKUPS_DIR.iterdir(), reverse=True):
+        if not fp.is_file() or fp.suffix != ".zip": continue
+        if nama and not fp.name.startswith(nama + "_"): continue
+        hasil.append({
+            "name"     : fp.name,
+            "size"     : fp.stat().st_size,
+            "created"  : fp.stat().st_mtime,
+            "project"  : fp.name.rsplit("_", 2)[0],
+        })
+    return hasil
 
 # ================================================
 # GENERATE SATU FILE
 # ================================================
-def generate_satu_file(nama_project: str, deskripsi: str,
-                        filename: str, daftar_file: list) -> str:
-
+def generate_satu_file(nama_project: str, deskripsi: str, filename: str, daftar_file: list) -> str:
     if filename.endswith("__init__.py"):
         return '"""Package init."""\n'
 
-    desc_short = deskripsi[:200]
-    files_hint = ", ".join(daftar_file[:6])
+    desc_short = deskripsi[:250]
+    files_hint = ", ".join(daftar_file[:8])
 
     ANTI_MARKDOWN = (
         "\n\nPENTING: Balas HANYA isi file mentah TANPA ```python, TANPA ```, "
-        "TANPA penjelasan. Langsung code saja dari baris pertama."
+        "TANPA penjelasan. Langsung code dari baris pertama."
     )
-
     PORT_HINT = (
-        "\n\nCATATAN: Jika project pakai FastAPI/Flask/HTTP server, "
-        "WAJIB baca port dari env variable PORT (default 8000). Contoh: "
-        "port = int(os.environ.get('PORT', 8000)). "
-        "Bind ke host 0.0.0.0."
+        "\n\nCATATAN: Untuk FastAPI/Flask, WAJIB baca port dari env variable PORT. "
+        "port = int(os.environ.get('PORT', 8000)). Bind ke host 0.0.0.0."
     )
 
     if filename == "requirements.txt":
         system = "Programmer Python. Tulis requirements.txt saja."
-        user   = (
-            f"Project: {nama_project} - {desc_short}\n"
-            "Tulis requirements.txt (satu library per baris, no komentar, no versi):"
-            + ANTI_MARKDOWN
-        )
-        raw = tanya_ai(system, user, max_tokens=400)
+        user = f"Project: {nama_project} - {desc_short}\nTulis requirements.txt (satu library per baris, no komentar):" + ANTI_MARKDOWN
+        return bersihkan_code(tanya_ai(system, user, max_tokens=400))
 
     elif filename == "README.md":
         system = "Tulis README.md singkat dan padat."
-        user   = (
-            f"Project: {nama_project}\nDeskripsi: {desc_short}\n"
-            "Tulis README.md: judul, deskripsi 2 kalimat, install, cara pakai. RINGKAS."
-            "\n\nPENTING: Langsung markdown, JANGAN dibungkus ```markdown."
-        )
-        raw = tanya_ai(system, user, max_tokens=1200)
+        user = f"Project: {nama_project}\nDeskripsi: {desc_short}\nTulis README.md: judul, deskripsi, install, cara pakai, fitur."
+        return bersihkan_code(tanya_ai(system, user, max_tokens=1500))
 
     elif "test" in filename.lower():
         system = "Programmer Python. Tulis unit test pytest SEDERHANA."
-        user   = (
-            f"Project: {nama_project}\nDeskripsi: {desc_short}\n\n"
-            f"Tulis {filename} berisi 2-3 unit test SEDERHANA. Gunakan mock."
-            + ANTI_MARKDOWN
-        )
-        raw = tanya_ai(system, user, max_tokens=1500)
+        user = f"Project: {nama_project}\nDeskripsi: {desc_short}\n\nTulis {filename}, 3-5 unit test. Gunakan mock." + ANTI_MARKDOWN
+        return bersihkan_code(tanya_ai(system, user, max_tokens=1800))
 
     elif filename in ["config.py", "database.py"]:
         system = "Programmer Python. Tulis file konfigurasi RINGKAS."
-        user   = (
-            f"Project: {nama_project}\nDeskripsi: {desc_short}\n"
-            f"Tulis {filename} RINGKAS (max 60 baris)."
-            + ANTI_MARKDOWN
-        )
-        raw = tanya_ai(system, user, max_tokens=1200)
+        user = f"Project: {nama_project}\nDeskripsi: {desc_short}\nTulis {filename} RINGKAS (max 80 baris)." + ANTI_MARKDOWN
+        return bersihkan_code(tanya_ai(system, user, max_tokens=1500))
 
     elif filename in ["models.py", "schemas.py", "crud.py"]:
         system = "Programmer Python expert FastAPI + SQLAlchemy."
-        user   = (
-            f"Project: {nama_project}\nDeskripsi: {desc_short}\n"
-            f"File lain: {files_hint}\n\n"
-            f"Tulis {filename} LENGKAP tapi RINGKAS (max {MAX_LINES_PER_FILE} baris)."
-            + ANTI_MARKDOWN
-        )
-        raw = tanya_ai(system, user, max_tokens=2500)
+        user = (f"Project: {nama_project}\nDeskripsi: {desc_short}\nFile lain: {files_hint}\n\n"
+                f"Tulis {filename} LENGKAP (max {MAX_LINES_PER_FILE} baris)." + ANTI_MARKDOWN)
+        return bersihkan_code(tanya_ai(system, user, max_tokens=3000))
 
     else:
-        system = "Programmer Python expert. Tulis code RINGKAS dan langsung jalan."
-        user   = (
-            f"Project: {nama_project}\nDeskripsi: {desc_short}\n"
-            f"File di project: {files_hint}\n\n"
-            f"Tulis {filename} LENGKAP bisa langsung dijalankan. "
-            f"MAKSIMAL {MAX_LINES_PER_FILE} baris."
-            + PORT_HINT + ANTI_MARKDOWN
-        )
-        raw = tanya_ai(system, user, max_tokens=3500)
-
-    return bersihkan_code(raw)
+        system = "Programmer Python expert. Tulis code RINGKAS, langsung jalan, ada UI HTML lengkap jika web."
+        user = (f"Project: {nama_project}\nDeskripsi: {desc_short}\nFile di project: {files_hint}\n\n"
+                f"Tulis {filename} LENGKAP bisa langsung dijalankan. MAKSIMAL {MAX_LINES_PER_FILE} baris."
+                + PORT_HINT + ANTI_MARKDOWN)
+        return bersihkan_code(tanya_ai(system, user, max_tokens=4000))
 
 # ================================================
 # PERBAIKI ERROR
@@ -563,17 +665,15 @@ def generate_satu_file(nama_project: str, deskripsi: str,
 def perbaiki_error(project_id: str, project_dir: Path, error_msg: str):
     log(project_id, "Menganalisis error...", "fix")
     semua_file = baca_file_full(project_dir)
-    if not semua_file:
-        return
+    if not semua_file: return
 
     system = (
         "Debugger Python expert. Perbaiki error.\n"
         "Balas HANYA JSON valid tanpa markdown.\n"
-        "PENTING escape: backslash \\ jadi \\\\, newline jadi \\n, kutip jadi \\\".\n"
+        "Escape: \\ jadi \\\\, newline jadi \\n, kutip jadi \\\".\n"
         '{"analysis":"penjelasan","fixed_files":{"path/file.py":"code LENGKAP"}}'
     )
-    context = {}
-    total   = 0
+    context, total = {}, 0
     for k, v in semua_file.items():
         if total > 4000: break
         context[k] = v
@@ -582,15 +682,13 @@ def perbaiki_error(project_id: str, project_dir: Path, error_msg: str):
     user = f"ERROR:\n{error_msg[:600]}\n\nFILE:\n{json.dumps(context, ensure_ascii=False)}"
 
     try:
-        raw  = tanya_ai(system, user, max_tokens=4000)
+        raw  = tanya_ai(system, user, max_tokens=4000, use_cache=False)
         data = parse_json_toleran(raw)
         log(project_id, f"Analisis: {data.get('analysis', '-')}", "fix")
-        fixed = data.get("fixed_files", {})
-        for filename, new_code in fixed.items():
+        for filename, new_code in (data.get("fixed_files") or {}).items():
             filename = str(filename).strip().lstrip("/")
             target   = (project_dir / filename).resolve()
-            if not str(target).startswith(str(project_dir.resolve())):
-                continue
+            if not str(target).startswith(str(project_dir.resolve())): continue
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(bersihkan_code(new_code), encoding="utf-8")
             log(project_id, f"Diperbaiki: {filename}", "fix")
@@ -605,7 +703,6 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
         log(project_id, "Memulai pembuatan project...", "loading")
         key_info = key_manager.get_info()
         log(project_id, f"Model: {key_info['model']}", "info")
-
         log(project_id, "Tahap 1: AI merancang struktur...", "loading")
 
         system_plan = (
@@ -623,7 +720,7 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
         )
         user_plan = (
             f"Project: {nama}\nDeskripsi: {deskripsi[:300]}\n"
-            f"MAKSIMAL {MAX_FILES_PER_PROJ} file. project_type harus dipilih: cli, fastapi, flask, atau script."
+            f"MAKSIMAL {MAX_FILES_PER_PROJ} file. project_type dipilih: cli, fastapi, flask, atau script."
         )
 
         raw_plan = tanya_ai(system_plan, user_plan, max_tokens=800)
@@ -631,16 +728,15 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
         try:
             plan = parse_json_toleran(raw_plan)
         except Exception as e:
-            msg = f"Gagal parse planning: {e}\nRaw (500 char): {raw_plan[:500]}"
+            msg = f"Gagal parse planning: {e}"
             log(project_id, msg, "error")
             projects[project_id]["status"] = "error"
             projects[project_id]["error"]  = msg
             save_state()
+            broadcast_ws(project_id, {"type": "status", "status": "error"})
             return
 
-        daftar_file = plan.get("files", ["main.py","requirements.txt","README.md","tests/test_main.py"])
-        if not daftar_file:
-            daftar_file = ["main.py","requirements.txt","README.md","tests/test_main.py"]
+        daftar_file = plan.get("files") or ["main.py","requirements.txt","README.md","tests/test_main.py"]
         if len(daftar_file) > MAX_FILES_PER_PROJ:
             daftar_file = daftar_file[:MAX_FILES_PER_PROJ]
 
@@ -651,8 +747,8 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
         description  = plan.get("description", deskripsi)
         project_type = (plan.get("project_type") or "script").lower()
 
-        log(project_id, f"Struktur: {len(daftar_file)} file akan dibuat", "info")
-        log(project_id, f"Tipe project: {project_type}", "info")
+        log(project_id, f"Struktur: {len(daftar_file)} file", "info")
+        log(project_id, f"Tipe: {project_type}", "info")
 
         project_dir = BASE_DIR / nama
         project_dir.mkdir(parents=True, exist_ok=True)
@@ -667,42 +763,37 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
             save_state()
 
         log(project_id, f"Folder: workspace/{nama}/", "folder")
-        log(project_id, "Tahap 2: Generate file satu per satu...", "loading")
+        log(project_id, "Tahap 2: Generate file...", "loading")
 
-        file_berhasil = []
-        file_gagal    = []
+        file_berhasil, file_gagal = [], []
 
         for idx, filename in enumerate(daftar_file, 1):
             filename = str(filename).strip().lstrip("/")
             if not filename: continue
-
-            log(project_id, f"[{idx}/{len(daftar_file)}] Generating: {filename}...", "loading")
+            log(project_id, f"[{idx}/{len(daftar_file)}] {filename}...", "loading")
             t_start = time.time()
-
             try:
                 isi = generate_satu_file(nama, deskripsi, filename, daftar_file)
                 elapsed = time.time() - t_start
-                log(project_id, f"  ✓ Selesai ({len(isi)} chars, {elapsed:.1f}s)", "success")
+                log(project_id, f"  ✓ {len(isi)} chars ({elapsed:.1f}s)", "success")
             except Exception as e:
                 err_msg = str(e)[:200]
                 log(project_id, f"  ✗ Gagal: {err_msg}", "warning")
                 file_gagal.append(filename)
-                isi = f'# File {filename} - GAGAL DIGENERATE\n# Error: {err_msg}\n'
+                isi = f'# {filename} - GAGAL\n# Error: {err_msg}\n'
 
             target = (project_dir / filename).resolve()
-            if not str(target).startswith(str(project_dir.resolve())):
-                continue
-
+            if not str(target).startswith(str(project_dir.resolve())): continue
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(isi, encoding="utf-8")
             file_berhasil.append(filename)
-            log(project_id, f"  💾 Disimpan: {filename}", "file")
+            log(project_id, f"  💾 {filename}", "file")
 
             with _log_lock:
                 projects[project_id]["files"] = file_berhasil.copy()
                 save_state()
 
-        # Auto-add pytest & framework
+        # Auto-add libs
         req_file = project_dir / "requirements.txt"
         if req_file.exists():
             current_req = req_file.read_text(encoding="utf-8")
@@ -712,13 +803,13 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
             if project_type == "fastapi":
                 if "fastapi" not in current_req.lower(): libs_add.append("fastapi")
                 if "uvicorn" not in current_req.lower(): libs_add.append("uvicorn")
+                if "jinja2" not in current_req.lower(): libs_add.append("jinja2")
             if project_type == "flask" and "flask" not in current_req.lower():
                 libs_add.append("flask")
-
             if libs_add:
                 current_req = current_req.rstrip() + "\n" + "\n".join(libs_add) + "\n"
                 req_file.write_text(current_req, encoding="utf-8")
-                log(project_id, f"Ditambahkan: {', '.join(libs_add)}", "info")
+                log(project_id, f"+ {', '.join(libs_add)}", "info")
 
         with _log_lock:
             projects[project_id]["files"]   = file_berhasil
@@ -726,36 +817,31 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
             save_state()
 
         meta = {
-            "nama"        : nama,
-            "deskripsi"   : deskripsi,
-            "tech_stack"  : tech_stack,
-            "run_cmd"     : run_cmd,
-            "install_cmd" : install_cmd,
-            "test_cmd"    : test_cmd,
-            "files"       : file_berhasil,
-            "project_type": project_type,
+            "nama": nama, "deskripsi": deskripsi, "tech_stack": tech_stack,
+            "run_cmd": run_cmd, "install_cmd": install_cmd, "test_cmd": test_cmd,
+            "files": file_berhasil, "project_type": project_type,
+            "created_at": datetime.now().isoformat(),
         }
-        (project_dir / ".ai_meta.json").write_text(
-            json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
-        )
+        (project_dir / ".ai_meta.json").write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
         if len(file_gagal) < len(daftar_file) / 2:
             if req_file.exists():
-                log(project_id, "Menginstall dependencies...", "loading")
+                log(project_id, "Install dependencies...", "loading")
                 hasil_install = jalankan_cmd(install_cmd, str(project_dir), timeout=180)
                 if hasil_install["sukses"]:
-                    log(project_id, "Dependencies berhasil diinstall!", "success")
+                    log(project_id, "Dependencies OK!", "success")
                 else:
-                    log(project_id, f"Warning install: {hasil_install['error'][:200]}", "warning")
+                    log(project_id, f"Warning: {hasil_install['error'][:200]}", "warning")
 
         log(project_id, "=" * 40, "info")
         log(project_id, f"Project '{nama}' selesai!", "done")
-        log(project_id, f"Tipe: {project_type} | Files: {len(file_berhasil)}", "info")
-        log(project_id, f"Klik tombol ▶️ RUN untuk menjalankan!", "info")
+        log(project_id, f"Tipe: {project_type} | {len(file_berhasil)} file", "info")
+        log(project_id, "Klik ▶️ RUN untuk jalankan!", "info")
 
         with _log_lock:
             projects[project_id]["status"] = "done"
             save_state()
+        broadcast_ws(project_id, {"type": "status", "status": "done"})
 
     except Exception as e:
         import traceback
@@ -765,18 +851,25 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
             projects[project_id]["status"] = "error"
             projects[project_id]["error"]  = msg
             save_state()
+        broadcast_ws(project_id, {"type": "status", "status": "error"})
 
 # ================================================
-# LANJUT PROJECT
+# LANJUT PROJECT — dengan BACKUP otomatis
 # ================================================
 def lanjut_project_background(project_id: str, nama: str, permintaan: str):
     try:
         project_dir = BASE_DIR / nama
         if not project_dir.exists():
-            log(project_id, f"Folder '{nama}' tidak ditemukan.", "error")
+            log(project_id, f"Folder '{nama}' tidak ada", "error")
             projects[project_id]["status"] = "error"
             save_state()
             return
+
+        # ✅ BACKUP DULU
+        log(project_id, "Backup project sebelum modifikasi...", "loading")
+        backup_name = backup_project(project_dir, nama)
+        if backup_name:
+            log(project_id, f"Backup: {backup_name}", "info")
 
         log(project_id, f"Membaca project: {nama}", "lanjut")
 
@@ -784,37 +877,29 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
             projects[project_id]["folder"] = str(project_dir.resolve())
             save_state()
 
-        meta      = {}
+        meta = {}
         meta_file = project_dir / ".ai_meta.json"
         if meta_file.exists():
             try:
                 meta = json.loads(meta_file.read_text(encoding="utf-8"))
-            except Exception:
-                pass
+            except Exception: pass
 
         semua_file = baca_semua_file(project_dir, max_chars=400)
 
         system_lanjut = (
-            "Programmer Python expert. Kembangkan project.\n\n"
+            "Programmer Python expert. Kembangkan project sesuai permintaan.\n\n"
             "Balas HANYA JSON valid tanpa markdown.\n"
-            "PENTING escape untuk isi code di dalam JSON:\n"
-            "- Backslash \\ HARUS jadi \\\\\n"
-            "- Newline HARUS jadi \\n\n"
-            "- Double quote \" HARUS jadi \\\"\n"
-            "- Tab HARUS jadi \\t\n"
-            "- JANGAN pakai raw string atau karakter aneh\n\n"
-            "Format:\n"
+            "PENTING escape: \\ jadi \\\\, newline jadi \\n, kutip jadi \\\".\n\n"
             "{\n"
             '  "analysis": "singkat",\n'
-            '  "new_files": {"path/file.py": "code dengan escape benar"},\n'
-            '  "modified_files": {"path/file.py": "code dengan escape benar"},\n'
+            '  "new_files": {"path/file.py": "code"},\n'
+            '  "modified_files": {"path/file.py": "code"},\n'
             '  "run_cmd": "perintah",\n'
             '  "notes": "ringkasan"\n'
             "}"
         )
 
-        context  = {}
-        total_ch = 0
+        context, total_ch = {}, 0
         for fname, fcontent in semua_file.items():
             if total_ch > 3000: break
             context[fname] = fcontent
@@ -827,12 +912,12 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
         )
 
         log(project_id, "AI mengembangkan...", "loading")
-        raw_lanjut = tanya_ai(system_lanjut, user_lanjut, max_tokens=5000)
+        raw_lanjut = tanya_ai(system_lanjut, user_lanjut, max_tokens=5000, use_cache=False)
 
         try:
             hasil = parse_json_toleran(raw_lanjut)
         except Exception as e:
-            msg = f"JSON invalid: {e}\nRaw (500 char): {raw_lanjut[:500]}"
+            msg = f"JSON invalid: {e}"
             log(project_id, msg, "error")
             projects[project_id]["status"] = "error"
             projects[project_id]["error"]  = msg
@@ -845,26 +930,25 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
         mod_files = hasil.get("modified_files", {}) or {}
 
         if not new_files and not mod_files:
-            log(project_id, "AI tidak mengusulkan perubahan file.", "warning")
+            log(project_id, "AI tidak mengusulkan perubahan.", "warning")
 
         for filename, content in {**new_files, **mod_files}.items():
             filename = str(filename).strip().lstrip("/")
             target   = (project_dir / filename).resolve()
-            if not str(target).startswith(str(project_dir.resolve())):
-                continue
+            if not str(target).startswith(str(project_dir.resolve())): continue
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_text(bersihkan_code(str(content)), encoding="utf-8")
-            label = "File baru" if filename in new_files else "Diupdate"
+            label = "Baru" if filename in new_files else "Update"
             log(project_id, f"{label}: {filename}", "file")
 
         all_files = list(semua_file.keys())
         for f in list(new_files.keys()) + list(mod_files.keys()):
-            if f not in all_files:
-                all_files.append(f)
+            if f not in all_files: all_files.append(f)
 
         run_cmd = hasil.get("run_cmd") or meta.get("run_cmd", "")
         meta["files"]   = all_files
         meta["run_cmd"] = run_cmd
+        meta["last_modified"] = datetime.now().isoformat()
         meta_file.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
         with _log_lock:
@@ -876,10 +960,18 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
             save_state()
 
         if "requirements.txt" in mod_files or "requirements.txt" in new_files:
-            jalankan_cmd(
-                meta.get("install_cmd", "pip install -r requirements.txt"),
-                str(project_dir), timeout=180,
-            )
+            jalankan_cmd(meta.get("install_cmd", "pip install -r requirements.txt"),
+                        str(project_dir), timeout=180)
+
+        # ✅ Auto-restart jika sedang running
+        was_running = project_id in running_processes
+        if was_running:
+            log(project_id, "Auto-restart karena project sedang running...", "info")
+            stop_project(project_id)
+            time.sleep(1)
+            run_project(project_id, project_dir, run_cmd,
+                       meta.get("project_type", "script"))
+            log(project_id, "Project restarted!", "success")
 
         log(project_id, "Pengembangan selesai!", "done")
         with _log_lock:
@@ -905,15 +997,21 @@ def cari_port_kosong() -> int:
             used_ports.add(pinfo.get("port", 0))
     for port in range(PORT_START, PORT_END):
         if port not in used_ports:
-            return port
+            # Cek juga apakah port beneran kosong
+            try:
+                with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                    s.settimeout(0.5)
+                    result = s.connect_ex(("127.0.0.1", port))
+                    if result != 0:  # port kosong
+                        return port
+            except Exception:
+                return port
     return PORT_START
 
 def stop_project(project_id: str) -> bool:
     with _proc_lock:
         info = running_processes.get(project_id)
-        if not info:
-            return False
-
+        if not info: return False
         proc = info.get("process")
         if proc and proc.poll() is None:
             try:
@@ -923,11 +1021,8 @@ def stop_project(project_id: str) -> bool:
                     proc.send_signal(signal.SIGTERM)
                 proc.wait(timeout=5)
             except Exception:
-                try:
-                    proc.kill()
-                except Exception:
-                    pass
-
+                try: proc.kill()
+                except: pass
         del running_processes[project_id]
         return True
 
@@ -939,8 +1034,9 @@ def stream_output(project_id: str, proc):
                 if project_id in running_processes:
                     running_processes[project_id]["logs"].append(line.rstrip())
                     if len(running_processes[project_id]["logs"]) > 500:
-                        running_processes[project_id]["logs"] = \
-                            running_processes[project_id]["logs"][-500:]
+                        running_processes[project_id]["logs"] = running_processes[project_id]["logs"][-500:]
+            # ✅ Broadcast log realtime
+            broadcast_ws(project_id, {"type": "runlog", "line": line.rstrip()})
     except Exception as e:
         with _proc_lock:
             if project_id in running_processes:
@@ -949,7 +1045,6 @@ def stream_output(project_id: str, proc):
 def run_project(project_id: str, project_dir: Path, run_cmd: str, project_type: str) -> dict:
     stop_project(project_id)
     port = cari_port_kosong()
-
     env = os.environ.copy()
     env["PORT"] = str(port)
     env["HOST"] = "127.0.0.1"
@@ -964,68 +1059,62 @@ def run_project(project_id: str, project_dir: Path, run_cmd: str, project_type: 
         else:
             run_cmd = re.sub(r"--port\s+\d+", f"--port {port}", run_cmd)
             run_cmd = re.sub(r"--host\s+\S+", "--host 127.0.0.1", run_cmd)
-            if "--port" not in run_cmd:
-                run_cmd = run_cmd + f" --port {port}"
-            if "--host" not in run_cmd:
-                run_cmd = run_cmd + " --host 127.0.0.1"
-
+            if "--port" not in run_cmd: run_cmd += f" --port {port}"
+            if "--host" not in run_cmd: run_cmd += " --host 127.0.0.1"
     elif project_type == "flask":
         env["FLASK_RUN_PORT"] = str(port)
         env["FLASK_RUN_HOST"] = "127.0.0.1"
 
-    print(f"[RUN] Project {project_id} → {run_cmd} @ port {port}")
+    print(f"[RUN] {project_id} → {run_cmd} @ :{port}")
 
     try:
         proc = subprocess.Popen(
-            run_cmd,
-            cwd    = str(project_dir),
-            shell  = True,
-            stdout = subprocess.PIPE,
-            stderr = subprocess.STDOUT,
-            text   = True,
-            bufsize= 1,
-            env    = env,
+            run_cmd, cwd=str(project_dir), shell=True,
+            stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, bufsize=1, env=env,
         )
-
         with _proc_lock:
             running_processes[project_id] = {
-                "process"   : proc,
-                "port"      : port,
-                "logs"      : [f"[SYSTEM] Menjalankan: {run_cmd}", f"[SYSTEM] Port: {port}"],
-                "started_at": time.time(),
-                "run_cmd"   : run_cmd,
-                "type"      : project_type,
+                "process": proc, "port": port,
+                "logs": [f"[SYSTEM] Menjalankan: {run_cmd}", f"[SYSTEM] Port: {port}"],
+                "started_at": time.time(), "run_cmd": run_cmd, "type": project_type,
+                "last_access": time.time(),
             }
-
-        threading.Thread(
-            target=stream_output,
-            args=(project_id, proc),
-            daemon=True,
-        ).start()
-
+        threading.Thread(target=stream_output, args=(project_id, proc), daemon=True).start()
         time.sleep(2)
         if proc.poll() is not None and proc.poll() != 0:
             with _proc_lock:
                 logs = running_processes.get(project_id, {}).get("logs", [])
-            return {
-                "sukses": False,
-                "error" : f"Process langsung berhenti (exit code: {proc.poll()})",
-                "logs"  : logs[-20:],
-            }
+            return {"sukses": False, "error": f"Process berhenti (exit: {proc.poll()})", "logs": logs[-20:]}
 
         is_web = project_type in ["fastapi", "flask"]
         url = f"/proxy/{project_id}/" if is_web else None
-
-        return {
-            "sukses" : True,
-            "port"   : port,
-            "run_cmd": run_cmd,
-            "type"   : project_type,
-            "url"    : url,
-        }
-
+        return {"sukses": True, "port": port, "run_cmd": run_cmd, "type": project_type, "url": url}
     except Exception as e:
         return {"sukses": False, "error": str(e)}
+
+# ================================================
+# ✅ AUTO CLEANUP idle processes
+# ================================================
+def cleanup_idle_processes():
+    """Hentikan process yang idle > AUTO_CLEANUP_MIN menit"""
+    while True:
+        try:
+            time.sleep(300)  # cek tiap 5 menit
+            now = time.time()
+            idle_pids = []
+            with _proc_lock:
+                for pid, info in running_processes.items():
+                    idle = (now - info.get("last_access", now)) / 60
+                    if idle > AUTO_CLEANUP_MIN:
+                        idle_pids.append(pid)
+            for pid in idle_pids:
+                print(f"[CLEANUP] 🧹 Stop idle: {pid}")
+                stop_project(pid)
+        except Exception as e:
+            print(f"[CLEANUP] Error: {e}")
+
+threading.Thread(target=cleanup_idle_processes, daemon=True).start()
 
 # ================================================
 # ROUTES
@@ -1039,102 +1128,176 @@ async def halaman_utama():
 
 @app.get("/test-ai")
 async def test_ai():
-    hasil_cek = []
-    for i, key_info in enumerate(API_KEYS):
+    hasil = []
+    for i, k in enumerate(API_KEYS):
         try:
-            client = buat_client(key_info["base_url"], key_info["api_key"])
-            resp   = client.messages.create(
-                model      = key_info["model"],
-                max_tokens = 64,
-                messages   = [{"role": "user", "content": "Balas: OK"}]
-            )
+            client = buat_client(k["base_url"], k["api_key"])
+            resp = client.messages.create(model=k["model"], max_tokens=64,
+                                          messages=[{"role": "user", "content": "Balas: OK"}])
             reply = ambil_text(resp) or "(kosong)"
-            hasil_cek.append({"index": i, "status": "✅ sukses",
-                              "model": key_info["model"], "reply": reply})
+            hasil.append({"index": i, "status": "✅ sukses", "model": k["model"], "reply": reply})
         except Exception as e:
-            hasil_cek.append({"index": i, "status": "❌ gagal",
-                              "model": key_info["model"], "error": str(e)})
-    return JSONResponse({"keys": hasil_cek})
+            hasil.append({"index": i, "status": "❌ gagal", "model": k["model"], "error": str(e)})
+    return JSONResponse({"keys": hasil})
+
+@app.get("/health-upstream")
+async def health_upstream():
+    hasil = []
+    for i, k in enumerate(API_KEYS):
+        try:
+            client = buat_client(k["base_url"], k["api_key"])
+            client.messages.create(model=k["model"], max_tokens=10,
+                                   messages=[{"role": "user", "content": "hi"}])
+            hasil.append({"index": i, "model": k["model"], "status": "✅ healthy"})
+        except anthropic.APIStatusError as e:
+            hasil.append({"index": i, "model": k["model"],
+                         "status": f"⚠️ {e.status_code}", "error": str(e.message)[:150]})
+        except Exception as e:
+            hasil.append({"index": i, "model": k["model"], "status": "❌ error", "error": str(e)[:150]})
+    return JSONResponse({"keys": hasil})
+
+# ✅ Stats endpoint
+@app.get("/stats")
+async def get_stats():
+    with _stats_lock:
+        stats = dict(request_stats)
+    with _cache_lock:
+        cache_size = len(ai_cache)
+    with _proc_lock:
+        running_count = len(running_processes)
+    total_projects = len(list(BASE_DIR.iterdir())) if BASE_DIR.exists() else 0
+    total_backups = len(list(BACKUPS_DIR.iterdir())) if BACKUPS_DIR.exists() else 0
+    avg_time = 0
+    if stats.get("total", {}).get("success", 0) > 0:
+        avg_time = stats["total"]["total_time"] / stats["total"]["success"]
+    return JSONResponse({
+        "requests": {
+            "total"     : stats.get("total", {}).get("count", 0),
+            "success"   : stats.get("total", {}).get("success", 0),
+            "failed"    : stats.get("total", {}).get("failed", 0),
+            "avg_time"  : round(avg_time, 2),
+            "cache_hits": stats.get("cache_hit", {}).get("count", 0),
+        },
+        "cache": {"size": cache_size, "max": 200},
+        "projects": {"total": total_projects, "running": running_count, "backups": total_backups},
+        "system": {
+            "port_range": f"{PORT_START}-{PORT_END}",
+            "rate_limit": f"{RATE_LIMIT_PER_MIN}/min",
+            "cache_ttl" : f"{CACHE_TTL_SECONDS}s",
+        }
+    })
+
+# ✅ Backup endpoints
+@app.get("/backups")
+async def list_backups_route(nama: str = None):
+    return JSONResponse({"backups": list_backups(nama)})
+
+@app.post("/restore/{backup_name}")
+async def restore_backup(backup_name: str):
+    """Restore project dari backup"""
+    backup_path = BACKUPS_DIR / backup_name
+    if not backup_path.exists():
+        return JSONResponse({"error": "Backup tidak ada"}, status_code=404)
+    try:
+        # Ekstrak nama project dari backup filename
+        project_name = backup_name.rsplit("_", 2)[0]
+        target_dir = BASE_DIR / project_name
+        # Buat backup dari state saat ini dulu
+        if target_dir.exists():
+            backup_project(target_dir, project_name + "_before_restore")
+        # Ekstrak backup
+        with zipfile.ZipFile(backup_path, "r") as zf:
+            zf.extractall(target_dir)
+        return JSONResponse({"success": True, "restored_to": str(target_dir)})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+@app.delete("/backups/{backup_name}")
+async def delete_backup(backup_name: str):
+    backup_path = BACKUPS_DIR / backup_name
+    if not backup_path.exists():
+        return JSONResponse({"error": "Not found"}, status_code=404)
+    try:
+        backup_path.unlink()
+        return JSONResponse({"success": True})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+# ✅ Cache management
+@app.post("/cache/clear")
+async def clear_cache():
+    with _cache_lock:
+        count = len(ai_cache)
+        ai_cache.clear()
+    return JSONResponse({"cleared": count})
 
 @app.post("/buat-project")
-async def buat_project_route(deskripsi: str = Form(...), nama: str = Form(...)):
-    nama       = re.sub(r"[^a-zA-Z0-9_\-]", "_", nama.strip())[:50] or "project_kuliah"
-    project_id = str(uuid.uuid4())[:8]
+async def buat_project_route(request: Request, deskripsi: str = Form(...), nama: str = Form(...)):
+    # ✅ RATE LIMIT
+    client_ip = request.client.host
+    if not check_rate_limit(client_ip):
+        return JSONResponse({"error": f"Rate limit! Max {RATE_LIMIT_PER_MIN}/menit"}, status_code=429)
 
+    nama = re.sub(r"[^a-zA-Z0-9_\-]", "_", nama.strip())[:50] or "project_kuliah"
+    project_id = str(uuid.uuid4())[:8]
     with _log_lock:
         projects[project_id] = {
-            "status": "loading", "logs": [], "files": [],
-            "folder": "", "error": "", "run_cmd": "",
-            "tech": "", "desc": "", "nama": nama,
-            "project_type": "script",
+            "status": "loading", "logs": [], "files": [], "folder": "",
+            "error": "", "run_cmd": "", "tech": "", "desc": "",
+            "nama": nama, "project_type": "script",
+            "created_at": datetime.now().isoformat(),
         }
         save_state()
-
-    threading.Thread(
-        target=buat_project_background,
-        args=(project_id, deskripsi, nama),
-        daemon=True,
-    ).start()
-
+    threading.Thread(target=buat_project_background, args=(project_id, deskripsi, nama), daemon=True).start()
     return JSONResponse({"project_id": project_id, "nama": nama})
 
 @app.post("/lanjut-project")
-async def lanjut_project_route(nama: str = Form(...), permintaan: str = Form(...)):
-    nama       = re.sub(r"[^a-zA-Z0-9_\-]", "_", nama.strip())[:50] or "project"
-    project_id = str(uuid.uuid4())[:8]
+async def lanjut_project_route(request: Request, nama: str = Form(...), permintaan: str = Form(...)):
+    client_ip = request.client.host
+    if not check_rate_limit(client_ip):
+        return JSONResponse({"error": f"Rate limit! Max {RATE_LIMIT_PER_MIN}/menit"}, status_code=429)
 
+    nama = re.sub(r"[^a-zA-Z0-9_\-]", "_", nama.strip())[:50] or "project"
+    project_id = str(uuid.uuid4())[:8]
     with _log_lock:
         projects[project_id] = {
-            "status": "loading", "logs": [], "files": [],
-            "folder": "", "error": "", "run_cmd": "",
-            "tech": "", "desc": "", "nama": nama,
-            "project_type": "script",
+            "status": "loading", "logs": [], "files": [], "folder": "",
+            "error": "", "run_cmd": "", "tech": "", "desc": "",
+            "nama": nama, "project_type": "script",
+            "created_at": datetime.now().isoformat(),
         }
         save_state()
-
-    threading.Thread(
-        target=lanjut_project_background,
-        args=(project_id, nama, permintaan),
-        daemon=True,
-    ).start()
-
+    threading.Thread(target=lanjut_project_background, args=(project_id, nama, permintaan), daemon=True).start()
     return JSONResponse({"project_id": project_id, "nama": nama})
 
 @app.get("/status/{project_id}")
 async def cek_status(project_id: str):
     if project_id not in projects:
         return JSONResponse({"error": "Tidak ditemukan"}, status_code=404)
-
     data = dict(projects[project_id])
-
     with _proc_lock:
         info = running_processes.get(project_id)
         if info:
-            proc     = info["process"]
-            is_alive = proc.poll() is None
-            is_web   = info.get("type") in ["fastapi", "flask"]
+            proc = info["process"]
+            is_web = info.get("type") in ["fastapi", "flask"]
             data["running"] = {
-                "alive"     : is_alive,
-                "port"      : info["port"],
-                "url"       : f"/proxy/{project_id}/" if is_web else None,
+                "alive": proc.poll() is None, "port": info["port"],
+                "url": f"/proxy/{project_id}/" if is_web else None,
                 "started_at": info["started_at"],
-                "uptime"    : int(time.time() - info["started_at"]),
-                "type"      : info.get("type"),
+                "uptime": int(time.time() - info["started_at"]),
+                "type": info.get("type"),
             }
         else:
             data["running"] = None
-
     return JSONResponse(data)
 
 @app.get("/files/{project_id}")
 async def lihat_files(project_id: str):
     if project_id not in projects:
-        return JSONResponse({"error": "Tidak ditemukan"}, status_code=404)
-
+        return JSONResponse({"error": "Not found"}, status_code=404)
     folder = projects[project_id].get("folder", "")
     if not folder or not Path(folder).exists():
         return JSONResponse({"files": []})
-
     project_dir = Path(folder)
     hasil = []
     for fp in sorted(project_dir.rglob("*")):
@@ -1147,103 +1310,115 @@ async def lihat_files(project_id: str):
         except Exception:
             isi = "(tidak bisa dibaca)"
         hasil.append({"path": rel, "content": isi, "size": fp.stat().st_size})
-
     return JSONResponse({"files": hasil})
+
+# ✅ Edit file langsung dari web
+@app.post("/files/{project_id}/save")
+async def save_file_route(project_id: str, path: str = Form(...), content: str = Form(...)):
+    if project_id not in projects:
+        return JSONResponse({"error": "Not found"}, status_code=404)
+    folder = projects[project_id].get("folder", "")
+    if not folder:
+        return JSONResponse({"error": "No folder"}, status_code=400)
+    project_dir = Path(folder)
+    target = (project_dir / path.lstrip("/")).resolve()
+    if not str(target).startswith(str(project_dir.resolve())):
+        return JSONResponse({"error": "Path unsafe"}, status_code=400)
+    # Backup dulu
+    backup_project(project_dir, projects[project_id]["nama"])
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(content, encoding="utf-8")
+    log(project_id, f"File di-edit manual: {path}", "info")
+    return JSONResponse({"success": True})
+
+@app.delete("/files/{project_id}/delete")
+async def delete_file_route(project_id: str, path: str):
+    if project_id not in projects:
+        return JSONResponse({"error": "Not found"}, status_code=404)
+    folder = projects[project_id].get("folder", "")
+    project_dir = Path(folder)
+    target = (project_dir / path.lstrip("/")).resolve()
+    if not str(target).startswith(str(project_dir.resolve())):
+        return JSONResponse({"error": "Path unsafe"}, status_code=400)
+    try:
+        target.unlink()
+        return JSONResponse({"success": True})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/list-projects")
 async def list_projects_route():
     hasil = []
     if not BASE_DIR.exists():
         return JSONResponse({"projects": []})
-
     for folder in sorted(BASE_DIR.iterdir()):
         if not folder.is_dir(): continue
-        meta      = {}
+        meta = {}
         meta_file = folder / ".ai_meta.json"
         if meta_file.exists():
-            try:
-                meta = json.loads(meta_file.read_text(encoding="utf-8"))
-            except Exception:
-                pass
-
-        file_count = sum(
-            1 for f in folder.rglob("*")
-            if f.is_file() and f.name != ".ai_meta.json"
-            and not any(s in f.parts for s in SKIP_DIRS)
-        )
+            try: meta = json.loads(meta_file.read_text(encoding="utf-8"))
+            except Exception: pass
+        file_count = sum(1 for f in folder.rglob("*")
+                        if f.is_file() and f.name != ".ai_meta.json"
+                        and not any(s in f.parts for s in SKIP_DIRS))
+        # Cek apakah running
+        is_running = False
+        with _proc_lock:
+            for pid, info in running_processes.items():
+                if projects.get(pid, {}).get("nama") == folder.name:
+                    is_running = True
+                    break
         hasil.append({
-            "nama"        : folder.name,
-            "tech_stack"  : meta.get("tech_stack", "-"),
-            "deskripsi"   : meta.get("deskripsi",  "-"),
-            "run_cmd"     : meta.get("run_cmd",    "-"),
+            "nama": folder.name,
+            "tech_stack": meta.get("tech_stack", "-"),
+            "deskripsi": meta.get("deskripsi", "-"),
+            "run_cmd": meta.get("run_cmd", "-"),
             "project_type": meta.get("project_type", "script"),
-            "file_count"  : file_count,
+            "file_count": file_count,
+            "created_at": meta.get("created_at", ""),
+            "last_modified": meta.get("last_modified", ""),
+            "is_running": is_running,
         })
-
     return JSONResponse({"projects": hasil})
+
+@app.delete("/project/{nama}")
+async def delete_project(nama: str):
+    """Hapus project"""
+    project_dir = BASE_DIR / nama
+    if not project_dir.exists():
+        return JSONResponse({"error": "Not found"}, status_code=404)
+    # Stop semua process untuk project ini
+    with _proc_lock:
+        pids_to_stop = [pid for pid, info in running_processes.items()
+                       if projects.get(pid, {}).get("nama") == nama]
+    for pid in pids_to_stop:
+        stop_project(pid)
+    # Backup dulu sebelum hapus
+    backup_project(project_dir, nama + "_before_delete")
+    try:
+        shutil.rmtree(project_dir)
+        return JSONResponse({"success": True, "backup": True})
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/key-status")
 async def key_status_route():
-    return JSONResponse({
-        "current_index": key_manager.current_idx,
-        "keys"         : key_manager.status(),
-    })
+    return JSONResponse({"current_index": key_manager.current_idx, "keys": key_manager.status()})
 
 @app.post("/key-reset")
 async def key_reset_route():
     key_manager.reset_errors()
     return JSONResponse({"message": "Reset OK"})
 
-# ================================================
-# ✅ HEALTH CHECK — untuk cek status Anthropic upstream
-# ================================================
-@app.get("/health-upstream")
-async def health_upstream():
-    """Test cepat ke upstream untuk cek apakah 502 masih terjadi"""
-    hasil = []
-    for i, key_info in enumerate(API_KEYS):
-        try:
-            client = buat_client(key_info["base_url"], key_info["api_key"])
-            resp   = client.messages.create(
-                model      = key_info["model"],
-                max_tokens = 10,
-                messages   = [{"role": "user", "content": "hi"}]
-            )
-            hasil.append({
-                "index" : i,
-                "model" : key_info["model"],
-                "status": "✅ healthy",
-            })
-        except anthropic.APIStatusError as e:
-            hasil.append({
-                "index" : i,
-                "model" : key_info["model"],
-                "status": f"⚠️ {e.status_code} — {'upstream down' if e.status_code in (502,503,504) else 'error'}",
-                "error" : str(e.message)[:150],
-            })
-        except Exception as e:
-            hasil.append({
-                "index" : i,
-                "model" : key_info["model"],
-                "status": "❌ error",
-                "error" : str(e)[:150],
-            })
-    return JSONResponse({"keys": hasil})
-
-# ================================================
-# RUN / STOP / LOGS API
-# ================================================
 @app.post("/run/{project_id}")
 async def run_project_route(project_id: str):
     if project_id not in projects:
-        return JSONResponse({"error": "Project tidak ditemukan"}, status_code=404)
-
-    project_data = projects[project_id]
-    folder = project_data.get("folder", "")
+        return JSONResponse({"error": "Not found"}, status_code=404)
+    pd = projects[project_id]
+    folder = pd.get("folder", "")
     if not folder or not Path(folder).exists():
-        return JSONResponse({"error": "Folder project tidak ada"}, status_code=404)
-
-    run_cmd = project_data.get("run_cmd", "")
+        return JSONResponse({"error": "Folder tidak ada"}, status_code=404)
+    run_cmd = pd.get("run_cmd", "")
     if not run_cmd:
         meta_file = Path(folder) / ".ai_meta.json"
         if meta_file.exists():
@@ -1252,18 +1427,21 @@ async def run_project_route(project_id: str):
                 run_cmd = meta.get("run_cmd", "python main.py")
             except Exception:
                 run_cmd = "python main.py"
-
-    project_type = project_data.get("project_type", "script")
-    hasil = run_project(project_id, Path(folder), run_cmd, project_type)
+    hasil = run_project(project_id, Path(folder), run_cmd, pd.get("project_type", "script"))
     return JSONResponse(hasil)
 
 @app.post("/stop/{project_id}")
 async def stop_project_route(project_id: str):
     stopped = stop_project(project_id)
-    return JSONResponse({
-        "success": stopped,
-        "message": "Project dihentikan" if stopped else "Tidak ada process running"
-    })
+    return JSONResponse({"success": stopped,
+                        "message": "Dihentikan" if stopped else "No process"})
+
+@app.post("/restart/{project_id}")
+async def restart_project_route(project_id: str):
+    """Stop + Run lagi"""
+    stop_project(project_id)
+    time.sleep(1)
+    return await run_project_route(project_id)
 
 @app.get("/run-logs/{project_id}")
 async def run_logs_route(project_id: str):
@@ -1271,35 +1449,27 @@ async def run_logs_route(project_id: str):
         info = running_processes.get(project_id)
         if not info:
             return JSONResponse({"logs": [], "alive": False})
-
-        proc      = info["process"]
-        is_alive  = proc.poll() is None
-        exit_code = proc.poll()
-        is_web    = info.get("type") in ["fastapi", "flask"]
-
+        # Update last_access
+        info["last_access"] = time.time()
+        proc = info["process"]
+        is_web = info.get("type") in ["fastapi", "flask"]
         return JSONResponse({
-            "logs"     : info["logs"][-200:],
-            "alive"    : is_alive,
-            "port"     : info["port"],
-            "url"      : f"/proxy/{project_id}/" if is_web else None,
-            "exit_code": exit_code,
-            "run_cmd"  : info.get("run_cmd", ""),
-            "uptime"   : int(time.time() - info["started_at"]),
-            "type"     : info.get("type"),
+            "logs": info["logs"][-200:], "alive": proc.poll() is None,
+            "port": info["port"], "url": f"/proxy/{project_id}/" if is_web else None,
+            "exit_code": proc.poll(), "run_cmd": info.get("run_cmd", ""),
+            "uptime": int(time.time() - info["started_at"]),
+            "type": info.get("type"),
         })
 
 @app.get("/download/{project_id}")
 async def download_project(project_id: str):
     if project_id not in projects:
-        return JSONResponse({"error": "Tidak ditemukan"}, status_code=404)
-
+        return JSONResponse({"error": "Not found"}, status_code=404)
     folder = projects[project_id].get("folder", "")
     if not folder or not Path(folder).exists():
-        return JSONResponse({"error": "Folder tidak ada"}, status_code=404)
-
+        return JSONResponse({"error": "No folder"}, status_code=404)
     project_dir = Path(folder)
     nama = projects[project_id].get("nama", "project")
-
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
         for fp in project_dir.rglob("*"):
@@ -1307,94 +1477,88 @@ async def download_project(project_id: str):
             if any(s in fp.parts for s in SKIP_DIRS): continue
             arcname = str(fp.relative_to(project_dir))
             zf.write(fp, arcname)
-
     zip_buffer.seek(0)
-    return StreamingResponse(
-        zip_buffer,
-        media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="{nama}.zip"'}
-    )
+    return StreamingResponse(zip_buffer, media_type="application/zip",
+                            headers={"Content-Disposition": f'attachment; filename="{nama}.zip"'})
 
 @app.get("/running-list")
 async def running_list_route():
     hasil = []
     with _proc_lock:
         for pid, info in running_processes.items():
-            proc     = info["process"]
-            is_alive = proc.poll() is None
-            is_web   = info.get("type") in ["fastapi", "flask"]
+            proc = info["process"]
+            is_web = info.get("type") in ["fastapi", "flask"]
             hasil.append({
-                "project_id": pid,
-                "port"      : info["port"],
-                "url"       : f"/proxy/{pid}/" if is_web else None,
-                "alive"     : is_alive,
-                "uptime"    : int(time.time() - info["started_at"]),
-                "type"      : info.get("type"),
-                "run_cmd"   : info.get("run_cmd", ""),
+                "project_id": pid, "port": info["port"],
+                "url": f"/proxy/{pid}/" if is_web else None,
+                "alive": proc.poll() is None,
+                "uptime": int(time.time() - info["started_at"]),
+                "type": info.get("type"), "run_cmd": info.get("run_cmd", ""),
             })
     return JSONResponse({"running": hasil})
 
 # ================================================
-# PROXY UNTUK IFRAME PREVIEW
+# ✅ WEBSOCKET untuk realtime updates
 # ================================================
-@app.api_route(
-    "/proxy/{project_id}",
-    methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"]
-)
-@app.api_route(
-    "/proxy/{project_id}/{path:path}",
-    methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"]
-)
+@app.websocket("/ws/{project_id}")
+async def websocket_endpoint(websocket: WebSocket, project_id: str):
+    await websocket.accept()
+    with _ws_lock:
+        websocket_connections[project_id].add(websocket)
+    try:
+        while True:
+            # Keep alive
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        with _ws_lock:
+            websocket_connections[project_id].discard(websocket)
+    except Exception:
+        with _ws_lock:
+            websocket_connections[project_id].discard(websocket)
+
+# ================================================
+# PROXY
+# ================================================
+@app.api_route("/proxy/{project_id}",
+    methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
+@app.api_route("/proxy/{project_id}/{path:path}",
+    methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
 async def proxy_to_project(project_id: str, request: Request, path: str = ""):
     with _proc_lock:
         info = running_processes.get(project_id)
+        if info:
+            info["last_access"] = time.time()   # Update access
 
     if not info:
-        return HTMLResponse(
-            content=f"""
-            <html><body style="font-family:sans-serif;padding:40px;background:#0f172a;color:#e2e8f0">
-              <h2>⚠️ Project belum di-RUN</h2>
-              <p>Klik tombol ▶️ RUN di tab Info untuk menjalankan project ini.</p>
-              <p style="color:#64748b;font-size:.9rem">Project ID: {project_id}</p>
-            </body></html>
-            """,
-            status_code=503
-        )
+        return HTMLResponse(content=f"""
+        <html><body style="font-family:sans-serif;padding:40px;background:#0f172a;color:#e2e8f0">
+          <h2>⚠️ Project belum di-RUN</h2>
+          <p>Klik ▶️ RUN untuk menjalankan project.</p>
+          <p style="color:#64748b;font-size:.9rem">Project ID: {project_id}</p>
+        </body></html>""", status_code=503)
 
     port = info.get("port")
     proc = info.get("process")
-
     if proc and proc.poll() is not None:
-        return HTMLResponse(
-            content=f"""
-            <html><body style="font-family:sans-serif;padding:40px;background:#0f172a;color:#e2e8f0">
-              <h2>❌ Project berhenti</h2>
-              <p>Exit code: {proc.poll()}</p>
-              <p>Cek tab ▶️ Run untuk melihat error log.</p>
-            </body></html>
-            """,
-            status_code=503
-        )
+        return HTMLResponse(content=f"""
+        <html><body style="font-family:sans-serif;padding:40px;background:#0f172a;color:#e2e8f0">
+          <h2>❌ Project berhenti (exit: {proc.poll()})</h2>
+          <p>Cek tab ▶️ Run untuk error log.</p>
+        </body></html>""", status_code=503)
 
     target_url = f"http://127.0.0.1:{port}/{path}"
     if request.url.query:
         target_url += "?" + request.url.query
 
     body = await request.body()
-
     headers = dict(request.headers)
     for h in ["host", "content-length", "connection", "accept-encoding"]:
         headers.pop(h, None)
 
     try:
         async with httpx.AsyncClient(timeout=30.0, verify=False, follow_redirects=False) as client:
-            resp = await client.request(
-                method  = request.method,
-                url     = target_url,
-                headers = headers,
-                content = body,
-            )
-
+            resp = await client.request(method=request.method, url=target_url,
+                                        headers=headers, content=body)
         resp_headers = {}
         for k, v in resp.headers.items():
             lk = k.lower()
@@ -1403,7 +1567,6 @@ async def proxy_to_project(project_id: str, request: Request, path: str = ""):
                       "content-security-policy-report-only"]:
                 continue
             resp_headers[k] = v
-
         if resp.status_code in (301, 302, 303, 307, 308):
             location = resp.headers.get("location", "")
             if location.startswith("/"):
@@ -1411,42 +1574,23 @@ async def proxy_to_project(project_id: str, request: Request, path: str = ""):
             elif location.startswith(f"http://127.0.0.1:{port}"):
                 new_path = location.replace(f"http://127.0.0.1:{port}", "")
                 resp_headers["location"] = f"/proxy/{project_id}{new_path}"
-
-        return Response(
-            content     = resp.content,
-            status_code = resp.status_code,
-            headers     = resp_headers,
-            media_type  = resp.headers.get("content-type"),
-        )
-
+        return Response(content=resp.content, status_code=resp.status_code,
+                       headers=resp_headers, media_type=resp.headers.get("content-type"))
     except httpx.ConnectError:
-        return HTMLResponse(
-            content=f"""
-            <html><body style="font-family:sans-serif;padding:40px;background:#0f172a;color:#e2e8f0">
-              <h2>⏳ Project sedang loading...</h2>
-              <p>Server belum siap di port {port}. Tunggu beberapa detik lalu reload.</p>
-              <button onclick="location.reload()" style="padding:10px 20px;background:#6366f1;color:#fff;border:none;border-radius:6px;cursor:pointer">🔄 Reload</button>
-            </body></html>
-            """,
-            status_code=503
-        )
+        return HTMLResponse(content=f"""
+        <html><body style="font-family:sans-serif;padding:40px;background:#0f172a;color:#e2e8f0">
+          <h2>⏳ Loading...</h2>
+          <p>Server belum siap di port {port}. Reload beberapa detik lagi.</p>
+          <button onclick="location.reload()" style="padding:10px 20px;background:#6366f1;color:#fff;border:none;border-radius:6px;cursor:pointer">🔄 Reload</button>
+        </body></html>""", status_code=503)
     except httpx.TimeoutException:
-        return HTMLResponse(
-            content="<h2>Timeout — project terlalu lambat merespon</h2>",
-            status_code=504
-        )
+        return HTMLResponse(content="<h2>Timeout</h2>", status_code=504)
     except Exception as e:
-        return HTMLResponse(
-            content=f"<h2>Proxy error</h2><pre>{str(e)[:500]}</pre>",
-            status_code=500
-        )
+        return HTMLResponse(content=f"<h2>Error</h2><pre>{str(e)[:500]}</pre>", status_code=500)
 
-# ================================================
-# CLEANUP on shutdown
-# ================================================
 @app.on_event("shutdown")
 def cleanup_on_shutdown():
-    print("[SHUTDOWN] Menghentikan semua running process...")
+    print("[SHUTDOWN] Menghentikan running processes...")
     with _proc_lock:
         for pid in list(running_processes.keys()):
             try:
@@ -1454,6 +1598,16 @@ def cleanup_on_shutdown():
                 if proc.poll() is None:
                     proc.terminate()
                     proc.wait(timeout=3)
-            except Exception:
-                pass
+            except Exception: pass
         running_processes.clear()
+
+print("=" * 50)
+print("🚀 AI Project Maker ULTIMATE Edition v2.0")
+print("=" * 50)
+print(f"✨ Cache system: TTL {CACHE_TTL_SECONDS}s")
+print(f"🛡️  Rate limit: {RATE_LIMIT_PER_MIN}/menit per IP")
+print(f"💾 Auto backup: sebelum modifikasi")
+print(f"🧹 Auto cleanup: idle {AUTO_CLEANUP_MIN} menit")
+print(f"📊 Stats endpoint: /stats")
+print(f"🔄 WebSocket: /ws/{{project_id}}")
+print("=" * 50)
