@@ -20,6 +20,11 @@ API_KEYS = [
         "tf_deb549c018ab46ee9128e3a6d42449f6",
         "gpt-5.6-terra",
     ),
+    (
+        "https://freetokenfaucet.com/v1",
+        "tf_c908113f2e9c45f091efd1f39a803a24",
+        "gpt-5.6-terra",
+    ),
 ]
 
 MAX_FIX  = 3
