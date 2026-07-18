@@ -294,6 +294,85 @@ def bersihkan_code(text: str) -> str:
     return "\n".join(cleaned).strip()
 
 # ================================================
+# ✅ PARSE JSON TOLERAN — handle invalid escape sequences
+# ================================================
+def parse_json_toleran(text: str) -> dict:
+    """
+    Parse JSON yang mungkin berisi backslash aneh dari code Python.
+    4 strategi bertingkat.
+    """
+    text = bersihkan_json(text)
+
+    # ── Strategi 1: Parse langsung ──
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError as e:
+        print(f"[JSON] Attempt 1 failed: {e}")
+
+    # ── Strategi 2: Fix invalid escape sequences ──
+    # JSON hanya boleh: \" \\ \/ \b \f \n \r \t \uXXXX
+    try:
+        fixed = re.sub(r'\\(?![\\"/bfnrtu])', r'\\\\', text)
+        return json.loads(fixed)
+    except json.JSONDecodeError as e:
+        print(f"[JSON] Attempt 2 failed: {e}")
+
+    # ── Strategi 3: Fix + hapus control characters ──
+    try:
+        fixed = re.sub(r'\\(?![\\"/bfnrtu])', r'\\\\', text)
+        fixed = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f]', '', fixed)
+        return json.loads(fixed)
+    except json.JSONDecodeError as e:
+        print(f"[JSON] Attempt 3 failed: {e}")
+
+    # ── Strategi 4: Ekstrak field manual pakai regex ──
+    print("[JSON] Fallback: ekstrak field manual pakai regex")
+    result = {
+        "analysis"      : "",
+        "new_files"     : {},
+        "modified_files": {},
+        "run_cmd"       : "",
+        "notes"         : "",
+        "description"   : "",
+        "tech_stack"    : "",
+        "files"         : [],
+        "install_cmd"   : "",
+        "test_cmd"      : "",
+        "project_type"  : "script",
+        "fixed_files"   : {},
+    }
+
+    # Ekstrak field string sederhana
+    for field in ["analysis", "run_cmd", "notes", "description",
+                  "tech_stack", "install_cmd", "test_cmd", "project_type"]:
+        m = re.search(rf'"{field}"\s*:\s*"([^"]*(?:\\.[^"]*)*)"', text)
+        if m:
+            result[field] = m.group(1)
+
+    # Ekstrak array files
+    m = re.search(r'"files"\s*:\s*\[(.*?)\]', text, re.DOTALL)
+    if m:
+        files_str = m.group(1)
+        result["files"] = re.findall(r'"([^"]+)"', files_str)
+
+    # Ekstrak isi file dari new_files/modified_files/fixed_files
+    for match in re.finditer(
+        r'"([a-zA-Z0-9_/\-\.]+\.(?:py|js|ts|html|css|json|txt|md|yaml|yml|toml))"\s*:\s*"((?:[^"\\]|\\.)*)"',
+        text
+    ):
+        fname, fcontent = match.group(1), match.group(2)
+        # Unescape manually
+        fcontent = fcontent.replace('\\n', '\n').replace('\\t', '\t')
+        fcontent = fcontent.replace('\\"', '"').replace('\\\\', '\\')
+        result["modified_files"][fname] = fcontent
+
+    if (not result["modified_files"] and not result["new_files"]
+        and not result["fixed_files"] and not result["files"]):
+        raise Exception("Tidak bisa parse JSON sama sekali")
+
+    return result
+
+# ================================================
 # LOG
 # ================================================
 _log_lock = threading.Lock()
@@ -461,7 +540,8 @@ def perbaiki_error(project_id: str, project_dir: Path, error_msg: str):
 
     system = (
         "Debugger Python expert. Perbaiki error.\n"
-        "Balas HANYA JSON valid tanpa markdown:\n"
+        "Balas HANYA JSON valid tanpa markdown.\n"
+        "PENTING escape: backslash \\ jadi \\\\, newline jadi \\n, kutip jadi \\\".\n"
         '{"analysis":"penjelasan","fixed_files":{"path/file.py":"code LENGKAP"}}'
     )
     context = {}
@@ -475,7 +555,8 @@ def perbaiki_error(project_id: str, project_dir: Path, error_msg: str):
 
     try:
         raw  = tanya_ai(system, user, max_tokens=4000)
-        data = json.loads(bersihkan_json(raw))
+        # ✅ FIX: pakai parse_json_toleran
+        data = parse_json_toleran(raw)
         log(project_id, f"Analisis: {data.get('analysis', '-')}", "fix")
         fixed = data.get("fixed_files", {})
         for filename, new_code in fixed.items():
@@ -520,10 +601,11 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
 
         raw_plan = tanya_ai(system_plan, user_plan, max_tokens=800)
 
+        # ✅ FIX: pakai parse_json_toleran
         try:
-            plan = json.loads(bersihkan_json(raw_plan))
-        except json.JSONDecodeError as e:
-            msg = f"Gagal parse planning: {e}"
+            plan = parse_json_toleran(raw_plan)
+        except Exception as e:
+            msg = f"Gagal parse planning: {e}\nRaw (500 char): {raw_plan[:500]}"
             log(project_id, msg, "error")
             projects[project_id]["status"] = "error"
             projects[project_id]["error"]  = msg
@@ -531,6 +613,8 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
             return
 
         daftar_file = plan.get("files", ["main.py","requirements.txt","README.md","tests/test_main.py"])
+        if not daftar_file:
+            daftar_file = ["main.py","requirements.txt","README.md","tests/test_main.py"]
         if len(daftar_file) > MAX_FILES_PER_PROJ:
             daftar_file = daftar_file[:MAX_FILES_PER_PROJ]
 
@@ -539,7 +623,7 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
         test_cmd     = plan.get("test_cmd",    "python -m pytest tests/ -v")
         tech_stack   = plan.get("tech_stack",  "Python")
         description  = plan.get("description", deskripsi)
-        project_type = plan.get("project_type", "script").lower()
+        project_type = (plan.get("project_type") or "script").lower()
 
         log(project_id, f"Struktur: {len(daftar_file)} file akan dibuat", "info")
         log(project_id, f"Tipe project: {project_type}", "info")
@@ -684,13 +768,21 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
 
         semua_file = baca_semua_file(project_dir, max_chars=400)
 
+        # ✅ Prompt dengan reminder escape yang benar
         system_lanjut = (
             "Programmer Python expert. Kembangkan project.\n\n"
-            "Balas HANYA JSON valid tanpa markdown:\n"
+            "Balas HANYA JSON valid tanpa markdown.\n"
+            "PENTING escape untuk isi code di dalam JSON:\n"
+            "- Backslash \\ HARUS jadi \\\\\n"
+            "- Newline HARUS jadi \\n\n"
+            "- Double quote \" HARUS jadi \\\"\n"
+            "- Tab HARUS jadi \\t\n"
+            "- JANGAN pakai raw string atau karakter aneh\n\n"
+            "Format:\n"
             "{\n"
             '  "analysis": "singkat",\n'
-            '  "new_files": {"path/file.py": "code LENGKAP"},\n'
-            '  "modified_files": {"path/file.py": "code LENGKAP"},\n'
+            '  "new_files": {"path/file.py": "code dengan escape benar"},\n'
+            '  "modified_files": {"path/file.py": "code dengan escape benar"},\n'
             '  "run_cmd": "perintah",\n'
             '  "notes": "ringkasan"\n'
             "}"
@@ -712,11 +804,14 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
         log(project_id, "AI mengembangkan...", "loading")
         raw_lanjut = tanya_ai(system_lanjut, user_lanjut, max_tokens=5000)
 
+        # ✅ FIX: pakai parse_json_toleran
         try:
-            hasil = json.loads(bersihkan_json(raw_lanjut))
-        except json.JSONDecodeError as e:
-            log(project_id, f"JSON invalid: {e}", "error")
+            hasil = parse_json_toleran(raw_lanjut)
+        except Exception as e:
+            msg = f"JSON invalid setelah 4x retry: {e}\nRaw (500 char): {raw_lanjut[:500]}"
+            log(project_id, msg, "error")
             projects[project_id]["status"] = "error"
+            projects[project_id]["error"]  = msg
             save_state()
             return
 
@@ -724,6 +819,9 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
 
         new_files = hasil.get("new_files", {}) or {}
         mod_files = hasil.get("modified_files", {}) or {}
+
+        if not new_files and not mod_files:
+            log(project_id, "AI tidak mengusulkan perubahan file.", "warning")
 
         for filename, content in {**new_files, **mod_files}.items():
             filename = str(filename).strip().lstrip("/")
@@ -832,7 +930,6 @@ def run_project(project_id: str, project_dir: Path, run_cmd: str, project_type: 
     env["PORT"] = str(port)
     env["HOST"] = "127.0.0.1"
 
-    # Modifikasi command untuk web framework — bind ke 127.0.0.1 (internal proxy)
     if project_type == "fastapi":
         if "uvicorn" not in run_cmd.lower():
             for candidate in ["main:app", "app:app"]:
@@ -892,7 +989,6 @@ def run_project(project_id: str, project_dir: Path, run_cmd: str, project_type: 
                 "logs"  : logs[-20:],
             }
 
-        # ✅ URL pakai proxy internal (relative path)
         is_web = project_type in ["fastapi", "flask"]
         url = f"/proxy/{project_id}/" if is_web else None
 
@@ -1179,8 +1275,7 @@ async def running_list_route():
     return JSONResponse({"running": hasil})
 
 # ================================================
-# ✅ PROXY UNTUK IFRAME PREVIEW
-# Proxy semua request ke running project di internal port
+# PROXY UNTUK IFRAME PREVIEW
 # ================================================
 @app.api_route(
     "/proxy/{project_id}",
@@ -1191,7 +1286,6 @@ async def running_list_route():
     methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"]
 )
 async def proxy_to_project(project_id: str, request: Request, path: str = ""):
-    """Proxy request ke running project agar bisa diakses via iframe"""
     with _proc_lock:
         info = running_processes.get(project_id)
 
@@ -1222,15 +1316,12 @@ async def proxy_to_project(project_id: str, request: Request, path: str = ""):
             status_code=503
         )
 
-    # Build target URL
     target_url = f"http://127.0.0.1:{port}/{path}"
     if request.url.query:
         target_url += "?" + request.url.query
 
-    # Baca body request
     body = await request.body()
 
-    # Headers — hapus yang bisa bikin masalah
     headers = dict(request.headers)
     for h in ["host", "content-length", "connection", "accept-encoding"]:
         headers.pop(h, None)
@@ -1244,7 +1335,6 @@ async def proxy_to_project(project_id: str, request: Request, path: str = ""):
                 content = body,
             )
 
-        # Response headers — hapus yang blokir iframe
         resp_headers = {}
         for k, v in resp.headers.items():
             lk = k.lower()
@@ -1254,7 +1344,6 @@ async def proxy_to_project(project_id: str, request: Request, path: str = ""):
                 continue
             resp_headers[k] = v
 
-        # Handle redirects — rewrite Location header
         if resp.status_code in (301, 302, 303, 307, 308):
             location = resp.headers.get("location", "")
             if location.startswith("/"):
