@@ -3,19 +3,22 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🎓 AI Project Maker — Claude Code</title>
+  <title>🚀 AI Project Maker — ULTIMATE Edition</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
 
-    header{background:linear-gradient(135deg,#1e40af,#7c3aed);padding:18px 28px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-    header h1{font-size:1.4rem;font-weight:700}
-    header p{font-size:.8rem;opacity:.85;margin-top:3px}
-    .header-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .key-badge{background:rgba(255,255,255,.15);border-radius:8px;padding:6px 14px;font-size:.78rem;cursor:pointer;border:1px solid rgba(255,255,255,.2);transition:.2s}
-    .key-badge:hover{background:rgba(255,255,255,.25)}
-    .test-badge{background:rgba(16,185,129,.25);border:1px solid rgba(16,185,129,.4);border-radius:8px;padding:6px 14px;font-size:.78rem;cursor:pointer;color:#6ee7b7;transition:.2s}
-    .test-badge:hover{background:rgba(16,185,129,.35)}
+    header{background:linear-gradient(135deg,#1e40af,#7c3aed,#ec4899);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;box-shadow:0 4px 20px rgba(0,0,0,.3)}
+    header h1{font-size:1.4rem;font-weight:800;display:flex;align-items:center;gap:8px}
+    header .version{font-size:.65rem;background:rgba(255,255,255,.2);padding:2px 8px;border-radius:6px;font-weight:700}
+    header p{font-size:.78rem;opacity:.85;margin-top:2px}
+    .header-right{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+    .badge-btn{background:rgba(255,255,255,.15);border-radius:8px;padding:6px 12px;font-size:.75rem;cursor:pointer;border:1px solid rgba(255,255,255,.2);transition:.2s;color:#fff;font-weight:600}
+    .badge-btn:hover{background:rgba(255,255,255,.25);transform:translateY(-1px)}
+    .badge-btn.stats{background:rgba(59,130,246,.3);border-color:rgba(59,130,246,.5)}
+    .badge-btn.backup{background:rgba(245,158,11,.3);border-color:rgba(245,158,11,.5)}
+    .badge-btn.test{background:rgba(16,185,129,.3);border-color:rgba(16,185,129,.5)}
+    .badge-btn.key{background:rgba(139,92,246,.3);border-color:rgba(139,92,246,.5)}
     .status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
     .status-dot.online{background:#4ade80;box-shadow:0 0 6px #4ade80}
     .status-dot.offline{background:#f87171;box-shadow:0 0 6px #f87171}
@@ -26,25 +29,25 @@
     .container{display:grid;grid-template-columns:380px 1fr;height:calc(100vh - 74px)}
     @media(max-width:900px){.container{grid-template-columns:1fr;height:auto}}
 
-    .sidebar{background:#1e293b;border-right:1px solid #334155;padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:16px}
+    .sidebar{background:#1e293b;border-right:1px solid #334155;padding:18px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
 
-    .mode-tabs{display:flex;gap:8px}
-    .mode-tab{flex:1;padding:9px;border-radius:8px;border:2px solid #334155;background:transparent;color:#64748b;font-size:.82rem;font-weight:700;cursor:pointer;transition:.2s;text-align:center}
+    .mode-tabs{display:flex;gap:6px}
+    .mode-tab{flex:1;padding:9px;border-radius:8px;border:2px solid #334155;background:transparent;color:#64748b;font-size:.8rem;font-weight:700;cursor:pointer;transition:.2s;text-align:center}
     .mode-tab.active{border-color:#6366f1;background:#1e1b4b;color:#818cf8}
     .mode-panel{display:none}
-    .mode-panel.active{display:flex;flex-direction:column;gap:14px}
+    .mode-panel.active{display:flex;flex-direction:column;gap:12px}
 
-    label{display:block;font-size:.75rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
-    input,textarea{width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;padding:9px 12px;font-size:.88rem;resize:vertical;transition:border-color .2s}
+    label{display:block;font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+    input,textarea{width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;padding:9px 12px;font-size:.86rem;resize:vertical;transition:border-color .2s;font-family:inherit}
     input:focus,textarea:focus{outline:none;border-color:#6366f1}
-    textarea{min-height:110px}
+    textarea{min-height:100px}
 
-    .chip-label{font-size:.72rem;color:#475569;margin-bottom:6px;font-weight:600}
-    .chip-list{display:flex;flex-wrap:wrap;gap:6px}
-    .chip{background:#1e3a5f;border:1px solid #2563eb;color:#93c5fd;border-radius:999px;padding:3px 10px;font-size:.72rem;cursor:pointer;transition:.2s}
-    .chip:hover{background:#2563eb;color:#fff}
+    .chip-label{font-size:.7rem;color:#475569;margin-bottom:5px;font-weight:600}
+    .chip-list{display:flex;flex-wrap:wrap;gap:5px}
+    .chip{background:#1e3a5f;border:1px solid #2563eb;color:#93c5fd;border-radius:999px;padding:3px 10px;font-size:.7rem;cursor:pointer;transition:.15s}
+    .chip:hover{background:#2563eb;color:#fff;transform:translateY(-1px)}
 
-    .btn{width:100%;padding:11px;border-radius:9px;border:none;font-size:.95rem;font-weight:700;cursor:pointer;transition:opacity .2s,transform .1s}
+    .btn{width:100%;padding:11px;border-radius:9px;border:none;font-size:.9rem;font-weight:700;cursor:pointer;transition:opacity .2s,transform .1s}
     .btn:hover{opacity:.92;transform:translateY(-1px)}
     .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
     .btn-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff}
@@ -52,32 +55,38 @@
     .btn-red{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff}
     .btn-gray{background:#374151;color:#fff}
     .btn-blue{background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff}
-    .btn-sm{padding:7px 14px;font-size:.8rem;width:auto;border-radius:6px}
+    .btn-yellow{background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff}
+    .btn-sm{padding:6px 12px;font-size:.75rem;width:auto;border-radius:6px}
 
-    .btn-group{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
-    .btn-group-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:8px}
+    .btn-group{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+    .btn-group-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px}
+    .btn-group-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-top:8px}
 
-    .project-list-wrap{display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto}
-    .project-card{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 12px;cursor:pointer;transition:.2s}
+    .project-list-wrap{display:flex;flex-direction:column;gap:5px;max-height:220px;overflow-y:auto}
+    .project-card{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:9px 11px;cursor:pointer;transition:.15s;position:relative}
     .project-card:hover{border-color:#6366f1;background:#1e1b4b}
     .project-card.selected{border-color:#6366f1;background:#1e1b4b}
-    .project-card .pname{font-size:.85rem;font-weight:700;color:#93c5fd}
-    .project-card .ptech{font-size:.72rem;color:#475569;margin-top:2px}
-    .project-card .pfiles{font-size:.7rem;color:#334155;margin-top:2px}
+    .project-card .pname{font-size:.83rem;font-weight:700;color:#93c5fd;display:flex;align-items:center;gap:6px}
+    .project-card .ptech{font-size:.7rem;color:#475569;margin-top:2px}
+    .project-card .pfiles{font-size:.68rem;color:#334155;margin-top:1px}
+    .project-card .live-dot{width:6px;height:6px;background:#22c55e;border-radius:50%;box-shadow:0 0 4px #22c55e;animation:pulse 1.5s infinite}
+    .project-card .del-btn{position:absolute;top:5px;right:5px;background:#dc2626;color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:.65rem;cursor:pointer;opacity:0;transition:.2s}
+    .project-card:hover .del-btn{opacity:1}
 
     .main-panel{display:flex;flex-direction:column;overflow:hidden}
     .tabs{display:flex;background:#1e293b;border-bottom:1px solid #334155;overflow-x:auto}
-    .tab{padding:13px 22px;font-size:.82rem;font-weight:600;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;transition:.2s;white-space:nowrap}
+    .tab{padding:12px 20px;font-size:.8rem;font-weight:600;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;transition:.2s;white-space:nowrap}
     .tab:hover{color:#e2e8f0}
     .tab.active{color:#818cf8;border-bottom-color:#818cf8}
-    .tab-badge{display:inline-block;background:#22c55e;color:#fff;border-radius:999px;font-size:.65rem;padding:1px 7px;margin-left:5px;font-weight:700;vertical-align:middle}
+    .tab-badge{display:inline-block;background:#22c55e;color:#fff;border-radius:999px;font-size:.6rem;padding:1px 6px;margin-left:4px;font-weight:700}
     .tab-badge.live{background:#dc2626;animation:pulse 1.5s infinite}
-    .tab-content{flex:1;overflow-y:auto;display:none;padding:20px}
+    .tab-badge.new{background:#f59e0b}
+    .tab-content{flex:1;overflow-y:auto;display:none;padding:18px}
     .tab-content.active{display:block}
     .tab-content.preview-active{padding:0;overflow:hidden;display:none;flex-direction:column}
     .tab-content.preview-active.active{display:flex}
 
-    #log-panel,#run-log-panel{background:#020617;border-radius:10px;padding:14px;font-family:'Consolas','Courier New',monospace;font-size:.8rem;line-height:1.8;min-height:300px;white-space:pre-wrap;word-break:break-word}
+    #log-panel,#run-log-panel{background:#020617;border-radius:10px;padding:14px;font-family:'Consolas','Courier New',monospace;font-size:.78rem;line-height:1.7;min-height:300px;white-space:pre-wrap;word-break:break-word}
     .log-loading{color:#facc15}
     .log-success{color:#4ade80}
     .log-error{color:#f87171}
@@ -90,22 +99,31 @@
     .log-info{color:#94a3b8}
     .log-lanjut{color:#22d3ee}
     .log-sys{color:#fbbf24;font-weight:bold}
+    .log-cache{color:#f0abfc}
 
     .file-tree{display:flex;flex-direction:column;gap:4px}
     .file-item{background:#1e293b;border:1px solid #334155;border-radius:8px;overflow:hidden}
-    .file-header{padding:9px 13px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:.82rem;font-weight:600;color:#93c5fd;transition:background .15s}
+    .file-header{padding:9px 13px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:.8rem;font-weight:600;color:#93c5fd;transition:background .15s}
     .file-header:hover{background:#273549}
-    .file-size{margin-left:auto;font-size:.7rem;color:#475569;font-weight:400}
-    .file-code{display:none;background:#020617;padding:12px;font-family:'Consolas','Courier New',monospace;font-size:.78rem;color:#e2e8f0;overflow-x:auto;white-space:pre;border-top:1px solid #334155;max-height:400px;overflow-y:auto}
+    .file-size{margin-left:auto;font-size:.68rem;color:#475569;font-weight:400}
+    .file-actions{display:flex;gap:4px;margin-left:6px}
+    .file-actions button{background:#334155;color:#fff;border:none;padding:3px 8px;border-radius:4px;font-size:.65rem;cursor:pointer}
+    .file-actions button:hover{background:#475569}
+    .file-actions button.edit{background:#2563eb}
+    .file-actions button.del{background:#dc2626}
+    .file-code{display:none;background:#020617;padding:12px;font-family:'Consolas','Courier New',monospace;font-size:.76rem;color:#e2e8f0;overflow-x:auto;white-space:pre;border-top:1px solid #334155;max-height:400px;overflow-y:auto}
+    .file-editor{display:none;padding:0}
+    .file-editor textarea{background:#020617;color:#e2e8f0;font-family:monospace;font-size:.75rem;border:none;border-top:1px solid #334155;padding:12px;min-height:300px;border-radius:0;resize:vertical}
+    .file-editor .editor-actions{padding:8px;background:#1e293b;display:flex;gap:6px;justify-content:flex-end}
 
-    .info-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:18px;margin-bottom:14px}
-    .info-card h3{font-size:.78rem;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em}
-    .info-row{display:flex;gap:10px;margin-bottom:7px;align-items:flex-start}
-    .info-label{font-size:.78rem;color:#64748b;min-width:80px}
-    .info-value{font-size:.82rem;color:#e2e8f0;word-break:break-all}
-    .cmd-box{background:#020617;border-radius:6px;padding:8px 12px;font-family:'Consolas',monospace;font-size:.8rem;color:#4ade80;margin-top:8px;word-break:break-all}
+    .info-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px;margin-bottom:12px}
+    .info-card h3{font-size:.76rem;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;justify-content:space-between}
+    .info-row{display:flex;gap:10px;margin-bottom:6px;align-items:flex-start}
+    .info-label{font-size:.76rem;color:#64748b;min-width:80px}
+    .info-value{font-size:.8rem;color:#e2e8f0;word-break:break-all}
+    .cmd-box{background:#020617;border-radius:6px;padding:8px 12px;font-family:'Consolas',monospace;font-size:.78rem;color:#4ade80;margin-top:8px;word-break:break-all}
 
-    .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700}
+    .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.7rem;font-weight:700}
     .badge-loading{background:#422006;color:#fbbf24}
     .badge-done{background:#052e16;color:#4ade80}
     .badge-error{background:#450a0a;color:#f87171}
@@ -113,48 +131,88 @@
     .badge-stopped{background:#1e293b;color:#94a3b8}
 
     .running-card{background:linear-gradient(135deg,#052e16,#064e3b);border:1px solid #22c55e;border-radius:10px;padding:14px;margin-bottom:12px}
-    .running-card .r-title{color:#4ade80;font-weight:700;font-size:.9rem;margin-bottom:8px;display:flex;align-items:center;gap:8px}
-    .running-card .r-url{background:#020617;border-radius:6px;padding:10px 14px;font-family:monospace;color:#38bdf8;font-size:.85rem;word-break:break-all;text-decoration:none;display:block;margin-bottom:8px;border:1px solid #1e293b;transition:.2s}
+    .running-card .r-title{color:#4ade80;font-weight:700;font-size:.88rem;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+    .running-card .r-url{background:#020617;border-radius:6px;padding:10px 14px;font-family:monospace;color:#38bdf8;font-size:.82rem;word-break:break-all;text-decoration:none;display:block;margin-bottom:8px;border:1px solid #1e293b;transition:.2s}
     .running-card .r-url:hover{border-color:#38bdf8;background:#0c1220}
-    .running-card .r-info{font-size:.75rem;color:#94a3b8;display:flex;gap:15px;flex-wrap:wrap}
+    .running-card .r-info{font-size:.72rem;color:#94a3b8;display:flex;gap:12px;flex-wrap:wrap}
 
-    .key-card{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
-    .key-card.active-key{border-color:#22c55e}
+    .key-card{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:8px}
+    .key-card.active-key{border-color:#22c55e;background:linear-gradient(135deg,#1e293b,#052e16)}
+    .key-header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
     .key-dot{width:10px;height:10px;border-radius:50%;background:#334155;flex-shrink:0}
-    .key-dot.green{background:#22c55e}
+    .key-dot.green{background:#22c55e;box-shadow:0 0 4px #22c55e}
     .key-dot.yellow{background:#f59e0b}
     .key-dot.red{background:#ef4444}
     .key-info{flex:1}
-    .key-info .kurl{font-size:.78rem;color:#64748b}
+    .key-info .kurl{font-size:.72rem;color:#64748b}
     .key-info .kmodel{font-size:.82rem;color:#93c5fd;font-weight:600}
-    .key-info .khint{font-size:.72rem;color:#475569;font-family:monospace}
-    .key-err{font-size:.72rem;color:#f87171}
+    .key-info .khint{font-size:.7rem;color:#475569;font-family:monospace}
+    .key-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;font-size:.7rem;padding-top:8px;border-top:1px solid #334155}
+    .key-metric{text-align:center;background:#0f172a;padding:6px;border-radius:4px}
+    .key-metric .val{font-size:.9rem;font-weight:700}
+    .key-metric .lbl{color:#64748b;font-size:.65rem}
+    .val-ok{color:#4ade80}
+    .val-warn{color:#fbbf24}
+    .val-err{color:#f87171}
+    .val-info{color:#38bdf8}
 
-    .test-result{background:#020617;border-radius:8px;padding:12px;margin-top:10px;font-family:monospace;font-size:.78rem;max-height:300px;overflow-y:auto}
+    /* ✅ STATS GRID */
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:16px}
+    .stat-card{background:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid #334155;border-radius:10px;padding:16px;text-align:center;transition:.2s}
+    .stat-card:hover{border-color:#6366f1;transform:translateY(-2px)}
+    .stat-card .icon{font-size:1.6rem;margin-bottom:6px}
+    .stat-card .value{font-size:1.6rem;font-weight:800;color:#e2e8f0}
+    .stat-card .label{font-size:.7rem;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-top:4px}
+    .stat-card.success{border-color:#22c55e}
+    .stat-card.success .value{color:#4ade80}
+    .stat-card.warn{border-color:#f59e0b}
+    .stat-card.warn .value{color:#fbbf24}
+    .stat-card.error{border-color:#ef4444}
+    .stat-card.error .value{color:#f87171}
+    .stat-card.info{border-color:#3b82f6}
+    .stat-card.info .value{color:#60a5fa}
+
+    /* ✅ BACKUP */
+    .backup-card{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+    .backup-icon{width:40px;height:40px;background:#0f172a;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
+    .backup-info{flex:1}
+    .backup-info .bname{font-size:.85rem;font-weight:600;color:#93c5fd}
+    .backup-info .bmeta{font-size:.7rem;color:#64748b;margin-top:2px}
+    .backup-actions{display:flex;gap:4px}
+
+    .test-result{background:#020617;border-radius:8px;padding:12px;margin-top:10px;font-family:monospace;font-size:.76rem;max-height:300px;overflow-y:auto}
     .test-ok{color:#4ade80}
     .test-fail{color:#f87171}
 
     .progress-wrap{background:#334155;border-radius:999px;height:3px;overflow:hidden;margin-top:4px}
-    .progress-bar{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:999px;transition:width .4s}
+    .progress-bar{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6,#ec4899);border-radius:999px;transition:width .4s;background-size:200% 100%;animation:shimmer 2s linear infinite}
+    @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 
-    .empty{text-align:center;color:#475569;padding:50px 20px}
+    .empty{text-align:center;color:#475569;padding:40px 20px}
     .empty .icon{font-size:2.5rem;margin-bottom:10px}
-    .empty p{font-size:.88rem}
+    .empty p{font-size:.85rem}
 
-    .toast{position:fixed;bottom:20px;right:20px;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:14px 20px;font-size:.85rem;z-index:9999;display:none;box-shadow:0 8px 24px rgba(0,0,0,.4);max-width:360px}
+    .toast{position:fixed;bottom:20px;right:20px;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px 18px;font-size:.82rem;z-index:9999;display:none;box-shadow:0 8px 24px rgba(0,0,0,.5);max-width:360px}
     .toast.show{display:block;animation:slideIn .3s ease}
     .toast.toast-ok{border-color:#22c55e;color:#4ade80}
     .toast.toast-err{border-color:#ef4444;color:#f87171}
+    .toast.toast-info{border-color:#3b82f6;color:#60a5fa}
 
     @keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 
-    /* ================================================ */
-    /*  PREVIEW STYLES                                  */
-    /* ================================================ */
-    .preview-toolbar{background:#1e293b;border-bottom:1px solid #334155;padding:10px 14px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex-shrink:0}
-    .preview-url{flex:1;background:#020617;border:1px solid #334155;border-radius:6px;padding:6px 12px;font-family:monospace;font-size:.78rem;color:#38bdf8;min-width:180px;outline:none}
+    /* MODAL */
+    .modal-overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);z-index:9998;display:none;align-items:center;justify-content:center;padding:20px}
+    .modal-overlay.show{display:flex}
+    .modal{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:24px;max-width:500px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,.5)}
+    .modal h3{margin-bottom:14px;font-size:1.05rem;color:#e2e8f0}
+    .modal p{font-size:.85rem;color:#94a3b8;margin-bottom:14px}
+    .modal-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+
+    /* PREVIEW */
+    .preview-toolbar{background:#1e293b;border-bottom:1px solid #334155;padding:9px 12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex-shrink:0}
+    .preview-url{flex:1;background:#020617;border:1px solid #334155;border-radius:6px;padding:6px 12px;font-family:monospace;font-size:.76rem;color:#38bdf8;min-width:180px;outline:none}
     .preview-url:focus{border-color:#6366f1}
-    .preview-btn{background:#334155;border:none;color:#e2e8f0;padding:6px 12px;border-radius:6px;font-size:.75rem;cursor:pointer;transition:.15s;font-weight:600;white-space:nowrap}
+    .preview-btn{background:#334155;border:none;color:#e2e8f0;padding:6px 10px;border-radius:6px;font-size:.72rem;cursor:pointer;transition:.15s;font-weight:600;white-space:nowrap}
     .preview-btn:hover{background:#475569}
     .preview-btn.active{background:#6366f1;color:#fff}
     .preview-btn.danger{background:#dc2626}
@@ -163,29 +221,37 @@
     .preview-iframe{width:100%;height:100%;border:none;background:#fff;display:block}
     .preview-iframe.mobile{max-width:390px;box-shadow:0 0 20px rgba(0,0,0,.3);border:2px solid #1e293b}
     .preview-iframe.tablet{max-width:768px;box-shadow:0 0 20px rgba(0,0,0,.3);border:2px solid #1e293b}
-    .preview-loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#1e293b;color:#e2e8f0;padding:20px 30px;border-radius:10px;font-size:.9rem;display:flex;align-items:center;gap:12px;z-index:10}
+    .preview-loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#1e293b;color:#e2e8f0;padding:20px 30px;border-radius:10px;font-size:.85rem;display:flex;align-items:center;gap:12px;z-index:10}
     .preview-loading .spinner{width:20px;height:20px;border:3px solid #334155;border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
 
-    ::-webkit-scrollbar{width:5px;height:5px}
+    /* WS indicator */
+    .ws-indicator{position:fixed;bottom:15px;left:15px;background:#1e293b;border:1px solid #334155;border-radius:20px;padding:5px 12px;font-size:.7rem;display:flex;align-items:center;gap:6px;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+    .ws-indicator.connected{border-color:#22c55e;color:#4ade80}
+    .ws-indicator.disconnected{border-color:#ef4444;color:#f87171}
+
+    ::-webkit-scrollbar{width:6px;height:6px}
     ::-webkit-scrollbar-track{background:#0f172a}
     ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+    ::-webkit-scrollbar-thumb:hover{background:#475569}
   </style>
 </head>
 <body>
 
 <header>
   <div>
-    <h1>🎓 AI Project Maker — Claude Code</h1>
-    <p>Generate, kembangkan &amp; jalankan project kuliah otomatis dengan Claude AI</p>
+    <h1>🚀 AI Project Maker <span class="version">ULTIMATE v2.0</span></h1>
+    <p>Generate, kembangkan &amp; jalankan project otomatis · Cache · Backup · Live Preview</p>
   </div>
   <div class="header-right">
     <span id="server-status">
       <span class="status-dot checking"></span>
-      <span style="font-size:.78rem">Mengecek...</span>
+      <span style="font-size:.75rem">Mengecek...</span>
     </span>
-    <div class="test-badge" id="btn-test-ai">🧪 Test AI</div>
-    <div class="key-badge" id="btn-key-header">🔑 API Keys</div>
+    <div class="badge-btn stats" id="btn-stats">📊 Stats</div>
+    <div class="badge-btn backup" id="btn-backup">💾 Backup</div>
+    <div class="badge-btn test" id="btn-test-ai">🧪 Test AI</div>
+    <div class="badge-btn key" id="btn-key-header">🔑 Keys</div>
   </div>
 </header>
 
@@ -207,7 +273,7 @@
         <textarea id="deskripsi" placeholder="Jelaskan project yang ingin dibuat secara detail..."></textarea>
       </div>
       <div>
-        <p class="chip-label">💡 Contoh Cepat — klik untuk mengisi</p>
+        <p class="chip-label">💡 Contoh Cepat</p>
         <div class="chip-list" id="chips-baru"></div>
       </div>
       <button class="btn btn-primary" id="btn-buat">🚀 Generate Project</button>
@@ -218,9 +284,9 @@
 
     <div class="mode-panel" id="mode-lanjut">
       <div>
-        <label>📂 Pilih Project Yang Ada</label>
+        <label>📂 Pilih Project</label>
         <div class="project-list-wrap" id="project-list">
-          <div class="empty"><p>Klik tab "Lanjutkan" untuk muat list.</p></div>
+          <div class="empty"><p>Klik tab Lanjutkan untuk muat list.</p></div>
         </div>
       </div>
       <div>
@@ -229,7 +295,7 @@
       </div>
       <div>
         <label>✨ Minta Fitur / Perubahan</label>
-        <textarea id="permintaan" placeholder="Contoh: tambahkan autentikasi JWT dan dashboard admin..."></textarea>
+        <textarea id="permintaan" placeholder="Contoh: tambahkan autentikasi JWT..."></textarea>
       </div>
       <div>
         <p class="chip-label">💡 Contoh Pengembangan</p>
@@ -250,72 +316,89 @@
       <div class="tab" data-tab="tab-info">📋 Info</div>
       <div class="tab" data-tab="tab-preview">🖥️ Preview <span id="preview-badge" style="display:none" class="tab-badge live">LIVE</span></div>
       <div class="tab" data-tab="tab-run">▶️ Run <span id="run-badge" style="display:none" class="tab-badge">ON</span></div>
-      <div class="tab" data-tab="tab-keys">🔑 API Keys</div>
+      <div class="tab" data-tab="tab-stats">📊 Stats</div>
+      <div class="tab" data-tab="tab-backup">💾 Backup</div>
+      <div class="tab" data-tab="tab-keys">🔑 Keys</div>
     </div>
 
     <div class="tab-content active" id="tab-log">
       <div id="log-panel"><span class="log-info">Belum ada proses. Isi form di kiri lalu klik Generate.</span></div>
     </div>
     <div class="tab-content" id="tab-files">
-      <div id="file-list">
-        <div class="empty"><div class="icon">📂</div><p>File akan muncul setelah project selesai di-generate.</p></div>
-      </div>
+      <div id="file-list"><div class="empty"><div class="icon">📂</div><p>File muncul setelah project selesai.</p></div></div>
     </div>
     <div class="tab-content" id="tab-info">
-      <div id="info-panel">
-        <div class="empty"><div class="icon">📋</div><p>Info project akan muncul setelah proses dimulai.</p></div>
-      </div>
+      <div id="info-panel"><div class="empty"><div class="icon">📋</div><p>Info project muncul setelah proses dimulai.</p></div></div>
     </div>
     <div class="tab-content preview-active" id="tab-preview">
       <div id="preview-panel" style="width:100%;height:100%;display:flex;flex-direction:column">
         <div class="empty" style="margin:auto">
           <div class="icon">🖥️</div>
-          <p>Preview akan muncul setelah project di-RUN.<br/>
-          Hanya untuk project tipe <strong>FastAPI</strong> atau <strong>Flask</strong>.</p>
+          <p>Preview muncul setelah project di-RUN.<br/>Untuk tipe <strong>FastAPI</strong> atau <strong>Flask</strong>.</p>
         </div>
       </div>
     </div>
     <div class="tab-content" id="tab-run">
-      <div id="run-panel">
-        <div class="empty"><div class="icon">▶️</div><p>Selesaikan project dulu, lalu klik tombol RUN di tab Info.</p></div>
-      </div>
+      <div id="run-panel"><div class="empty"><div class="icon">▶️</div><p>Klik RUN di tab Info untuk jalankan project.</p></div></div>
+    </div>
+    <div class="tab-content" id="tab-stats">
+      <div id="stats-panel"><div class="empty"><div class="icon">📊</div><p>Loading statistics...</p></div></div>
+    </div>
+    <div class="tab-content" id="tab-backup">
+      <div id="backup-panel"><div class="empty"><div class="icon">💾</div><p>Loading backups...</p></div></div>
     </div>
     <div class="tab-content" id="tab-keys">
-      <div id="key-panel">
-        <div class="empty"><div class="icon">🔑</div><p>Klik tab API Keys untuk melihat status koneksi.</p></div>
-      </div>
+      <div id="key-panel"><div class="empty"><div class="icon">🔑</div><p>Klik untuk melihat status key.</p></div></div>
     </div>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
+<!-- WebSocket Indicator -->
+<div class="ws-indicator disconnected" id="ws-indicator">
+  <span>🔌</span>
+  <span id="ws-status">Disconnected</span>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3 id="modal-title">Konfirmasi</h3>
+    <p id="modal-body">Yakin?</p>
+    <div class="modal-actions">
+      <button class="btn btn-gray btn-sm" onclick="closeModal()">Batal</button>
+      <button class="btn btn-red btn-sm" id="modal-confirm">Ya, Lanjutkan</button>
+    </div>
+  </div>
+</div>
+
 <script>
 'use strict';
 
 // ================================================
-// DATA CHIPS
+// CHIPS DATA
 // ================================================
 const CHIPS_BARU = [
-  {label:'📚 Perpustakaan', desc:'Sistem manajemen perpustakaan kampus dengan FastAPI, SQLAlchemy, SQLite, fitur pinjam buku, pengembalian, denda, laporan, dan unit test', nama:'sistem_perpustakaan'},
-  {label:'🎓 Akademik', desc:'Sistem informasi akademik dengan KRS online, input nilai, jadwal kuliah, absensi, dashboard statistik FastAPI SQLite', nama:'sistem_akademik'},
-  {label:'🤖 ML Prediksi', desc:'Machine learning prediksi kelulusan mahasiswa berdasarkan IPK, absensi, nilai menggunakan scikit-learn pandas matplotlib', nama:'ml_kelulusan'},
-  {label:'🛒 E-Commerce', desc:'REST API e-commerce kampus untuk jual beli barang bekas mahasiswa dengan JWT, CRUD produk, keranjang, pembayaran mock FastAPI', nama:'ecommerce_kampus'},
-  {label:'📱 Absensi QR', desc:'Sistem absensi mahasiswa QR Code Python FastAPI, generate QR, scan simulasi, rekap kehadiran, laporan CSV', nama:'absensi_qr'},
-  {label:'📊 Analisis Data', desc:'Analisis data nilai mahasiswa visualisasi matplotlib, statistik deskriptif, korelasi, export PDF Python', nama:'analisis_nilai'},
-  {label:'🖥️ Inventaris', desc:'Manajemen inventaris laboratorium komputer kampus CRUD perangkat peminjaman pengembalian laporan kerusakan FastAPI SQLite', nama:'inventaris_lab'},
-  {label:'💬 Chatbot', desc:'Chatbot FAQ kampus Python NLP FastAPI dengan web interface interaktif', nama:'chatbot_kampus'},
+  {label:'📚 Perpustakaan', desc:'Sistem manajemen perpustakaan FastAPI SQLAlchemy SQLite, pinjam buku, pengembalian, denda, laporan, unit test, halaman HTML lengkap dengan Bootstrap', nama:'sistem_perpustakaan'},
+  {label:'🎓 Akademik', desc:'Sistem informasi akademik FastAPI dengan KRS online, input nilai, jadwal kuliah, absensi, dashboard, halaman HTML Bootstrap', nama:'sistem_akademik'},
+  {label:'🤖 ML Prediksi', desc:'Machine learning prediksi kelulusan mahasiswa scikit-learn pandas matplotlib dengan web interface FastAPI', nama:'ml_kelulusan'},
+  {label:'🛒 E-Commerce', desc:'REST API e-commerce kampus FastAPI dengan JWT auth, CRUD produk, keranjang, pembayaran mock, halaman HTML lengkap', nama:'ecommerce_kampus'},
+  {label:'📱 Absensi QR', desc:'Sistem absensi mahasiswa QR Code FastAPI, generate QR, scan, rekap kehadiran, laporan CSV, halaman HTML dengan Bootstrap', nama:'absensi_qr'},
+  {label:'📊 Analisis Data', desc:'Analisis data nilai mahasiswa FastAPI visualisasi matplotlib statistik export PDF dengan web interface', nama:'analisis_nilai'},
+  {label:'🖥️ Inventaris', desc:'Manajemen inventaris laboratorium FastAPI SQLite CRUD perangkat peminjaman laporan dengan halaman HTML lengkap', nama:'inventaris_lab'},
+  {label:'💬 Chatbot', desc:'Chatbot FAQ kampus FastAPI dengan halaman web chat interaktif JavaScript, basis pengetahuan JSON', nama:'chatbot_kampus'},
 ];
 
 const CHIPS_LANJUT = [
+  {label:'🎨 UI Lengkap', text:'Tambahkan halaman web HTML lengkap dengan Bootstrap 5 CDN. Buat halaman home, list, form, dan dashboard. Response HTMLResponse dengan JavaScript untuk interaksi form.'},
   {label:'📄 Export PDF', text:'Tambahkan fitur export laporan ke PDF menggunakan reportlab'},
   {label:'🔐 Auth JWT', text:'Tambahkan autentikasi JWT dengan login dan register endpoint'},
-  {label:'📊 Dashboard', text:'Tambahkan dashboard statistik dengan grafik matplotlib yang disimpan sebagai gambar'},
+  {label:'📊 Dashboard', text:'Tambahkan dashboard statistik dengan grafik Chart.js'},
   {label:'📧 Email', text:'Tambahkan fitur notifikasi email menggunakan smtplib'},
   {label:'📑 Pagination', text:'Tambahkan pagination dan filtering pada semua endpoint list'},
-  {label:'🧪 Unit Test', text:'Tambahkan unit test lengkap menggunakan pytest untuk semua endpoint'},
-  {label:'🐳 Docker', text:'Tambahkan Dockerfile dan docker-compose.yml untuk deployment'},
-  {label:'📝 Logging', text:'Tambahkan logging system dan error handling yang lebih baik'},
+  {label:'🧪 Unit Test', text:'Tambahkan unit test lengkap menggunakan pytest'},
+  {label:'🐳 Docker', text:'Tambahkan Dockerfile dan docker-compose.yml'},
 ];
 
 // ================================================
@@ -324,10 +407,13 @@ const CHIPS_LANJUT = [
 let currentProjectId   = null;
 let pollingInterval    = null;
 let runPollingInterval = null;
+let statsPollingInterval = null;
 let progressMode       = 'baru';
 let progressVal        = 5;
 let currentPreviewUrl  = null;
 let previewMode        = 'desktop';
+let ws                 = null;
+let wsReconnectTimer   = null;
 
 // ================================================
 // UTILS
@@ -356,11 +442,116 @@ function fmtUptime(s) {
   if (s < 3600) return Math.floor(s/60) + 'm ' + (s%60) + 's';
   return Math.floor(s/3600) + 'h ' + Math.floor((s%3600)/60) + 'm';
 }
+function fmtDate(ts) {
+  if (!ts) return '-';
+  const d = new Date(ts * 1000);
+  return d.toLocaleString('id-ID');
+}
 function showToast(msg, type) {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.className = 'toast show ' + (type === 'ok' ? 'toast-ok' : 'toast-err');
+  const cls = type === 'ok' ? 'toast-ok' : type === 'info' ? 'toast-info' : 'toast-err';
+  t.className = 'toast show ' + cls;
   setTimeout(() => { t.className = 'toast'; }, 4000);
+}
+
+function showModal(title, body, onConfirm) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').textContent = body;
+  document.getElementById('modal-overlay').classList.add('show');
+  document.getElementById('modal-confirm').onclick = () => {
+    onConfirm();
+    closeModal();
+  };
+}
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('show');
+}
+document.getElementById('modal-overlay').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+// ================================================
+// WEBSOCKET
+// ================================================
+function connectWebSocket(projectId) {
+  if (ws) { ws.close(); ws = null; }
+  if (!projectId) return;
+  const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const url = `${proto}//${window.location.host}/ws/${projectId}`;
+  try {
+    ws = new WebSocket(url);
+    ws.onopen = () => {
+      console.log('WS connected');
+      document.getElementById('ws-indicator').className = 'ws-indicator connected';
+      document.getElementById('ws-status').textContent = 'Connected';
+      // Send keep-alive
+      setInterval(() => { if (ws && ws.readyState === 1) ws.send('ping'); }, 30000);
+    };
+    ws.onmessage = (e) => {
+      try {
+        const data = JSON.parse(e.data);
+        handleWsMessage(data);
+      } catch(err) {}
+    };
+    ws.onclose = () => {
+      console.log('WS closed');
+      document.getElementById('ws-indicator').className = 'ws-indicator disconnected';
+      document.getElementById('ws-status').textContent = 'Disconnected';
+      // Auto reconnect
+      if (currentProjectId) {
+        clearTimeout(wsReconnectTimer);
+        wsReconnectTimer = setTimeout(() => connectWebSocket(currentProjectId), 3000);
+      }
+    };
+    ws.onerror = () => {
+      console.log('WS error');
+    };
+  } catch(e) {
+    console.error('WS init error:', e);
+  }
+}
+
+function handleWsMessage(data) {
+  if (data.type === 'log') {
+    // Append log realtime
+    const panel = document.getElementById('log-panel');
+    if (panel) {
+      const cls = getLogClass(data.message);
+      panel.innerHTML += `<div class="${cls}">${esc(data.message)}</div>`;
+      panel.scrollTop = panel.scrollHeight;
+    }
+  } else if (data.type === 'runlog') {
+    // Realtime run log
+    const panel = document.getElementById('run-log-panel');
+    if (panel) {
+      const cls = getRunLogClass(data.line);
+      panel.innerHTML += `<div class="${cls}">${esc(data.line)}</div>`;
+      panel.scrollTop = panel.scrollHeight;
+    }
+  } else if (data.type === 'status') {
+    if (data.status === 'done') showToast('✅ Selesai!', 'ok');
+    else if (data.status === 'error') showToast('❌ Error!', 'err');
+  }
+}
+
+function getLogClass(line) {
+  const map = {'⏳':'log-loading','✅':'log-success','❌':'log-error',
+    '⚠️':'log-warning','🔧':'log-fix','📄':'log-file',
+    '📁':'log-folder','🧪':'log-run','🎉':'log-done',
+    'ℹ️':'log-info','🔄':'log-lanjut','✨':'log-cache'};
+  for (const [emoji, klass] of Object.entries(map)) {
+    if (line.includes(emoji)) return klass;
+  }
+  return 'log-info';
+}
+
+function getRunLogClass(line) {
+  if (line.startsWith('[SYSTEM]')) return 'log-sys';
+  if (/error|traceback|exception|failed/i.test(line)) return 'log-error';
+  if (/warning|warn/i.test(line)) return 'log-warning';
+  if (/success|ready|started|running|listening|application startup/i.test(line)) return 'log-success';
+  return 'log-info';
 }
 
 // ================================================
@@ -390,7 +581,7 @@ function initChips() {
 }
 
 // ================================================
-// MODE SWITCH
+// MODE & TAB SWITCH
 // ================================================
 document.querySelector('.mode-tabs').addEventListener('click', function(e) {
   const tab = e.target.closest('.mode-tab');
@@ -403,9 +594,6 @@ document.querySelector('.mode-tabs').addEventListener('click', function(e) {
   if (modeId === 'mode-lanjut') muatProjectList();
 });
 
-// ================================================
-// TAB SWITCH
-// ================================================
 document.getElementById('main-tabs').addEventListener('click', function(e) {
   const tab = e.target.closest('.tab');
   if (!tab) return;
@@ -414,15 +602,19 @@ document.getElementById('main-tabs').addEventListener('click', function(e) {
 
 document.getElementById('btn-key-header').addEventListener('click', () => switchToTab('tab-keys'));
 document.getElementById('btn-test-ai').addEventListener('click', testAI);
+document.getElementById('btn-stats').addEventListener('click', () => switchToTab('tab-stats'));
+document.getElementById('btn-backup').addEventListener('click', () => switchToTab('tab-backup'));
 
 function switchToTab(tabId) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById(tabId).classList.add('active');
   document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
-  if (tabId === 'tab-keys')    muatKeyStatus();
-  if (tabId === 'tab-run')     mulaiRunPolling();
+  if (tabId === 'tab-keys') muatKeyStatus();
+  if (tabId === 'tab-run') mulaiRunPolling();
   if (tabId === 'tab-preview' && currentPreviewUrl) refreshPreviewInfo();
+  if (tabId === 'tab-stats') mulaiStatsPolling();
+  if (tabId === 'tab-backup') muatBackups();
 }
 
 // ================================================
@@ -435,12 +627,12 @@ async function cekServer() {
     if (resp.ok) {
       const data = await resp.json();
       const count = data.keys ? data.keys.length : 0;
-      el.innerHTML = `<span class="status-dot online"></span><span style="font-size:.78rem">${count} Key aktif</span>`;
+      el.innerHTML = `<span class="status-dot online"></span><span style="font-size:.75rem">${count} Key aktif</span>`;
     } else {
-      el.innerHTML = '<span class="status-dot offline"></span><span style="font-size:.78rem">Server error</span>';
+      el.innerHTML = '<span class="status-dot offline"></span><span style="font-size:.75rem">Server error</span>';
     }
   } catch(e) {
-    el.innerHTML = '<span class="status-dot offline"></span><span style="font-size:.78rem">Offline</span>';
+    el.innerHTML = '<span class="status-dot offline"></span><span style="font-size:.75rem">Offline</span>';
   }
 }
 
@@ -466,18 +658,18 @@ async function testAI() {
     html += '</div></div>';
     el.innerHTML = html;
     const sukses = keys.filter(k => k.status.includes('sukses')).length;
-    showToast(`Test selesai: ${sukses}/${keys.length} key berhasil`, sukses > 0 ? 'ok' : 'err');
+    showToast(`Test: ${sukses}/${keys.length} key OK`, sukses > 0 ? 'ok' : 'err');
   } catch(e) {
     el.innerHTML = `<div class="empty"><p>❌ Gagal test: ${esc(String(e))}</p></div>`;
   }
 }
 
 // ================================================
-// LIST PROJECT
+// LIST PROJECT — dengan tombol Delete
 // ================================================
 async function muatProjectList() {
   const el = document.getElementById('project-list');
-  el.innerHTML = '<div class="empty"><p>⏳ Memuat daftar project...</p></div>';
+  el.innerHTML = '<div class="empty"><p>⏳ Memuat...</p></div>';
   try {
     const resp = await fetch('/list-projects');
     const data = await resp.json();
@@ -488,12 +680,36 @@ async function muatProjectList() {
     }
     el.innerHTML = list.map(p => `
       <div class="project-card" data-nama="${escAttr(p.nama)}" title="${escAttr(p.deskripsi)}">
-        <div class="pname">📁 ${esc(p.nama)}</div>
+        <button class="del-btn" data-del="${escAttr(p.nama)}" title="Hapus project">🗑️</button>
+        <div class="pname">
+          ${p.is_running ? '<span class="live-dot"></span>' : ''}
+          📁 ${esc(p.nama)}
+        </div>
         <div class="ptech">${esc(p.tech_stack)} · ${esc(p.project_type||'script')}</div>
         <div class="pfiles">${p.file_count} file · ${esc(p.run_cmd)}</div>
       </div>
     `).join('');
+
     el.addEventListener('click', function(e) {
+      const delBtn = e.target.closest('.del-btn');
+      if (delBtn) {
+        e.stopPropagation();
+        const nama = delBtn.dataset.del;
+        showModal(
+          `Hapus Project?`,
+          `Yakin hapus "${nama}"? Project akan di-backup otomatis sebelum dihapus.`,
+          async () => {
+            const r = await fetch(`/project/${encodeURIComponent(nama)}`, {method: 'DELETE'});
+            if (r.ok) {
+              showToast('✅ Project dihapus (backup dibuat)', 'ok');
+              muatProjectList();
+            } else {
+              showToast('❌ Gagal hapus', 'err');
+            }
+          }
+        );
+        return;
+      }
       const card = e.target.closest('.project-card');
       if (!card) return;
       document.getElementById('nama-lanjut').value = card.dataset.nama;
@@ -506,13 +722,13 @@ async function muatProjectList() {
 }
 
 // ================================================
-// BUAT PROJECT
+// BUAT/LANJUT PROJECT
 // ================================================
 document.getElementById('btn-buat').addEventListener('click', async function() {
   const deskripsi = document.getElementById('deskripsi').value.trim();
   const nama = document.getElementById('nama').value.trim();
-  if (!deskripsi) { showToast('Masukkan deskripsi project!', 'err'); return; }
-  if (!nama) { showToast('Masukkan nama project!', 'err'); return; }
+  if (!deskripsi) { showToast('Masukkan deskripsi!', 'err'); return; }
+  if (!nama) { showToast('Masukkan nama!', 'err'); return; }
   progressMode = 'baru';
   resetUI('baru');
   const fd = new FormData();
@@ -520,10 +736,14 @@ document.getElementById('btn-buat').addEventListener('click', async function() {
   fd.append('nama', nama);
   try {
     const resp = await fetch('/buat-project', { method: 'POST', body: fd });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error || 'HTTP ' + resp.status);
+    }
     const json = await resp.json();
     currentProjectId = json.project_id;
-    showToast(`Project "${json.nama}" dimulai!`, 'ok');
+    connectWebSocket(currentProjectId);
+    showToast(`🚀 "${json.nama}" dimulai!`, 'ok');
     mulaiPolling();
   } catch(e) {
     showToast('Gagal: ' + e, 'err');
@@ -534,7 +754,7 @@ document.getElementById('btn-buat').addEventListener('click', async function() {
 document.getElementById('btn-lanjut').addEventListener('click', async function() {
   const nama = document.getElementById('nama-lanjut').value.trim();
   const permintaan = document.getElementById('permintaan').value.trim();
-  if (!nama) { showToast('Pilih atau ketik nama project!', 'err'); return; }
+  if (!nama) { showToast('Pilih project!', 'err'); return; }
   if (!permintaan) { showToast('Masukkan permintaan!', 'err'); return; }
   progressMode = 'lanjut';
   resetUI('lanjut');
@@ -543,10 +763,14 @@ document.getElementById('btn-lanjut').addEventListener('click', async function()
   fd.append('permintaan', permintaan);
   try {
     const resp = await fetch('/lanjut-project', { method: 'POST', body: fd });
-    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error || 'HTTP ' + resp.status);
+    }
     const json = await resp.json();
     currentProjectId = json.project_id;
-    showToast(`Pengembangan "${json.nama}" dimulai!`, 'ok');
+    connectWebSocket(currentProjectId);
+    showToast(`🔄 "${json.nama}" dikembangkan (auto-backup)!`, 'ok');
     mulaiPolling();
   } catch(e) {
     showToast('Gagal: ' + e, 'err');
@@ -555,7 +779,7 @@ document.getElementById('btn-lanjut').addEventListener('click', async function()
 });
 
 function resetUI(mode) {
-  document.getElementById('log-panel').innerHTML = '<div class="log-loading">⏳ Memulai proses...</div>';
+  document.getElementById('log-panel').innerHTML = '<div class="log-loading">⏳ Memulai...</div>';
   document.getElementById('file-list').innerHTML = '<div class="empty"><div class="icon">⏳</div><p>Menunggu...</p></div>';
   document.getElementById('pw-' + mode).style.display = 'block';
   document.getElementById('pb-' + mode).style.width = '5%';
@@ -588,7 +812,6 @@ async function polling() {
     renderLog(data.logs || []);
     renderInfo(data);
 
-    // Update running badges
     const runBadge = document.getElementById('run-badge');
     const prevBadge = document.getElementById('preview-badge');
     if (data.running && data.running.alive) {
@@ -609,22 +832,18 @@ async function polling() {
       pollingInterval = null;
       document.getElementById('pb-' + progressMode).style.width = '100%';
       resetBtn();
-      if (data.status === 'done') showToast('✅ Project berhasil dibuat!', 'ok');
-      else showToast('❌ Project gagal.', 'err');
-
+      if (data.status === 'done') showToast('✅ Selesai!', 'ok');
+      else showToast('❌ Gagal.', 'err');
       try {
         const fresp = await fetch('/files/' + currentProjectId);
         const fdata = await fresp.json();
         renderFiles(fdata.files || []);
       } catch(e) {}
-
       setTimeout(() => {
         document.getElementById('pw-' + progressMode).style.display = 'none';
       }, 2500);
     }
-  } catch(e) {
-    console.error('Polling error:', e);
-  }
+  } catch(e) { console.error(e); }
 }
 
 // ================================================
@@ -632,26 +851,17 @@ async function polling() {
 // ================================================
 function renderLog(logs) {
   const panel = document.getElementById('log-panel');
-  const emojiMap = {
-    '⏳':'log-loading','✅':'log-success','❌':'log-error',
-    '⚠️':'log-warning','🔧':'log-fix','📄':'log-file',
-    '📁':'log-folder','🧪':'log-run','🎉':'log-done',
-    'ℹ️':'log-info','🔄':'log-lanjut'
-  };
   if (!logs.length) {
     panel.innerHTML = '<span class="log-info">Menunggu proses...</span>';
     return;
   }
-  panel.innerHTML = logs.map(line => {
-    let cls = 'log-info';
-    for (const [emoji, klass] of Object.entries(emojiMap)) {
-      if (line.includes(emoji)) { cls = klass; break; }
-    }
-    return `<div class="${cls}">${esc(line)}</div>`;
-  }).join('');
+  panel.innerHTML = logs.map(line => `<div class="${getLogClass(line)}">${esc(line)}</div>`).join('');
   panel.scrollTop = panel.scrollHeight;
 }
 
+// ================================================
+// RENDER FILES — dengan Edit & Delete
+// ================================================
 function renderFiles(files) {
   const el = document.getElementById('file-list');
   if (!files || files.length === 0) {
@@ -660,20 +870,77 @@ function renderFiles(files) {
   }
   el.innerHTML = '<div class="file-tree">' + files.map((f, i) => `
     <div class="file-item">
-      <div class="file-header" data-idx="${i}">
+      <div class="file-header" data-idx="${i}" data-path="${escAttr(f.path)}">
         <span>${iconFile(f.path)}</span>
         <span>${esc(f.path)}</span>
         <span class="file-size">${fmtSize(f.size)}</span>
+        <div class="file-actions">
+          <button class="edit" data-edit-idx="${i}" data-edit-path="${escAttr(f.path)}">✏️</button>
+          <button class="del" data-del-idx="${i}" data-del-path="${escAttr(f.path)}">🗑️</button>
+        </div>
       </div>
       <pre class="file-code" id="fcode-${i}">${esc(f.content)}</pre>
+      <div class="file-editor" id="feditor-${i}">
+        <textarea id="fedit-textarea-${i}">${esc(f.content)}</textarea>
+        <div class="editor-actions">
+          <button class="btn btn-gray btn-sm" onclick="cancelEdit(${i})">Batal</button>
+          <button class="btn btn-green btn-sm" onclick="saveEdit(${i}, '${escAttr(f.path)}')">💾 Simpan</button>
+        </div>
+      </div>
     </div>
   `).join('') + '</div>';
+
   el.addEventListener('click', function(e) {
+    const editBtn = e.target.closest('button.edit');
+    const delBtn = e.target.closest('button.del');
+    if (editBtn) {
+      e.stopPropagation();
+      const idx = editBtn.dataset.editIdx;
+      document.getElementById('fcode-' + idx).style.display = 'none';
+      document.getElementById('feditor-' + idx).style.display = 'block';
+      return;
+    }
+    if (delBtn) {
+      e.stopPropagation();
+      const path = delBtn.dataset.delPath;
+      showModal('Hapus File?', `Yakin hapus "${path}"?`, async () => {
+        const r = await fetch(`/files/${currentProjectId}/delete?path=${encodeURIComponent(path)}`, {method: 'DELETE'});
+        if (r.ok) {
+          showToast('✅ File dihapus', 'ok');
+          const fresp = await fetch('/files/' + currentProjectId);
+          const fdata = await fresp.json();
+          renderFiles(fdata.files || []);
+        } else showToast('❌ Gagal', 'err');
+      });
+      return;
+    }
     const header = e.target.closest('.file-header');
     if (!header) return;
     const code = document.getElementById('fcode-' + header.dataset.idx);
     if (code) code.style.display = code.style.display === 'block' ? 'none' : 'block';
   });
+}
+
+function cancelEdit(idx) {
+  document.getElementById('feditor-' + idx).style.display = 'none';
+  document.getElementById('fcode-' + idx).style.display = 'block';
+}
+
+async function saveEdit(idx, path) {
+  const content = document.getElementById('fedit-textarea-' + idx).value;
+  const fd = new FormData();
+  fd.append('path', path);
+  fd.append('content', content);
+  try {
+    const r = await fetch(`/files/${currentProjectId}/save`, {method: 'POST', body: fd});
+    if (r.ok) {
+      showToast('✅ File disimpan (backup dibuat)', 'ok');
+      cancelEdit(idx);
+      const fresp = await fetch('/files/' + currentProjectId);
+      const fdata = await fresp.json();
+      renderFiles(fdata.files || []);
+    } else showToast('❌ Gagal simpan', 'err');
+  } catch(e) { showToast('❌ Error: ' + e, 'err'); }
 }
 
 // ================================================
@@ -698,24 +965,20 @@ function renderInfo(data) {
         <div class="running-card">
           <div class="r-title">
             <span class="badge badge-running">● RUNNING</span>
-            Project sedang berjalan
+            Project berjalan
           </div>
-          ${isWeb ? `
-            <a href="${escAttr(url)}" target="_blank" class="r-url">🌐 ${esc(url)}</a>
-          ` : `
-            <div style="color:#94a3b8;font-size:.8rem;margin-bottom:8px">
-              Project tipe CLI/Script — cek tab ▶️ Run untuk output
-            </div>
-          `}
+          ${isWeb ? `<a href="${escAttr(url)}" target="_blank" class="r-url">🌐 ${esc(url)}</a>` :
+            `<div style="color:#94a3b8;font-size:.8rem;margin-bottom:8px">Tipe CLI/Script — lihat tab ▶️ Run</div>`}
           <div class="r-info">
-            <span>⏱️ Uptime: <b>${fmtUptime(data.running.uptime)}</b></span>
-            <span>🔌 Port: <b>${data.running.port}</b></span>
-            <span>📦 Tipe: <b>${esc(data.running.type||'script')}</b></span>
+            <span>⏱️ <b>${fmtUptime(data.running.uptime)}</b></span>
+            <span>🔌 Port <b>${data.running.port}</b></span>
+            <span>📦 <b>${esc(data.running.type||'script')}</b></span>
           </div>
-          <div class="btn-group-3">
-            ${isWeb ? `<button class="btn btn-blue" onclick="openPreview()">🖥️ Preview</button>` : ''}
-            <button class="btn btn-blue" onclick="switchToTab('tab-run')">📟 Log</button>
-            <button class="btn btn-red" onclick="stopProject()">⏹️ STOP</button>
+          <div class="btn-group-4">
+            ${isWeb ? `<button class="btn btn-blue btn-sm" onclick="openPreview()">🖥️ Preview</button>` : `<button class="btn btn-blue btn-sm" onclick="switchToTab('tab-run')">📟 Log</button>`}
+            <button class="btn btn-yellow btn-sm" onclick="restartProject()">🔄 Restart</button>
+            <button class="btn btn-red btn-sm" onclick="stopProject()">⏹️ Stop</button>
+            <button class="btn btn-gray btn-sm" onclick="downloadProject()">📥 ZIP</button>
           </div>
         </div>
       `;
@@ -723,8 +986,8 @@ function renderInfo(data) {
       runningHtml = `
         <div class="info-card">
           <h3>🚀 Jalankan Project</h3>
-          <p style="font-size:.8rem;color:#94a3b8;margin-bottom:12px">
-            Klik RUN untuk menjalankan project di server. Preview akan otomatis terbuka di dalam web!
+          <p style="font-size:.78rem;color:#94a3b8;margin-bottom:12px">
+            Preview otomatis terbuka setelah RUN. Backup otomatis sebelum modifikasi.
           </p>
           <div class="btn-group">
             <button class="btn btn-green" onclick="runProject()">▶️ RUN Project</button>
@@ -748,7 +1011,7 @@ function renderInfo(data) {
       <div class="info-row"><span class="info-label">Lokasi</span><span class="info-value">${esc(data.folder || '-')}</span></div>
     </div>
     <div class="info-card">
-      <h3>⚡ Cara Jalankan Manual</h3>
+      <h3>⚡ Run Command Manual</h3>
       <div class="cmd-box">${esc(data.run_cmd || 'Belum tersedia')}</div>
     </div>
     ${data.error ? `
@@ -760,28 +1023,23 @@ function renderInfo(data) {
 }
 
 // ================================================
-// RUN / STOP / DOWNLOAD
+// RUN / STOP / RESTART / DOWNLOAD
 // ================================================
 async function runProject() {
-  if (!currentProjectId) {
-    showToast('Belum ada project aktif', 'err');
-    return;
-  }
-  showToast('🚀 Memulai project...', 'ok');
+  if (!currentProjectId) { showToast('No project', 'err'); return; }
+  showToast('🚀 Memulai...', 'ok');
   try {
     const resp = await fetch('/run/' + currentProjectId, { method: 'POST' });
     const data = await resp.json();
     if (data.sukses) {
-      showToast(`✅ Berjalan di port ${data.port}!`, 'ok');
+      showToast(`✅ Port ${data.port}!`, 'ok');
       if (data.url) {
-        // ✅ Auto-open Preview tab dengan iframe
-        showToast('⏳ Menunggu server siap (3 detik)...', 'ok');
+        showToast('⏳ Tunggu server siap (3s)...', 'info');
         setTimeout(() => {
           loadPreview(data.url, data.port, data.type);
           switchToTab('tab-preview');
         }, 3000);
       } else {
-        // CLI/script → ke Run tab
         switchToTab('tab-run');
         mulaiRunPolling();
       }
@@ -790,38 +1048,45 @@ async function runProject() {
       switchToTab('tab-run');
       renderRunLog({ logs: data.logs || [], alive: false, exit_code: -1 });
     }
-  } catch(e) {
-    showToast('❌ Error: ' + e, 'err');
-  }
+  } catch(e) { showToast('❌ Error: ' + e, 'err'); }
+}
+
+async function restartProject() {
+  if (!currentProjectId) return;
+  showToast('🔄 Restart...', 'info');
+  try {
+    const resp = await fetch('/restart/' + currentProjectId, { method: 'POST' });
+    const data = await resp.json();
+    if (data.sukses) {
+      showToast(`✅ Restart OK (port ${data.port})`, 'ok');
+      if (data.url) {
+        setTimeout(() => { reloadPreview(); }, 3000);
+      }
+    } else {
+      showToast('❌ ' + (data.error || 'Failed'), 'err');
+    }
+  } catch(e) { showToast('❌ ' + e, 'err'); }
 }
 
 async function stopProject() {
   if (!currentProjectId) return;
   try {
     await fetch('/stop/' + currentProjectId, { method: 'POST' });
-    showToast('⏹️ Project dihentikan', 'ok');
+    showToast('⏹️ Dihentikan', 'ok');
     hentikanRunPolling();
     clearPreview();
-    setTimeout(() => {
-      if (pollingInterval) return;
-      polling();
-    }, 500);
-  } catch(e) {
-    showToast('❌ Error: ' + e, 'err');
-  }
+    setTimeout(() => { if (!pollingInterval) polling(); }, 500);
+  } catch(e) { showToast('❌ ' + e, 'err'); }
 }
 
 async function downloadProject() {
-  if (!currentProjectId) {
-    showToast('Belum ada project aktif', 'err');
-    return;
-  }
+  if (!currentProjectId) { showToast('No project', 'err'); return; }
   window.location.href = '/download/' + currentProjectId;
-  showToast('📥 Download dimulai...', 'ok');
+  showToast('📥 Download...', 'ok');
 }
 
 // ================================================
-// PREVIEW LIVE — iframe di dalam web
+// PREVIEW
 // ================================================
 function openPreview() {
   switchToTab('tab-preview');
@@ -829,16 +1094,12 @@ function openPreview() {
 }
 
 async function refreshPreviewInfo() {
-  // Refresh info running untuk dapat URL terbaru
   if (!currentProjectId) return;
   try {
     const resp = await fetch('/status/' + currentProjectId);
     const data = await resp.json();
     if (data.running && data.running.alive && data.running.url) {
-      const type = data.running.type || 'fastapi';
-      if (!currentPreviewUrl) {
-        loadPreview(data.running.url, data.running.port, type);
-      }
+      if (!currentPreviewUrl) loadPreview(data.running.url, data.running.port, data.running.type || 'fastapi');
     } else if (!currentPreviewUrl) {
       showPreviewEmpty();
     }
@@ -848,41 +1109,33 @@ async function refreshPreviewInfo() {
 function loadPreview(url, port, type) {
   currentPreviewUrl = url;
   const el = document.getElementById('preview-panel');
-
-  // URL bisa relative (/proxy/xxx) atau absolute
   const displayUrl = url.startsWith('/') ? window.location.origin + url : url;
-
   el.innerHTML = `
     <div class="preview-toolbar">
       <button class="preview-btn" onclick="reloadPreview()" title="Reload">🔄</button>
       <button class="preview-btn" onclick="previewGoHome()" title="Home">🏠</button>
-      <input type="text" class="preview-url" id="preview-url-input"
-             value="${escAttr(displayUrl)}"
+      <input type="text" class="preview-url" id="preview-url-input" value="${escAttr(displayUrl)}"
              onkeydown="if(event.key==='Enter'){navigatePreview(this.value)}"/>
-      <button class="preview-btn" onclick="navigatePreview(document.getElementById('preview-url-input').value)" title="Go">➡️</button>
-      <button class="preview-btn ${previewMode==='desktop'?'active':''}" onclick="setPreviewMode('desktop')" title="Desktop">🖥️</button>
-      <button class="preview-btn ${previewMode==='tablet'?'active':''}" onclick="setPreviewMode('tablet')" title="Tablet">📱</button>
-      <button class="preview-btn ${previewMode==='mobile'?'active':''}" onclick="setPreviewMode('mobile')" title="Mobile">📱</button>
-      <button class="preview-btn" onclick="openInNewTab()" title="Buka di tab baru">🔗</button>
+      <button class="preview-btn" onclick="navigatePreview(document.getElementById('preview-url-input').value)">➡️</button>
+      <button class="preview-btn ${previewMode==='desktop'?'active':''}" onclick="setPreviewMode('desktop', event)" title="Desktop">🖥️</button>
+      <button class="preview-btn ${previewMode==='tablet'?'active':''}" onclick="setPreviewMode('tablet', event)" title="Tablet">📱</button>
+      <button class="preview-btn ${previewMode==='mobile'?'active':''}" onclick="setPreviewMode('mobile', event)" title="Mobile">📱</button>
+      <button class="preview-btn" onclick="openInNewTab()" title="New Tab">🔗</button>
+      <button class="preview-btn" onclick="restartProject()" title="Restart">🔄</button>
       <button class="preview-btn danger" onclick="stopProject()" title="Stop">⏹️</button>
     </div>
     <div class="preview-frame-wrap" id="preview-wrap">
       <div class="preview-loading" id="preview-loading">
-        <div class="spinner"></div>
-        <span>Memuat preview...</span>
+        <div class="spinner"></div><span>Memuat preview...</span>
       </div>
       <iframe id="preview-iframe" class="preview-iframe ${previewMode!=='desktop'?previewMode:''}"
-              src="${escAttr(url)}"
-              onload="onPreviewLoad()"
-              onerror="onPreviewError()"></iframe>
+              src="${escAttr(url)}" onload="onPreviewLoad()" onerror="onPreviewError()"></iframe>
     </div>
   `;
-
-  // Timeout kalau iframe tidak load
   setTimeout(() => {
     const loading = document.getElementById('preview-loading');
     if (loading && loading.style.display !== 'none') {
-      loading.innerHTML = '<span style="color:#f87171">⚠️ Timeout — coba klik reload</span>';
+      loading.innerHTML = '<span style="color:#f87171">⚠️ Timeout — coba reload</span>';
     }
   }, 15000);
 }
@@ -891,87 +1144,56 @@ function onPreviewLoad() {
   const loading = document.getElementById('preview-loading');
   if (loading) loading.style.display = 'none';
 }
-
 function onPreviewError() {
   const loading = document.getElementById('preview-loading');
-  if (loading) {
-    loading.innerHTML = '<span style="color:#f87171">❌ Gagal load — cek tab Run</span>';
-  }
+  if (loading) loading.innerHTML = '<span style="color:#f87171">❌ Gagal — cek tab Run</span>';
 }
-
 function reloadPreview() {
   const iframe = document.getElementById('preview-iframe');
   const loading = document.getElementById('preview-loading');
-  if (loading) {
-    loading.style.display = 'flex';
-    loading.innerHTML = '<div class="spinner"></div><span>Memuat ulang...</span>';
-  }
+  if (loading) { loading.style.display = 'flex'; loading.innerHTML = '<div class="spinner"></div><span>Reload...</span>'; }
   if (iframe) {
-    // Force reload
     const src = iframe.src;
     iframe.src = 'about:blank';
     setTimeout(() => { iframe.src = src; }, 100);
   }
-  showToast('🔄 Reload preview', 'ok');
+  showToast('🔄 Reload', 'ok');
 }
-
 function previewGoHome() {
   if (!currentPreviewUrl) return;
   const iframe = document.getElementById('preview-iframe');
-  const urlInput = document.getElementById('preview-url-input');
+  const inp = document.getElementById('preview-url-input');
   if (iframe) iframe.src = currentPreviewUrl;
-  if (urlInput) urlInput.value = window.location.origin + currentPreviewUrl;
+  if (inp) inp.value = window.location.origin + currentPreviewUrl;
 }
-
 function navigatePreview(newUrl) {
   if (!newUrl) return;
   const iframe = document.getElementById('preview-iframe');
   if (!iframe) return;
-
-  // Extract path dari URL
-  let path = newUrl;
-  try {
-    const parsed = new URL(newUrl);
-    path = parsed.pathname + parsed.search + parsed.hash;
-  } catch(e) {}
-
-  // Jika absolute URL, replace dengan proxy
   if (newUrl.startsWith('http')) {
-    // Kembali ke base
-    iframe.src = currentPreviewUrl + path.replace(/^\/proxy\/[^\/]+\//, '');
+    try {
+      const parsed = new URL(newUrl);
+      iframe.src = currentPreviewUrl + parsed.pathname.replace(/^\/proxy\/[^\/]+\//, '');
+    } catch(e) { iframe.src = newUrl; }
   } else {
     iframe.src = newUrl;
   }
 }
-
-function openInNewTab() {
-  if (currentPreviewUrl) {
-    window.open(currentPreviewUrl, '_blank');
-  }
-}
-
-function setPreviewMode(mode) {
+function openInNewTab() { if (currentPreviewUrl) window.open(currentPreviewUrl, '_blank'); }
+function setPreviewMode(mode, ev) {
   previewMode = mode;
   const iframe = document.getElementById('preview-iframe');
-  if (iframe) {
-    iframe.className = 'preview-iframe' + (mode !== 'desktop' ? ' ' + mode : '');
-  }
+  if (iframe) iframe.className = 'preview-iframe' + (mode !== 'desktop' ? ' ' + mode : '');
   document.querySelectorAll('.preview-toolbar .preview-btn').forEach(b => b.classList.remove('active'));
-  event.target.classList.add('active');
+  if (ev && ev.target) ev.target.classList.add('active');
 }
-
-function clearPreview() {
-  currentPreviewUrl = null;
-  showPreviewEmpty();
-}
-
+function clearPreview() { currentPreviewUrl = null; showPreviewEmpty(); }
 function showPreviewEmpty() {
   const el = document.getElementById('preview-panel');
   el.innerHTML = `
     <div class="empty" style="margin:auto">
       <div class="icon">🖥️</div>
-      <p>Preview akan muncul setelah project di-RUN.<br/>
-      Hanya untuk project tipe <strong>FastAPI</strong> atau <strong>Flask</strong>.</p>
+      <p>Preview muncul setelah RUN.<br/>Untuk <strong>FastAPI</strong> atau <strong>Flask</strong>.</p>
       ${currentProjectId ? '<button class="btn btn-green" style="margin-top:20px;max-width:200px" onclick="runProject()">▶️ RUN Sekarang</button>' : ''}
     </div>
   `;
@@ -986,10 +1208,7 @@ function mulaiRunPolling() {
   runPollingInterval = setInterval(pollRunLogs, 2000);
 }
 function hentikanRunPolling() {
-  if (runPollingInterval) {
-    clearInterval(runPollingInterval);
-    runPollingInterval = null;
-  }
+  if (runPollingInterval) { clearInterval(runPollingInterval); runPollingInterval = null; }
 }
 
 async function pollRunLogs() {
@@ -1007,42 +1226,29 @@ async function pollRunLogs() {
       runBadge.style.display = 'none';
       prevBadge.style.display = 'none';
     }
-  } catch(e) {
-    console.error('Run polling error:', e);
-  }
+  } catch(e) {}
 }
 
 function renderRunLog(data) {
   const el = document.getElementById('run-panel');
   const logs = data.logs || [];
   if (!logs.length && !data.alive) {
-    el.innerHTML = '<div class="empty"><div class="icon">▶️</div><p>Belum ada project yang running.<br/>Klik tombol RUN di tab Info.</p></div>';
+    el.innerHTML = '<div class="empty"><div class="icon">▶️</div><p>Belum ada project running.<br/>Klik RUN di tab Info.</p></div>';
     return;
   }
-
   const statusBadge = data.alive
     ? '<span class="badge badge-running">● RUNNING</span>'
-    : `<span class="badge badge-stopped">⏹️ STOPPED${data.exit_code !== null && data.exit_code !== undefined ? ' (exit '+data.exit_code+')' : ''}</span>`;
-
-  const urlHtml = data.url && data.alive
-    ? `<div class="info-row"><span class="info-label">URL</span><a href="${escAttr(data.url)}" target="_blank" style="color:#38bdf8;font-family:monospace">${esc(data.url)}</a></div>`
-    : '';
+    : `<span class="badge badge-stopped">⏹️ STOPPED${data.exit_code !== null ? ' (exit '+data.exit_code+')' : ''}</span>`;
 
   const controlBtn = data.alive
-    ? `<div class="btn-group">
-         ${data.url ? `<button class="btn btn-blue" onclick="openPreview()">🖥️ Preview</button>` : ''}
+    ? `<div class="btn-group-3">
+         ${data.url ? `<button class="btn btn-blue" onclick="openPreview()">🖥️ Preview</button>` : '<span></span>'}
+         <button class="btn btn-yellow" onclick="restartProject()">🔄 Restart</button>
          <button class="btn btn-red" onclick="stopProject()">⏹️ STOP</button>
        </div>`
-    : `<button class="btn btn-green" onclick="runProject()">▶️ START ULANG</button>`;
+    : `<button class="btn btn-green" onclick="runProject()">▶️ START</button>`;
 
-  const logsHtml = logs.map(line => {
-    let cls = 'log-info';
-    if (line.startsWith('[SYSTEM]')) cls = 'log-sys';
-    else if (/error|traceback|exception|failed/i.test(line)) cls = 'log-error';
-    else if (/warning|warn/i.test(line)) cls = 'log-warning';
-    else if (/success|ready|started|running|listening|application startup/i.test(line)) cls = 'log-success';
-    return `<div class="${cls}">${esc(line)}</div>`;
-  }).join('');
+  const logsHtml = logs.map(line => `<div class="${getRunLogClass(line)}">${esc(line)}</div>`).join('');
 
   el.innerHTML = `
     <div class="info-card">
@@ -1052,70 +1258,270 @@ function renderRunLog(data) {
       <div class="info-row"><span class="info-label">Uptime</span><span class="info-value">${data.uptime !== undefined ? fmtUptime(data.uptime) : '-'}</span></div>
       <div class="info-row"><span class="info-label">Tipe</span><span class="info-value">${esc(data.type || '-')}</span></div>
       <div class="info-row"><span class="info-label">Command</span><span class="info-value" style="font-family:monospace;color:#4ade80">${esc(data.run_cmd || '-')}</span></div>
-      ${urlHtml}
+      ${data.url && data.alive ? `<div class="info-row"><span class="info-label">URL</span><a href="${escAttr(data.url)}" target="_blank" style="color:#38bdf8;font-family:monospace">${esc(data.url)}</a></div>` : ''}
       <div style="margin-top:12px">${controlBtn}</div>
     </div>
     <div class="info-card">
-      <h3>📟 Live Output</h3>
+      <h3>📟 Live Output <span style="font-size:.7rem;color:#4ade80;font-weight:normal">● WebSocket</span></h3>
       <div id="run-log-panel">${logsHtml || '<span class="log-info">Menunggu output...</span>'}</div>
     </div>
   `;
-
-  const logPanel = document.getElementById('run-log-panel');
-  if (logPanel) logPanel.scrollTop = logPanel.scrollHeight;
+  const p = document.getElementById('run-log-panel');
+  if (p) p.scrollTop = p.scrollHeight;
 }
 
 // ================================================
-// KEY STATUS
+// ✅ STATS TAB
+// ================================================
+function mulaiStatsPolling() {
+  loadStats();
+  if (statsPollingInterval) clearInterval(statsPollingInterval);
+  statsPollingInterval = setInterval(loadStats, 5000);
+}
+
+async function loadStats() {
+  const el = document.getElementById('stats-panel');
+  try {
+    const resp = await fetch('/stats');
+    const data = await resp.json();
+    const req = data.requests || {};
+    const cache = data.cache || {};
+    const proj = data.projects || {};
+    const sys = data.system || {};
+    const successRate = req.total > 0 ? Math.round((req.success / req.total) * 100) : 0;
+
+    el.innerHTML = `
+      <div class="info-card">
+        <h3>📊 Realtime Statistics
+          <span style="font-size:.7rem;color:#4ade80;font-weight:normal">● Auto-refresh 5s</span>
+        </h3>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card info">
+          <div class="icon">📞</div>
+          <div class="value">${req.total || 0}</div>
+          <div class="label">Total Requests</div>
+        </div>
+        <div class="stat-card success">
+          <div class="icon">✅</div>
+          <div class="value">${req.success || 0}</div>
+          <div class="label">Success</div>
+        </div>
+        <div class="stat-card error">
+          <div class="icon">❌</div>
+          <div class="value">${req.failed || 0}</div>
+          <div class="label">Failed</div>
+        </div>
+        <div class="stat-card ${successRate >= 80 ? 'success' : successRate >= 50 ? 'warn' : 'error'}">
+          <div class="icon">📈</div>
+          <div class="value">${successRate}%</div>
+          <div class="label">Success Rate</div>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card warn">
+          <div class="icon">✨</div>
+          <div class="value">${req.cache_hits || 0}</div>
+          <div class="label">Cache Hits</div>
+        </div>
+        <div class="stat-card info">
+          <div class="icon">🗄️</div>
+          <div class="value">${cache.size || 0}/${cache.max || 0}</div>
+          <div class="label">Cache Size</div>
+        </div>
+        <div class="stat-card info">
+          <div class="icon">⏱️</div>
+          <div class="value">${req.avg_time || 0}s</div>
+          <div class="label">Avg Response</div>
+        </div>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-card info">
+          <div class="icon">📁</div>
+          <div class="value">${proj.total || 0}</div>
+          <div class="label">Total Projects</div>
+        </div>
+        <div class="stat-card success">
+          <div class="icon">🟢</div>
+          <div class="value">${proj.running || 0}</div>
+          <div class="label">Running Now</div>
+        </div>
+        <div class="stat-card warn">
+          <div class="icon">💾</div>
+          <div class="value">${proj.backups || 0}</div>
+          <div class="label">Total Backups</div>
+        </div>
+      </div>
+
+      <div class="info-card">
+        <h3>⚙️ System Config</h3>
+        <div class="info-row"><span class="info-label">Port Range</span><span class="info-value">${esc(sys.port_range || '-')}</span></div>
+        <div class="info-row"><span class="info-label">Rate Limit</span><span class="info-value">${esc(sys.rate_limit || '-')}</span></div>
+        <div class="info-row"><span class="info-label">Cache TTL</span><span class="info-value">${esc(sys.cache_ttl || '-')}</span></div>
+      </div>
+
+      <div class="info-card">
+        <h3>🛠️ Actions</h3>
+        <div class="btn-group">
+          <button class="btn btn-red" onclick="clearCache()">🗑️ Clear Cache</button>
+          <button class="btn btn-blue" onclick="checkHealth()">💚 Health Check</button>
+        </div>
+      </div>
+    `;
+  } catch(e) {
+    el.innerHTML = `<div class="empty"><p>❌ Failed load stats: ${esc(String(e))}</p></div>`;
+  }
+}
+
+async function clearCache() {
+  const r = await fetch('/cache/clear', {method: 'POST'});
+  const d = await r.json();
+  showToast(`✅ Cache cleared: ${d.cleared} entries`, 'ok');
+  loadStats();
+}
+
+async function checkHealth() {
+  showToast('💚 Checking upstream...', 'info');
+  try {
+    const r = await fetch('/health-upstream');
+    const d = await r.json();
+    const ok = d.keys.filter(k => k.status.includes('healthy')).length;
+    showToast(`${ok}/${d.keys.length} keys healthy`, ok > 0 ? 'ok' : 'err');
+  } catch(e) { showToast('❌ Failed', 'err'); }
+}
+
+// ================================================
+// ✅ BACKUP TAB
+// ================================================
+async function muatBackups() {
+  const el = document.getElementById('backup-panel');
+  el.innerHTML = '<div class="empty"><p>⏳ Loading...</p></div>';
+  try {
+    const resp = await fetch('/backups');
+    const data = await resp.json();
+    const list = data.backups || [];
+    if (list.length === 0) {
+      el.innerHTML = `
+        <div class="info-card">
+          <h3>💾 Backup System</h3>
+          <p style="font-size:.85rem;color:#94a3b8">
+            Backup dibuat otomatis saat:
+          </p>
+          <ul style="font-size:.8rem;color:#94a3b8;margin-top:8px;padding-left:20px;line-height:1.8">
+            <li>Sebelum "Lanjutkan" project</li>
+            <li>Sebelum edit file manual</li>
+            <li>Sebelum delete project</li>
+          </ul>
+        </div>
+        <div class="empty"><div class="icon">💾</div><p>Belum ada backup.</p></div>
+      `;
+      return;
+    }
+    el.innerHTML = `
+      <div class="info-card">
+        <h3>💾 ${list.length} Backup Tersedia</h3>
+        <p style="font-size:.78rem;color:#94a3b8">Restore atau hapus backup lama</p>
+      </div>
+      ${list.map(b => `
+        <div class="backup-card">
+          <div class="backup-icon">📦</div>
+          <div class="backup-info">
+            <div class="bname">${esc(b.name)}</div>
+            <div class="bmeta">📁 ${esc(b.project)} · ${fmtSize(b.size)} · ${fmtDate(b.created)}</div>
+          </div>
+          <div class="backup-actions">
+            <button class="btn btn-blue btn-sm" onclick="restoreBackup('${escAttr(b.name)}')">♻️ Restore</button>
+            <button class="btn btn-red btn-sm" onclick="deleteBackup('${escAttr(b.name)}')">🗑️</button>
+          </div>
+        </div>
+      `).join('')}
+    `;
+  } catch(e) {
+    el.innerHTML = `<div class="empty"><p>❌ Error: ${esc(String(e))}</p></div>`;
+  }
+}
+
+async function restoreBackup(name) {
+  showModal('Restore Backup?', `Restore "${name}"? Project saat ini akan di-backup dulu.`, async () => {
+    try {
+      const r = await fetch(`/restore/${encodeURIComponent(name)}`, {method: 'POST'});
+      const d = await r.json();
+      if (d.success) {
+        showToast('✅ Restored!', 'ok');
+        muatBackups();
+      } else showToast('❌ ' + d.error, 'err');
+    } catch(e) { showToast('❌ ' + e, 'err'); }
+  });
+}
+
+async function deleteBackup(name) {
+  showModal('Hapus Backup?', `Hapus "${name}"?`, async () => {
+    try {
+      const r = await fetch(`/backups/${encodeURIComponent(name)}`, {method: 'DELETE'});
+      if (r.ok) {
+        showToast('✅ Deleted', 'ok');
+        muatBackups();
+      } else showToast('❌ Failed', 'err');
+    } catch(e) { showToast('❌ ' + e, 'err'); }
+  });
+}
+
+// ================================================
+// KEY STATUS — dengan metrics
 // ================================================
 async function muatKeyStatus() {
   const el = document.getElementById('key-panel');
-  el.innerHTML = '<div class="empty"><p>⏳ Memuat status key...</p></div>';
+  el.innerHTML = '<div class="empty"><p>⏳ Loading...</p></div>';
   try {
     const resp = await fetch('/key-status');
     const data = await resp.json();
     const keys = data.keys || [];
     el.innerHTML = `
       <div class="info-card">
-        <h3>🔑 Status API Keys — Claude Code</h3>
-        <p style="font-size:.78rem;color:#64748b;margin-bottom:12px">
-          Key aktif: Index ${data.current_index} dari ${keys.length} key
-        </p>
-        ${keys.map(k => {
-          const dotCls = k.error_count === 0 ? 'green' : k.error_count >= 2 ? 'red' : 'yellow';
-          return `
-          <div class="key-card ${k.active ? 'active-key' : ''}">
+        <h3>🔑 API Keys — ${keys.length} Total</h3>
+        <p style="font-size:.75rem;color:#64748b">Active: Index ${data.current_index} · Smart routing enabled</p>
+      </div>
+      ${keys.map(k => {
+        const dotCls = k.error_count === 0 ? 'green' : k.error_count >= 3 ? 'red' : 'yellow';
+        return `
+        <div class="key-card ${k.active ? 'active-key' : ''}">
+          <div class="key-header">
             <div class="key-dot ${dotCls}"></div>
             <div class="key-info">
-              <div class="kmodel">${esc(k.model)}${k.active ? ' ← AKTIF' : ''}</div>
+              <div class="kmodel">${esc(k.model)} ${k.active ? '<span style="color:#4ade80;font-size:.7rem">← ACTIVE</span>' : ''}</div>
               <div class="kurl">${esc(k.base_url)}</div>
               <div class="khint">Key: ${esc(k.api_key_hint)}</div>
             </div>
-            <div class="key-err">${k.error_count > 0 ? k.error_count + '× error' : '✓ OK'}</div>
-          </div>`;
-        }).join('')}
-        <button class="btn btn-red" id="btn-reset-key" style="margin-top:8px">🔄 Reset Error Counter</button>
-      </div>
-      <div class="info-card">
-        <h3>📖 Pengaturan API Key</h3>
-        <p style="font-size:.8rem;color:#94a3b8;line-height:1.8">
-          API Key disimpan terenkripsi di file <code style="color:#38bdf8">.env</code><br/><br/>
-          <strong style="color:#93c5fd">Cara ubah:</strong><br/>
-          1. Edit file <code style="color:#38bdf8">.env</code><br/>
-          2. Jalankan <code style="color:#4ade80">python encrypt_keys.py</code><br/>
-          3. Restart server<br/><br/>
-          <strong style="color:#93c5fd">Base URL:</strong><br/>
-          <code style="color:#4ade80">https://ai.bluepack.my.id/anthropic</code>
-        </p>
-      </div>
+          </div>
+          <div class="key-metrics">
+            <div class="key-metric">
+              <div class="val val-ok">${k.success_count || 0}</div>
+              <div class="lbl">Success</div>
+            </div>
+            <div class="key-metric">
+              <div class="val val-err">${k.error_count || 0}</div>
+              <div class="lbl">Errors</div>
+            </div>
+            <div class="key-metric">
+              <div class="val val-info">${k.avg_time || 0}s</div>
+              <div class="lbl">Avg Time</div>
+            </div>
+          </div>
+          ${k.last_error ? `<div style="font-size:.7rem;color:#f87171;margin-top:8px;padding-top:8px;border-top:1px solid #334155">⚠️ ${esc(k.last_error)}</div>` : ''}
+        </div>`;
+      }).join('')}
+      <button class="btn btn-red" id="btn-reset-key" style="margin-top:8px">🔄 Reset Error Counter</button>
     `;
     document.getElementById('btn-reset-key').addEventListener('click', async () => {
       await fetch('/key-reset', { method: 'POST' });
-      showToast('Error counter direset!', 'ok');
+      showToast('Counter direset!', 'ok');
       muatKeyStatus();
     });
   } catch(e) {
-    el.innerHTML = `<div class="empty"><p>❌ Gagal load: ${esc(String(e))}</p></div>`;
+    el.innerHTML = `<div class="empty"><p>❌ ${esc(String(e))}</p></div>`;
   }
 }
 
