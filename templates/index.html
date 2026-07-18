@@ -3,18 +3,28 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🎓 AI Project Maker</title>
+  <title>🎓 AI Project Maker — Claude Code</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
 
-    header{background:linear-gradient(135deg,#1e40af,#7c3aed);padding:18px 28px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    header{background:linear-gradient(135deg,#1e40af,#7c3aed);padding:18px 28px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
     header h1{font-size:1.4rem;font-weight:700}
     header p{font-size:.8rem;opacity:.85;margin-top:3px}
-    .key-badge{background:rgba(255,255,255,.15);border-radius:8px;padding:6px 14px;font-size:.78rem;cursor:pointer;border:1px solid rgba(255,255,255,.2)}
+    .header-right{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .key-badge{background:rgba(255,255,255,.15);border-radius:8px;padding:6px 14px;font-size:.78rem;cursor:pointer;border:1px solid rgba(255,255,255,.2);transition:.2s}
     .key-badge:hover{background:rgba(255,255,255,.25)}
+    .test-badge{background:rgba(16,185,129,.25);border:1px solid rgba(16,185,129,.4);border-radius:8px;padding:6px 14px;font-size:.78rem;cursor:pointer;color:#6ee7b7;transition:.2s}
+    .test-badge:hover{background:rgba(16,185,129,.35)}
+    .status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+    .status-dot.online{background:#4ade80;box-shadow:0 0 6px #4ade80}
+    .status-dot.offline{background:#f87171;box-shadow:0 0 6px #f87171}
+    .status-dot.checking{background:#fbbf24;box-shadow:0 0 6px #fbbf24;animation:pulse 1s infinite}
 
-    .container{display:grid;grid-template-columns:360px 1fr;height:calc(100vh - 70px)}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+    .container{display:grid;grid-template-columns:380px 1fr;height:calc(100vh - 74px)}
+    @media(max-width:900px){.container{grid-template-columns:1fr;height:auto}}
 
     .sidebar{background:#1e293b;border-right:1px solid #334155;padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:16px}
 
@@ -40,6 +50,7 @@
     .btn-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff}
     .btn-green{background:linear-gradient(135deg,#059669,#10b981);color:#fff}
     .btn-red{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;margin-top:6px}
+    .btn-sm{padding:7px 14px;font-size:.8rem;width:auto;border-radius:6px}
 
     .project-list-wrap{display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto}
     .project-card{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 12px;cursor:pointer;transition:.2s}
@@ -57,7 +68,7 @@
     .tab-content{flex:1;overflow-y:auto;display:none;padding:20px}
     .tab-content.active{display:block}
 
-    #log-panel{background:#020617;border-radius:10px;padding:14px;font-family:'Consolas',monospace;font-size:.8rem;line-height:1.8;min-height:200px;white-space:pre-wrap;word-break:break-word}
+    #log-panel{background:#020617;border-radius:10px;padding:14px;font-family:'Consolas','Courier New',monospace;font-size:.8rem;line-height:1.8;min-height:300px;white-space:pre-wrap;word-break:break-word}
     .log-loading{color:#facc15}
     .log-success{color:#4ade80}
     .log-error{color:#f87171}
@@ -75,16 +86,15 @@
     .file-header{padding:9px 13px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:.82rem;font-weight:600;color:#93c5fd;transition:background .15s}
     .file-header:hover{background:#273549}
     .file-size{margin-left:auto;font-size:.7rem;color:#475569;font-weight:400}
-    .file-code{display:none;background:#020617;padding:12px;font-family:'Consolas',monospace;font-size:.78rem;color:#e2e8f0;overflow-x:auto;white-space:pre;border-top:1px solid #334155;max-height:360px;overflow-y:auto}
+    .file-code{display:none;background:#020617;padding:12px;font-family:'Consolas','Courier New',monospace;font-size:.78rem;color:#e2e8f0;overflow-x:auto;white-space:pre;border-top:1px solid #334155;max-height:400px;overflow-y:auto}
 
     .info-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:18px;margin-bottom:14px}
     .info-card h3{font-size:.78rem;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em}
     .info-row{display:flex;gap:10px;margin-bottom:7px;align-items:flex-start}
     .info-label{font-size:.78rem;color:#64748b;min-width:80px}
-    .info-value{font-size:.82rem;color:#e2e8f0}
-    .cmd-box{background:#020617;border-radius:6px;padding:8px 12px;font-family:monospace;font-size:.8rem;color:#4ade80;margin-top:8px}
+    .info-value{font-size:.82rem;color:#e2e8f0;word-break:break-all}
+    .cmd-box{background:#020617;border-radius:6px;padding:8px 12px;font-family:'Consolas',monospace;font-size:.8rem;color:#4ade80;margin-top:8px;word-break:break-all}
 
-    /* BADGE — didefinisikan di CSS utama (fix bug sebelumnya) */
     .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700}
     .badge-loading{background:#422006;color:#fbbf24}
     .badge-done{background:#052e16;color:#4ade80}
@@ -102,12 +112,23 @@
     .key-info .khint{font-size:.72rem;color:#475569;font-family:monospace}
     .key-err{font-size:.72rem;color:#f87171}
 
+    .test-result{background:#020617;border-radius:8px;padding:12px;margin-top:10px;font-family:monospace;font-size:.78rem;max-height:300px;overflow-y:auto}
+    .test-ok{color:#4ade80}
+    .test-fail{color:#f87171}
+
     .progress-wrap{background:#334155;border-radius:999px;height:3px;overflow:hidden;margin-top:4px}
     .progress-bar{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:999px;transition:width .4s}
 
     .empty{text-align:center;color:#475569;padding:50px 20px}
     .empty .icon{font-size:2.5rem;margin-bottom:10px}
     .empty p{font-size:.88rem}
+
+    .toast{position:fixed;bottom:20px;right:20px;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:14px 20px;font-size:.85rem;z-index:9999;display:none;box-shadow:0 8px 24px rgba(0,0,0,.4);max-width:360px}
+    .toast.show{display:block;animation:slideIn .3s ease}
+    .toast.toast-ok{border-color:#22c55e;color:#4ade80}
+    .toast.toast-err{border-color:#ef4444;color:#f87171}
+
+    @keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
 
     ::-webkit-scrollbar{width:5px;height:5px}
     ::-webkit-scrollbar-track{background:#0f172a}
@@ -118,18 +139,25 @@
 
 <header>
   <div>
-    <h1>🎓 AI Project Maker</h1>
-    <p>Generate &amp; kembangkan project kuliah tingkat tinggi otomatis</p>
+    <h1>🎓 AI Project Maker — Claude Code</h1>
+    <p>Generate &amp; kembangkan project kuliah otomatis dengan Claude AI</p>
   </div>
-  <div class="key-badge" id="btn-key-header">🔑 API Keys</div>
+  <div class="header-right">
+    <span id="server-status">
+      <span class="status-dot checking"></span>
+      <span style="font-size:.78rem">Mengecek...</span>
+    </span>
+    <div class="test-badge" id="btn-test-ai">🧪 Test AI</div>
+    <div class="key-badge" id="btn-key-header">🔑 API Keys</div>
+  </div>
 </header>
 
 <div class="container">
   <aside class="sidebar">
 
     <div class="mode-tabs">
-      <div class="mode-tab active" id="tab-mode-baru"   onclick="ganti_mode('mode-baru',   this)">➕ Buat Baru</div>
-      <div class="mode-tab"       id="tab-mode-lanjut"  onclick="ganti_mode('mode-lanjut', this); muat_project_list()">🔄 Lanjutkan</div>
+      <div class="mode-tab active" id="tab-mode-baru" data-mode="mode-baru">➕ Buat Baru</div>
+      <div class="mode-tab" id="tab-mode-lanjut" data-mode="mode-lanjut">🔄 Lanjutkan</div>
     </div>
 
     <!-- MODE: BUAT BARU -->
@@ -140,13 +168,13 @@
       </div>
       <div>
         <label>📋 Deskripsi Project</label>
-        <textarea id="deskripsi" placeholder="Jelaskan project yang ingin dibuat..."></textarea>
+        <textarea id="deskripsi" placeholder="Jelaskan project yang ingin dibuat secara detail..."></textarea>
       </div>
       <div>
-        <p class="chip-label">💡 Contoh Cepat</p>
+        <p class="chip-label">💡 Contoh Cepat — klik untuk mengisi</p>
         <div class="chip-list" id="chips-baru"></div>
       </div>
-      <button class="btn btn-primary" id="btn-buat" onclick="buatProject()">🚀 Generate Project</button>
+      <button class="btn btn-primary" id="btn-buat">🚀 Generate Project</button>
       <div class="progress-wrap" id="pw-baru" style="display:none">
         <div class="progress-bar" id="pb-baru" style="width:5%"></div>
       </div>
@@ -157,7 +185,7 @@
       <div>
         <label>📂 Pilih Project Yang Ada</label>
         <div class="project-list-wrap" id="project-list">
-          <div class="empty"><p>Klik tab Lanjutkan untuk muat list.</p></div>
+          <div class="empty"><p>Klik tab "Lanjutkan" untuk muat list.</p></div>
         </div>
       </div>
       <div>
@@ -166,13 +194,13 @@
       </div>
       <div>
         <label>✨ Minta Fitur / Perubahan</label>
-        <textarea id="permintaan" placeholder="Contoh: tambahkan autentikasi JWT..."></textarea>
+        <textarea id="permintaan" placeholder="Contoh: tambahkan autentikasi JWT dan dashboard admin..."></textarea>
       </div>
       <div>
         <p class="chip-label">💡 Contoh Pengembangan</p>
         <div class="chip-list" id="chips-lanjut"></div>
       </div>
-      <button class="btn btn-green" id="btn-lanjut" onclick="lanjutProject()">🔄 Kembangkan Project</button>
+      <button class="btn btn-green" id="btn-lanjut">🔄 Kembangkan Project</button>
       <div class="progress-wrap" id="pw-lanjut" style="display:none">
         <div class="progress-bar" id="pb-lanjut" style="width:5%"></div>
       </div>
@@ -181,27 +209,36 @@
   </aside>
 
   <div class="main-panel">
-    <div class="tabs">
-      <div class="tab active" data-tab="tab-log"  >📟 Log</div>
-      <div class="tab"        data-tab="tab-files">📂 Files</div>
-      <div class="tab"        data-tab="tab-info" >📋 Info</div>
-      <div class="tab"        data-tab="tab-keys" >🔑 API Keys</div>
+    <div class="tabs" id="main-tabs">
+      <div class="tab active" data-tab="tab-log">📟 Log</div>
+      <div class="tab" data-tab="tab-files">📂 Files</div>
+      <div class="tab" data-tab="tab-info">📋 Info</div>
+      <div class="tab" data-tab="tab-keys">🔑 API Keys</div>
     </div>
 
     <div class="tab-content active" id="tab-log">
-      <div id="log-panel"><span class="log-info">Belum ada proses. Isi form lalu klik Generate.</span></div>
+      <div id="log-panel"><span class="log-info">Belum ada proses. Isi form di kiri lalu klik Generate.</span></div>
     </div>
     <div class="tab-content" id="tab-files">
-      <div id="file-list"><div class="empty"><div class="icon">📂</div><p>File muncul setelah project selesai.</p></div></div>
+      <div id="file-list">
+        <div class="empty"><div class="icon">📂</div><p>File akan muncul setelah project selesai di-generate.</p></div>
+      </div>
     </div>
     <div class="tab-content" id="tab-info">
-      <div id="info-panel"><div class="empty"><div class="icon">📋</div><p>Info muncul setelah project selesai.</p></div></div>
+      <div id="info-panel">
+        <div class="empty"><div class="icon">📋</div><p>Info project akan muncul setelah proses dimulai.</p></div>
+      </div>
     </div>
     <div class="tab-content" id="tab-keys">
-      <div id="key-panel"><div class="empty"><div class="icon">🔑</div><p>Klik tab API Keys untuk lihat status.</p></div></div>
+      <div id="key-panel">
+        <div class="empty"><div class="icon">🔑</div><p>Klik tab API Keys untuk melihat status koneksi.</p></div>
+      </div>
     </div>
   </div>
 </div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
 
 <script>
 'use strict';
@@ -211,51 +248,25 @@
 // ================================================
 const CHIPS_BARU = [
   {label:'📚 Perpustakaan', desc:'Sistem manajemen perpustakaan kampus dengan FastAPI, SQLAlchemy, SQLite, fitur pinjam buku, pengembalian, denda, laporan, dan unit test', nama:'sistem_perpustakaan'},
-  {label:'🎓 Akademik',     desc:'Sistem informasi akademik dengan KRS online, input nilai, jadwal kuliah, absensi, dashboard statistik FastAPI SQLite', nama:'sistem_akademik'},
-  {label:'🤖 ML Prediksi',  desc:'Machine learning prediksi kelulusan mahasiswa berdasarkan IPK, absensi, nilai menggunakan scikit-learn pandas matplotlib', nama:'ml_kelulusan'},
-  {label:'🛒 E-Commerce',   desc:'REST API e-commerce kampus untuk jual beli barang bekas mahasiswa dengan JWT, CRUD produk, keranjang, pembayaran mock FastAPI', nama:'ecommerce_kampus'},
-  {label:'📱 Absensi QR',   desc:'Sistem absensi mahasiswa QR Code Python, generate QR, scan simulasi, rekap kehadiran, laporan CSV', nama:'absensi_qr'},
-  {label:'📊 Analisis Data',desc:'Analisis data nilai mahasiswa visualisasi matplotlib, statistik deskriptif, korelasi, export PDF Python', nama:'analisis_nilai'},
-  {label:'🖥️ Inventaris',   desc:'Manajemen inventaris laboratorium komputer kampus CRUD perangkat peminjaman pengembalian laporan kerusakan FastAPI SQLite', nama:'inventaris_lab'},
-  {label:'💬 Chatbot',      desc:'Chatbot FAQ kampus Python NLP NLTK basis pengetahuan JSON antarmuka CLI interaktif', nama:'chatbot_kampus'},
+  {label:'🎓 Akademik', desc:'Sistem informasi akademik dengan KRS online, input nilai, jadwal kuliah, absensi, dashboard statistik FastAPI SQLite', nama:'sistem_akademik'},
+  {label:'🤖 ML Prediksi', desc:'Machine learning prediksi kelulusan mahasiswa berdasarkan IPK, absensi, nilai menggunakan scikit-learn pandas matplotlib', nama:'ml_kelulusan'},
+  {label:'🛒 E-Commerce', desc:'REST API e-commerce kampus untuk jual beli barang bekas mahasiswa dengan JWT, CRUD produk, keranjang, pembayaran mock FastAPI', nama:'ecommerce_kampus'},
+  {label:'📱 Absensi QR', desc:'Sistem absensi mahasiswa QR Code Python, generate QR, scan simulasi, rekap kehadiran, laporan CSV', nama:'absensi_qr'},
+  {label:'📊 Analisis Data', desc:'Analisis data nilai mahasiswa visualisasi matplotlib, statistik deskriptif, korelasi, export PDF Python', nama:'analisis_nilai'},
+  {label:'🖥️ Inventaris', desc:'Manajemen inventaris laboratorium komputer kampus CRUD perangkat peminjaman pengembalian laporan kerusakan FastAPI SQLite', nama:'inventaris_lab'},
+  {label:'💬 Chatbot', desc:'Chatbot FAQ kampus Python NLP NLTK basis pengetahuan JSON antarmuka CLI interaktif', nama:'chatbot_kampus'},
 ];
 
 const CHIPS_LANJUT = [
-  {label:'📄 Export PDF',  text:'Tambahkan fitur export laporan ke PDF menggunakan reportlab'},
-  {label:'🔐 Auth JWT',    text:'Tambahkan autentikasi JWT dengan login dan register endpoint'},
-  {label:'📊 Dashboard',   text:'Tambahkan dashboard statistik dengan grafik matplotlib yang disimpan sebagai gambar'},
-  {label:'📧 Email',       text:'Tambahkan fitur notifikasi email menggunakan smtplib'},
-  {label:'📑 Pagination',  text:'Tambahkan pagination dan filtering pada semua endpoint list'},
-  {label:'🧪 Unit Test',   text:'Tambahkan unit test lengkap menggunakan pytest untuk semua endpoint'},
-  {label:'🐳 Docker',      text:'Tambahkan Dockerfile dan docker-compose.yml untuk deployment'},
-  {label:'📝 Logging',     text:'Tambahkan logging system dan error handling yang lebih baik'},
+  {label:'📄 Export PDF', text:'Tambahkan fitur export laporan ke PDF menggunakan reportlab'},
+  {label:'🔐 Auth JWT', text:'Tambahkan autentikasi JWT dengan login dan register endpoint'},
+  {label:'📊 Dashboard', text:'Tambahkan dashboard statistik dengan grafik matplotlib yang disimpan sebagai gambar'},
+  {label:'📧 Email', text:'Tambahkan fitur notifikasi email menggunakan smtplib'},
+  {label:'📑 Pagination', text:'Tambahkan pagination dan filtering pada semua endpoint list'},
+  {label:'🧪 Unit Test', text:'Tambahkan unit test lengkap menggunakan pytest untuk semua endpoint'},
+  {label:'🐳 Docker', text:'Tambahkan Dockerfile dan docker-compose.yml untuk deployment'},
+  {label:'📝 Logging', text:'Tambahkan logging system dan error handling yang lebih baik'},
 ];
-
-// Render chips
-function render_chips() {
-  const baru = document.getElementById('chips-baru');
-  baru.innerHTML = CHIPS_BARU.map(c =>
-    `<span class="chip" data-desc="${escAttr(c.desc)}" data-nama="${escAttr(c.nama)}">${c.label}</span>`
-  ).join('');
-
-  baru.querySelectorAll('.chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      document.getElementById('deskripsi').value = chip.dataset.desc;
-      document.getElementById('nama').value      = chip.dataset.nama;
-    });
-  });
-
-  const lanjut = document.getElementById('chips-lanjut');
-  lanjut.innerHTML = CHIPS_LANJUT.map(c =>
-    `<span class="chip" data-text="${escAttr(c.text)}">${c.label}</span>`
-  ).join('');
-
-  lanjut.querySelectorAll('.chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      document.getElementById('permintaan').value = chip.dataset.text;
-    });
-  });
-}
 
 // ================================================
 // STATE
@@ -266,22 +277,89 @@ let progressMode     = 'baru';
 let progressVal      = 5;
 
 // ================================================
-// MODE SWITCH
+// UTILS
 // ================================================
-function ganti_mode(modeId, el) {
-  document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById(modeId).classList.add('active');
-  el.classList.add('active');
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = String(s || '');
+  return d.innerHTML;
+}
+
+function escAttr(s) {
+  return String(s || '').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+function iconFile(path) {
+  const ext = (path || '').split('.').pop().toLowerCase();
+  const map = {
+    py:'🐍', md:'📖', txt:'📄', json:'📦', html:'🌐',
+    css:'🎨', js:'⚡', ts:'⚡', yaml:'⚙️', yml:'⚙️',
+    toml:'⚙️', sql:'🗄️', env:'🔒'
+  };
+  return map[ext] || '📄';
+}
+
+function fmtSize(b) {
+  if (!b || b < 1024) return (b || 0) + ' B';
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+  return (b / 1048576).toFixed(1) + ' MB';
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type === 'ok' ? 'toast-ok' : 'toast-err');
+  setTimeout(() => { t.className = 'toast'; }, 4000);
 }
 
 // ================================================
-// TAB SWITCH — pakai event delegation (bukan onclick inline)
+// INIT CHIPS
 // ================================================
-document.querySelector('.tabs').addEventListener('click', function(e) {
+function initChips() {
+  const baruEl = document.getElementById('chips-baru');
+  baruEl.innerHTML = CHIPS_BARU.map(c =>
+    `<span class="chip" data-desc="${escAttr(c.desc)}" data-nama="${escAttr(c.nama)}">${c.label}</span>`
+  ).join('');
+  baruEl.addEventListener('click', function(e) {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    document.getElementById('deskripsi').value = chip.dataset.desc;
+    document.getElementById('nama').value = chip.dataset.nama;
+  });
+
+  const lanjutEl = document.getElementById('chips-lanjut');
+  lanjutEl.innerHTML = CHIPS_LANJUT.map(c =>
+    `<span class="chip" data-text="${escAttr(c.text)}">${c.label}</span>`
+  ).join('');
+  lanjutEl.addEventListener('click', function(e) {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    document.getElementById('permintaan').value = chip.dataset.text;
+  });
+}
+
+// ================================================
+// MODE SWITCH
+// ================================================
+document.querySelector('.mode-tabs').addEventListener('click', function(e) {
+  const tab = e.target.closest('.mode-tab');
+  if (!tab) return;
+  const modeId = tab.dataset.mode;
+
+  document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(modeId).classList.add('active');
+  tab.classList.add('active');
+
+  if (modeId === 'mode-lanjut') muatProjectList();
+});
+
+// ================================================
+// TAB SWITCH
+// ================================================
+document.getElementById('main-tabs').addEventListener('click', function(e) {
   const tab = e.target.closest('.tab');
   if (!tab) return;
-
   const tabId = tab.dataset.tab;
 
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
@@ -289,25 +367,85 @@ document.querySelector('.tabs').addEventListener('click', function(e) {
   document.getElementById(tabId).classList.add('active');
   tab.classList.add('active');
 
-  if (tabId === 'tab-keys') muat_key_status();
+  if (tabId === 'tab-keys') muatKeyStatus();
 });
 
-// Tombol key di header
+// Header buttons
 document.getElementById('btn-key-header').addEventListener('click', () => {
-  const keysTab = document.querySelector('[data-tab="tab-keys"]');
+  switchToTab('tab-keys');
+  muatKeyStatus();
+});
+
+document.getElementById('btn-test-ai').addEventListener('click', testAI);
+
+function switchToTab(tabId) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-keys').classList.add('active');
-  keysTab.classList.add('active');
-  muat_key_status();
-});
+  document.getElementById(tabId).classList.add('active');
+  document.querySelector(`[data-tab="${tabId}"]`).classList.add('active');
+}
 
 // ================================================
-// MUAT LIST PROJECT — FIX: pakai data-* attribute
+// SERVER STATUS CHECK
 // ================================================
-async function muat_project_list() {
+async function cekServer() {
+  const el = document.getElementById('server-status');
+  try {
+    const resp = await fetch('/key-status', { signal: AbortSignal.timeout(5000) });
+    if (resp.ok) {
+      const data = await resp.json();
+      const count = data.keys ? data.keys.length : 0;
+      el.innerHTML = `<span class="status-dot online"></span><span style="font-size:.78rem">${count} Key aktif</span>`;
+    } else {
+      el.innerHTML = '<span class="status-dot offline"></span><span style="font-size:.78rem">Server error</span>';
+    }
+  } catch(e) {
+    el.innerHTML = '<span class="status-dot offline"></span><span style="font-size:.78rem">Offline</span>';
+  }
+}
+
+// ================================================
+// TEST AI
+// ================================================
+async function testAI() {
+  switchToTab('tab-keys');
+  const el = document.getElementById('key-panel');
+  el.innerHTML = '<div class="empty"><p>🧪 Testing semua API Key...</p></div>';
+
+  try {
+    const resp = await fetch('/test-ai');
+    const data = await resp.json();
+    const keys = data.keys || [];
+
+    let html = '<div class="info-card"><h3>🧪 Hasil Test AI</h3>';
+    html += '<div class="test-result">';
+
+    keys.forEach(k => {
+      if (k.status.includes('sukses')) {
+        html += `<div class="test-ok">✅ [${k.index}] ${esc(k.model)} → "${esc(k.reply)}"</div>`;
+      } else {
+        html += `<div class="test-fail">❌ [${k.index}] ${esc(k.model)} → ${esc(k.error)}</div>`;
+      }
+    });
+
+    html += '</div></div>';
+    el.innerHTML = html;
+
+    const sukses = keys.filter(k => k.status.includes('sukses')).length;
+    showToast(`Test selesai: ${sukses}/${keys.length} key berhasil`, sukses > 0 ? 'ok' : 'err');
+
+  } catch(e) {
+    el.innerHTML = `<div class="empty"><p>❌ Gagal test: ${esc(String(e))}</p></div>`;
+    showToast('Gagal test API: ' + e, 'err');
+  }
+}
+
+// ================================================
+// MUAT LIST PROJECT
+// ================================================
+async function muatProjectList() {
   const el = document.getElementById('project-list');
-  el.innerHTML = '<div class="empty"><p>⏳ Memuat...</p></div>';
+  el.innerHTML = '<div class="empty"><p>⏳ Memuat daftar project...</p></div>';
 
   try {
     const resp = await fetch('/list-projects');
@@ -315,46 +453,43 @@ async function muat_project_list() {
     const list = data.projects || [];
 
     if (list.length === 0) {
-      el.innerHTML = '<div class="empty"><p>Belum ada project. Buat dulu.</p></div>';
+      el.innerHTML = '<div class="empty"><p>Belum ada project. Buat dulu dari tab "Buat Baru".</p></div>';
       return;
     }
 
     el.innerHTML = list.map(p => `
-      <div class="project-card"
-           data-nama="${escAttr(p.nama)}"
-           title="${escAttr(p.deskripsi)}">
-        <div class="pname">📁 ${escHtml(p.nama)}</div>
-        <div class="ptech">${escHtml(p.tech_stack)}</div>
-        <div class="pfiles">${p.file_count} file &nbsp;|&nbsp; ${escHtml(p.run_cmd)}</div>
+      <div class="project-card" data-nama="${escAttr(p.nama)}" title="${escAttr(p.deskripsi)}">
+        <div class="pname">📁 ${esc(p.nama)}</div>
+        <div class="ptech">${esc(p.tech_stack)}</div>
+        <div class="pfiles">${p.file_count} file · ${esc(p.run_cmd)}</div>
       </div>
     `).join('');
 
-    // FIX: event listener, bukan onclick inline dengan global event
-    el.querySelectorAll('.project-card').forEach(card => {
-      card.addEventListener('click', function() {
-        document.getElementById('nama-lanjut').value = this.dataset.nama;
-        el.querySelectorAll('.project-card').forEach(c => c.classList.remove('selected'));
-        this.classList.add('selected');
-      });
+    el.addEventListener('click', function(e) {
+      const card = e.target.closest('.project-card');
+      if (!card) return;
+      document.getElementById('nama-lanjut').value = card.dataset.nama;
+      el.querySelectorAll('.project-card').forEach(c => c.classList.remove('selected'));
+      card.classList.add('selected');
     });
 
   } catch(e) {
-    el.innerHTML = `<div class="empty"><p>Gagal muat: ${escHtml(String(e))}</p></div>`;
+    el.innerHTML = `<div class="empty"><p>❌ Gagal muat: ${esc(String(e))}</p></div>`;
   }
 }
 
 // ================================================
-// BUAT PROJECT BARU
+// BUAT PROJECT
 // ================================================
-async function buatProject() {
+document.getElementById('btn-buat').addEventListener('click', async function() {
   const deskripsi = document.getElementById('deskripsi').value.trim();
-  const nama      = document.getElementById('nama').value.trim();
+  const nama = document.getElementById('nama').value.trim();
 
-  if (!deskripsi) { alert('Masukkan deskripsi project!'); return; }
-  if (!nama)      { alert('Masukkan nama project!'); return; }
+  if (!deskripsi) { showToast('Masukkan deskripsi project!', 'err'); return; }
+  if (!nama) { showToast('Masukkan nama project!', 'err'); return; }
 
   progressMode = 'baru';
-  reset_ui('baru');
+  resetUI('baru');
 
   const fd = new FormData();
   fd.append('deskripsi', deskripsi);
@@ -362,27 +497,36 @@ async function buatProject() {
 
   try {
     const resp = await fetch('/buat-project', { method: 'POST', body: fd });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const json = await resp.json();
+
+    if (json.error) {
+      showToast('Error: ' + json.error, 'err');
+      resetBtn();
+      return;
+    }
+
     currentProjectId = json.project_id;
-    mulai_polling();
+    showToast(`Project "${json.nama}" dimulai! ID: ${json.project_id}`, 'ok');
+    mulaiPolling();
   } catch(e) {
-    alert('Gagal menghubungi server: ' + e);
-    reset_btn();
+    showToast('Gagal menghubungi server: ' + e, 'err');
+    resetBtn();
   }
-}
+});
 
 // ================================================
 // LANJUT PROJECT
 // ================================================
-async function lanjutProject() {
-  const nama       = document.getElementById('nama-lanjut').value.trim();
+document.getElementById('btn-lanjut').addEventListener('click', async function() {
+  const nama = document.getElementById('nama-lanjut').value.trim();
   const permintaan = document.getElementById('permintaan').value.trim();
 
-  if (!nama)       { alert('Pilih atau ketik nama project!'); return; }
-  if (!permintaan) { alert('Masukkan permintaan pengembangan!'); return; }
+  if (!nama) { showToast('Pilih atau ketik nama project!', 'err'); return; }
+  if (!permintaan) { showToast('Masukkan permintaan pengembangan!', 'err'); return; }
 
   progressMode = 'lanjut';
-  reset_ui('lanjut');
+  resetUI('lanjut');
 
   const fd = new FormData();
   fd.append('nama', nama);
@@ -390,43 +534,48 @@ async function lanjutProject() {
 
   try {
     const resp = await fetch('/lanjut-project', { method: 'POST', body: fd });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const json = await resp.json();
+
+    if (json.error) {
+      showToast('Error: ' + json.error, 'err');
+      resetBtn();
+      return;
+    }
+
     currentProjectId = json.project_id;
-    mulai_polling();
+    showToast(`Pengembangan "${json.nama}" dimulai!`, 'ok');
+    mulaiPolling();
   } catch(e) {
-    alert('Gagal menghubungi server: ' + e);
-    reset_btn();
+    showToast('Gagal menghubungi server: ' + e, 'err');
+    resetBtn();
   }
-}
+});
 
 // ================================================
-// RESET UI
+// UI HELPERS
 // ================================================
-function reset_ui(mode) {
+function resetUI(mode) {
   document.getElementById('log-panel').innerHTML = '<div class="log-loading">⏳ Memulai proses...</div>';
-  document.getElementById(`pw-${mode}`).style.display = 'block';
-  document.getElementById(`pb-${mode}`).style.width   = '5%';
+  document.getElementById('file-list').innerHTML = '<div class="empty"><div class="icon">⏳</div><p>Menunggu proses selesai...</p></div>';
+  document.getElementById('pw-' + mode).style.display = 'block';
+  document.getElementById('pb-' + mode).style.width = '5%';
   document.getElementById(mode === 'baru' ? 'btn-buat' : 'btn-lanjut').disabled = true;
   progressVal = 5;
-
-  // Switch ke tab log
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-log').classList.add('active');
-  document.querySelector('[data-tab="tab-log"]').classList.add('active');
+  switchToTab('tab-log');
 }
 
-function reset_btn() {
-  document.getElementById('btn-buat').disabled   = false;
+function resetBtn() {
+  document.getElementById('btn-buat').disabled = false;
   document.getElementById('btn-lanjut').disabled = false;
-  document.getElementById('pw-baru').style.display   = 'none';
+  document.getElementById('pw-baru').style.display = 'none';
   document.getElementById('pw-lanjut').style.display = 'none';
 }
 
 // ================================================
 // POLLING
 // ================================================
-function mulai_polling() {
+function mulaiPolling() {
   if (pollingInterval) clearInterval(pollingInterval);
   pollingInterval = setInterval(polling, 1500);
 }
@@ -435,33 +584,42 @@ async function polling() {
   if (!currentProjectId) return;
 
   try {
-    const resp = await fetch(`/status/${currentProjectId}`);
+    const resp = await fetch('/status/' + currentProjectId);
     if (!resp.ok) return;
     const data = await resp.json();
 
-    render_log(data.logs || []);
-    render_info(data);
+    renderLog(data.logs || []);
+    renderInfo(data);
 
     if (data.status === 'loading') {
-      progressVal = Math.min(progressVal + 2, 88);
-      document.getElementById(`pb-${progressMode}`).style.width = progressVal + '%';
+      progressVal = Math.min(progressVal + 1.5, 88);
+      document.getElementById('pb-' + progressMode).style.width = progressVal + '%';
     }
 
     if (data.status === 'done' || data.status === 'error') {
       clearInterval(pollingInterval);
-      document.getElementById(`pb-${progressMode}`).style.width = '100%';
-      document.getElementById(progressMode === 'baru' ? 'btn-buat' : 'btn-lanjut').disabled = false;
+      pollingInterval = null;
+      document.getElementById('pb-' + progressMode).style.width = '100%';
+      resetBtn();
+
+      if (data.status === 'done') {
+        showToast('✅ Project berhasil dibuat!', 'ok');
+      } else {
+        showToast('❌ Project gagal. Cek log untuk detail.', 'err');
+      }
 
       // Load files
       try {
-        const fresp = await fetch(`/files/${currentProjectId}`);
+        const fresp = await fetch('/files/' + currentProjectId);
         const fdata = await fresp.json();
-        render_files(fdata.files || []);
-      } catch(e) {}
+        renderFiles(fdata.files || []);
+      } catch(e) {
+        console.error('Gagal load files:', e);
+      }
 
       setTimeout(() => {
-        document.getElementById(`pw-${progressMode}`).style.display = 'none';
-      }, 2000);
+        document.getElementById('pw-' + progressMode).style.display = 'none';
+      }, 2500);
     }
   } catch(e) {
     console.error('Polling error:', e);
@@ -471,13 +629,13 @@ async function polling() {
 // ================================================
 // RENDER LOG
 // ================================================
-function render_log(logs) {
+function renderLog(logs) {
   const panel = document.getElementById('log-panel');
-  const map   = {
-    '⏳':'log-loading','✅':'log-success','❌':'log-error',
-    '⚠️':'log-warning','🔧':'log-fix','📄':'log-file',
-    '📁':'log-folder','🧪':'log-run','🎉':'log-done',
-    'ℹ️':'log-info','🔄':'log-lanjut'
+  const emojiMap = {
+    '⏳': 'log-loading', '✅': 'log-success', '❌': 'log-error',
+    '⚠️': 'log-warning', '🔧': 'log-fix', '📄': 'log-file',
+    '📁': 'log-folder', '🧪': 'log-run', '🎉': 'log-done',
+    'ℹ️': 'log-info', '🔄': 'log-lanjut'
   };
 
   if (!logs.length) {
@@ -487,10 +645,10 @@ function render_log(logs) {
 
   panel.innerHTML = logs.map(line => {
     let cls = 'log-info';
-    for (const [em, klass] of Object.entries(map)) {
-      if (line.includes(em)) { cls = klass; break; }
+    for (const [emoji, klass] of Object.entries(emojiMap)) {
+      if (line.includes(emoji)) { cls = klass; break; }
     }
-    return `<div class="${cls}">${escHtml(line)}</div>`;
+    return `<div class="${cls}">${esc(line)}</div>`;
   }).join('');
 
   panel.scrollTop = panel.scrollHeight;
@@ -499,7 +657,7 @@ function render_log(logs) {
 // ================================================
 // RENDER FILES
 // ================================================
-function render_files(files) {
+function renderFiles(files) {
   const el = document.getElementById('file-list');
 
   if (!files || files.length === 0) {
@@ -507,66 +665,58 @@ function render_files(files) {
     return;
   }
 
-  const items = files.map((f, i) => {
-    const id = `code-${i}`;
-    return `
-      <div class="file-item">
-        <div class="file-header" data-target="${id}">
-          <span>${icon_file(f.path)}</span>
-          <span>${escHtml(f.path)}</span>
-          <span class="file-size">${fmt_size(f.size)}</span>
-        </div>
-        <pre class="file-code" id="${id}">${escHtml(f.content)}</pre>
+  el.innerHTML = '<div class="file-tree">' + files.map((f, i) => `
+    <div class="file-item">
+      <div class="file-header" data-idx="${i}">
+        <span>${iconFile(f.path)}</span>
+        <span>${esc(f.path)}</span>
+        <span class="file-size">${fmtSize(f.size)}</span>
       </div>
-    `;
-  }).join('');
+      <pre class="file-code" id="fcode-${i}">${esc(f.content)}</pre>
+    </div>
+  `).join('') + '</div>';
 
-  el.innerHTML = `<div class="file-tree">${items}</div>`;
-
-  // Event listener untuk toggle (bukan onclick inline)
-  el.querySelectorAll('.file-header').forEach(header => {
-    header.addEventListener('click', function() {
-      const target = document.getElementById(this.dataset.target);
-      if (target) {
-        target.style.display = target.style.display === 'block' ? 'none' : 'block';
-      }
-    });
+  el.addEventListener('click', function(e) {
+    const header = e.target.closest('.file-header');
+    if (!header) return;
+    const code = document.getElementById('fcode-' + header.dataset.idx);
+    if (code) {
+      code.style.display = code.style.display === 'block' ? 'none' : 'block';
+    }
   });
 }
 
 // ================================================
 // RENDER INFO
 // ================================================
-function render_info(data) {
-  const el    = document.getElementById('info-panel');
-  const bmap  = {
-    loading: ['badge-loading','⏳ Diproses'],
-    done:    ['badge-done',   '✅ Selesai'],
-    error:   ['badge-error',  '❌ Gagal'],
+function renderInfo(data) {
+  const el = document.getElementById('info-panel');
+  const badgeMap = {
+    loading: ['badge-loading', '⏳ Diproses'],
+    done: ['badge-done', '✅ Selesai'],
+    error: ['badge-error', '❌ Gagal'],
   };
-  const badge = bmap[data.status] || ['badge-loading', data.status];
+  const b = badgeMap[data.status] || ['badge-loading', data.status];
+  const fileCount = (data.files || []).length;
 
   el.innerHTML = `
     <div class="info-card">
       <h3>📋 Info Project</h3>
-      <div class="info-row">
-        <span class="info-label">Status</span>
-        <span><span class="badge ${badge[0]}">${badge[1]}</span></span>
-      </div>
-      <div class="info-row"><span class="info-label">Nama</span><span class="info-value">${escHtml(data.nama||'-')}</span></div>
-      <div class="info-row"><span class="info-label">Deskripsi</span><span class="info-value">${escHtml(data.desc||'-')}</span></div>
-      <div class="info-row"><span class="info-label">Tech</span><span class="info-value">${escHtml(data.tech||'-')}</span></div>
-      <div class="info-row"><span class="info-label">Files</span><span class="info-value">${(data.files||[]).length} file</span></div>
-      <div class="info-row"><span class="info-label">Lokasi</span><span class="info-value">${escHtml(data.folder||'-')}</span></div>
+      <div class="info-row"><span class="info-label">Status</span><span><span class="badge ${b[0]}">${b[1]}</span></span></div>
+      <div class="info-row"><span class="info-label">Nama</span><span class="info-value">${esc(data.nama || '-')}</span></div>
+      <div class="info-row"><span class="info-label">Deskripsi</span><span class="info-value">${esc(data.desc || '-')}</span></div>
+      <div class="info-row"><span class="info-label">Tech Stack</span><span class="info-value">${esc(data.tech || '-')}</span></div>
+      <div class="info-row"><span class="info-label">Files</span><span class="info-value">${fileCount} file</span></div>
+      <div class="info-row"><span class="info-label">Lokasi</span><span class="info-value">${esc(data.folder || '-')}</span></div>
     </div>
     <div class="info-card">
       <h3>⚡ Cara Jalankan</h3>
-      <div class="cmd-box">${escHtml(data.run_cmd||'Belum tersedia')}</div>
+      <div class="cmd-box">${esc(data.run_cmd || 'Belum tersedia')}</div>
     </div>
     ${data.error ? `
     <div class="info-card">
       <h3>❌ Error Detail</h3>
-      <div class="cmd-box" style="color:#f87171;white-space:pre-wrap">${escHtml(data.error)}</div>
+      <div class="cmd-box" style="color:#f87171;white-space:pre-wrap;word-break:break-all">${esc(data.error)}</div>
     </div>` : ''}
   `;
 }
@@ -574,90 +724,67 @@ function render_info(data) {
 // ================================================
 // RENDER KEY STATUS
 // ================================================
-async function muat_key_status() {
+async function muatKeyStatus() {
   const el = document.getElementById('key-panel');
   el.innerHTML = '<div class="empty"><p>⏳ Memuat status key...</p></div>';
 
   try {
     const resp = await fetch('/key-status');
     const data = await resp.json();
-
-    const dot_class = (k) => {
-      if (k.error_count === 0) return 'green';
-      if (k.error_count >= 2)  return 'red';
-      return 'yellow';
-    };
+    const keys = data.keys || [];
 
     el.innerHTML = `
       <div class="info-card">
-        <h3>🔑 Status API Keys</h3>
+        <h3>🔑 Status API Keys — Claude Code</h3>
         <p style="font-size:.78rem;color:#64748b;margin-bottom:12px">
-          Key aktif: Index ${data.current_index} dari ${data.keys.length} key
+          Key aktif: Index ${data.current_index} dari ${keys.length} key
         </p>
-        ${data.keys.map(k => `
+        ${keys.map(k => {
+          const dotCls = k.error_count === 0 ? 'green' : k.error_count >= 2 ? 'red' : 'yellow';
+          return `
           <div class="key-card ${k.active ? 'active-key' : ''}">
-            <div class="key-dot ${dot_class(k)}"></div>
+            <div class="key-dot ${dotCls}"></div>
             <div class="key-info">
-              <div class="kmodel">${escHtml(k.model)}${k.active ? ' ← AKTIF' : ''}</div>
-              <div class="kurl">${escHtml(k.base_url)}</div>
-              <div class="khint">Key: ${escHtml(k.api_key_hint)}</div>
+              <div class="kmodel">${esc(k.model)}${k.active ? ' ← AKTIF' : ''}</div>
+              <div class="kurl">${esc(k.base_url)}</div>
+              <div class="khint">Key: ${esc(k.api_key_hint)}</div>
             </div>
-            <div class="key-err">${k.error_count > 0 ? k.error_count+'× error' : '✓ OK'}</div>
-          </div>
-        `).join('')}
+            <div class="key-err">${k.error_count > 0 ? k.error_count + '× error' : '✓ OK'}</div>
+          </div>`;
+        }).join('')}
         <button class="btn btn-red" id="btn-reset-key">🔄 Reset Error Counter</button>
       </div>
       <div class="info-card">
-        <h3>📖 Cara Tambah API Key</h3>
+        <h3>📖 Pengaturan API Key</h3>
         <p style="font-size:.8rem;color:#94a3b8;line-height:1.8">
-          Buka <code style="color:#38bdf8">main.py</code>, cari <code style="color:#38bdf8">API_KEYS</code>,
-          tambahkan:<br/><br/>
-          <code style="color:#4ade80">
-          ("https://freetokenfaucet.com/v1", "tf_key_baru", "gpt-5.6-terra"),
-          </code>
+          API Key disimpan terenkripsi di file <code style="color:#38bdf8">.env</code><br/><br/>
+          <strong style="color:#93c5fd">Cara ubah:</strong><br/>
+          1. Edit file <code style="color:#38bdf8">.env</code><br/>
+          2. Jalankan <code style="color:#4ade80">python encrypt_keys.py</code><br/>
+          3. Restart server<br/><br/>
+          <strong style="color:#93c5fd">Base URL:</strong><br/>
+          <code style="color:#4ade80">https://ai.bluepack.my.id/anthropic</code>
         </p>
       </div>
     `;
 
     document.getElementById('btn-reset-key').addEventListener('click', async () => {
       await fetch('/key-reset', { method: 'POST' });
-      muat_key_status();
+      showToast('Error counter direset!', 'ok');
+      muatKeyStatus();
     });
 
   } catch(e) {
-    el.innerHTML = `<div class="empty"><p>Gagal load: ${escHtml(String(e))}</p></div>`;
+    el.innerHTML = `<div class="empty"><p>❌ Gagal load: ${esc(String(e))}</p></div>`;
   }
-}
-
-// ================================================
-// UTILS
-// ================================================
-function icon_file(path) {
-  const ext = (path || '').split('.').pop().toLowerCase();
-  const map = {py:'🐍',md:'📖',txt:'📄',json:'📦',html:'🌐',
-               css:'🎨',js:'⚡',ts:'⚡',yaml:'⚙️',yml:'⚙️',toml:'⚙️',sql:'🗄️'};
-  return map[ext] || '📄';
-}
-
-function fmt_size(b) {
-  if (!b || b < 1024) return (b||0) + ' B';
-  return (b/1024).toFixed(1) + ' KB';
-}
-
-function escHtml(s) {
-  return String(s||'')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function escAttr(s) {
-  return String(s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 
 // ================================================
 // INIT
 // ================================================
-render_chips();
+initChips();
+cekServer();
+setInterval(cekServer, 30000);
 </script>
 </body>
 </html>
