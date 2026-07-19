@@ -101,7 +101,7 @@ MAX_FILES_PER_PROJ          = 100
 MAX_LINES_PER_FILE          = 1000   # ✅ Turun dari 300 → file lebih kecil, lebih cepat
 
 # ✅ UPSTREAM TUNING — fix circuit terlalu sensitif
-UPSTREAM_MAX_RETRY          = 4     # naik dari 3 → lebih sabar sebelum menyerah
+UPSTREAM_MAX_RETRY          = 5     # naik dari 3 → lebih sabar sebelum menyerah
 UPSTREAM_WAIT_BASE          = 8     # detik, exponential base
 UPSTREAM_MAX_WAIT           = 45    # cap maksimum wait per retry
 CIRCUIT_BREAKER_THRESHOLD   = 100     # ✅ naik dari 3 → butuh 5 failure exhausted sebelum circuit open
