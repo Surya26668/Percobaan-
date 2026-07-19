@@ -3,7 +3,7 @@ services:
     name: ai-project-maker
     runtime: python
     buildCommand: pip install -r requirements.txt
-    startCommand: ./start.sh
+    startCommand: ./start.sh 
     envVars:
       - key: API_KEY_1
         sync: false
