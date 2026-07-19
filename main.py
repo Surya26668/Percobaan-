@@ -84,10 +84,8 @@ for idx, k in enumerate(API_KEYS):
     hint = k["api_key"][:8] + "..." if len(k["api_key"]) > 8 else k["api_key"]
     print(f"   [{idx}] model={k['model']} | key={hint}")
 
-# ================================================
-# KONSTANTA — TUNING v2.3
-# ================================================
 MAX_FIX                     = 3
+
 BASE_DIR                    = Path("workspace")
 CACHE_DIR                   = Path(".cache")
 BACKUPS_DIR                 = Path("backups")
@@ -96,25 +94,41 @@ CACHE_DIR.mkdir(exist_ok=True)
 BACKUPS_DIR.mkdir(exist_ok=True)
 Path("templates").mkdir(exist_ok=True)
 
-REQUEST_TIMEOUT             = 180
-MAX_FILES_PER_PROJ          = 100
-MAX_LINES_PER_FILE          = 1000   # ✅ Turun dari 300 → file lebih kecil, lebih cepat
+# ============================================
+# ⏱️ TIMEOUT & FILE SIZE — Kunci Stabilitas
+# ============================================
+REQUEST_TIMEOUT              = 300   # ✅ Naik dari 180 → cukup untuk file besar + model reasoning (Claude Sonnet bisa 3-5 menit untuk file kompleks)
+MAX_FILES_PER_PROJ           = 100
+MAX_LINES_PER_FILE           = 500   # ✅ Sweet spot: cukup besar untuk kode lengkap, cukup kecil untuk hindari timeout
 
-# ✅ UPSTREAM TUNING — fix circuit terlalu sensitif
-UPSTREAM_MAX_RETRY          = 5     # naik dari 3 → lebih sabar sebelum menyerah
-UPSTREAM_WAIT_BASE          = 8     # detik, exponential base
-UPSTREAM_MAX_WAIT           = 45    # cap maksimum wait per retry
-CIRCUIT_BREAKER_THRESHOLD   = 100     # ✅ naik dari 3 → butuh 5 failure exhausted sebelum circuit open
-CIRCUIT_BREAKER_TIMEOUT     = 300    # ✅ turun dari 120 → lebih cepat recover
-MAX_FILE_RETRY              = 2     # ✅ BARU: retry per-file jika upstream error
-MAX_UPSTREAM_FAIL_PER_BUILD = 3     # ✅ naik dari 2 → lebih toleran sebelum skip sisanya
+# ============================================
+# 🔄 UPSTREAM RETRY TUNING
+# ============================================
+UPSTREAM_MAX_RETRY           = 5     # Retry sebelum menyerah per-request
+UPSTREAM_WAIT_BASE           = 8     # Detik, basis exponential backoff (8, 16, 32, 45, 45...)
+UPSTREAM_MAX_WAIT            = 45    # Cap maksimum wait per retry
 
-PORT_START          = 9001
-PORT_END            = 9100
+# ============================================
+# 🔌 CIRCUIT BREAKER — FIXED (Konsisten & Realistis)
+# ============================================
+CIRCUIT_BREAKER_THRESHOLD    = 8     # ✅ FIXED: 8 failure berturut-turut baru open (bukan 100!)
+                                       #    Terlalu rendah (3) = gampang trip karena 1-2 error sementara
+                                       #    Terlalu tinggi (100) = sistem terus hajar API yang jelas down
+CIRCUIT_BREAKER_TIMEOUT      = 90    # ✅ FIXED: 90 detik cooldown (bukan 300!)
+                                       #    Cukup untuk provider recover, tidak bikin project stuck lama
 
-RATE_LIMIT_PER_MIN  = 30
-CACHE_TTL_SECONDS   = 3600
-AUTO_CLEANUP_MIN    = 60
+MAX_FILE_RETRY                = 3    # ✅ Naik sedikit dari 2 → retry per-file lebih toleran
+MAX_UPSTREAM_FAIL_PER_BUILD   = 5    # ✅ Naik dari 3 → jangan langsung skip semua file kalau ada 3 error sementara
+
+# ============================================
+# 🌐 SERVER & NETWORK
+# ============================================
+PORT_START           = 9001
+PORT_END             = 9100
+
+RATE_LIMIT_PER_MIN   = 30
+CACHE_TTL_SECONDS    = 3600
+AUTO_CLEANUP_MIN     = 60
 
 app = FastAPI(title="AI Project Maker — ULTIMATE Edition v2.3")
 
