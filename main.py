@@ -1,3 +1,7 @@
+# ================================================
+# AI PROJECT MAKER — ULTIMATE EDITION v2.4
+# Support: 10-100 file, up to 700 baris/file, chunking + parallel generation
+# ================================================
 
 try:
     from dotenv import load_dotenv
@@ -30,6 +34,7 @@ import httpx
 from pathlib import Path
 from datetime import datetime, timedelta
 from collections import defaultdict, deque
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from fastapi import FastAPI, Form, Request, WebSocket, WebSocketDisconnect, BackgroundTasks
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse, Response
@@ -87,38 +92,50 @@ for idx, k in enumerate(API_KEYS):
 MAX_FIX                     = 3
 
 BASE_DIR                    = Path("workspace")
-CACHE_DIR                   = Path(".cache")
-BACKUPS_DIR                 = Path("backups")
+CACHE_DIR                    = Path(".cache")
+BACKUPS_DIR                  = Path("backups")
 BASE_DIR.mkdir(exist_ok=True)
 CACHE_DIR.mkdir(exist_ok=True)
 BACKUPS_DIR.mkdir(exist_ok=True)
 Path("templates").mkdir(exist_ok=True)
 
 # ============================================
-# ⏱️ TIMEOUT & FILE SIZE — Kunci Stabilitas
+# ⏱️ TIMEOUT & FILE SIZE — untuk file s.d. 700 baris
 # ============================================
-REQUEST_TIMEOUT              = 300   # ✅ Naik dari 180 → cukup untuk file besar + model reasoning (Claude Sonnet bisa 3-5 menit untuk file kompleks)
+REQUEST_TIMEOUT              = 400   # ✅ Naik → chunk besar butuh waktu lebih
 MAX_FILES_PER_PROJ           = 100
-MAX_LINES_PER_FILE           = 500   # ✅ Sweet spot: cukup besar untuk kode lengkap, cukup kecil untuk hindari timeout
+MAX_LINES_PER_FILE           = 700   # ✅ Target baris untuk file kompleks
+
+# ============================================
+# 📦 CHUNKING SETTINGS — WAJIB untuk file besar
+# ============================================
+CHUNK_SIZE_LINES             = 150   # Setiap request AI generate ~150 baris
+MAX_CHUNKS_PER_FILE          = 6     # 6 x 150 = 900 baris (buffer utk 700)
+CHUNK_MAX_TOKENS             = 4000  # Token budget per chunk
+CONTEXT_TAIL_LINES           = 15    # Baris terakhir dikirim sbg context lanjutan
 
 # ============================================
 # 🔄 UPSTREAM RETRY TUNING
 # ============================================
-UPSTREAM_MAX_RETRY           = 5     # Retry sebelum menyerah per-request
-UPSTREAM_WAIT_BASE           = 8     # Detik, basis exponential backoff (8, 16, 32, 45, 45...)
-UPSTREAM_MAX_WAIT            = 45    # Cap maksimum wait per retry
+UPSTREAM_MAX_RETRY           = 5
+UPSTREAM_WAIT_BASE           = 8
+UPSTREAM_MAX_WAIT            = 45
 
 # ============================================
-# 🔌 CIRCUIT BREAKER — FIXED (Konsisten & Realistis)
+# 🔌 CIRCUIT BREAKER
 # ============================================
-CIRCUIT_BREAKER_THRESHOLD    = 8     # ✅ FIXED: 8 failure berturut-turut baru open (bukan 100!)
-                                       #    Terlalu rendah (3) = gampang trip karena 1-2 error sementara
-                                       #    Terlalu tinggi (100) = sistem terus hajar API yang jelas down
-CIRCUIT_BREAKER_TIMEOUT      = 90    # ✅ FIXED: 90 detik cooldown (bukan 300!)
-                                       #    Cukup untuk provider recover, tidak bikin project stuck lama
+CIRCUIT_BREAKER_THRESHOLD    = 8
+CIRCUIT_BREAKER_TIMEOUT      = 90
 
-MAX_FILE_RETRY                = 3    # ✅ Naik sedikit dari 2 → retry per-file lebih toleran
-MAX_UPSTREAM_FAIL_PER_BUILD   = 5    # ✅ Naik dari 3 → jangan langsung skip semua file kalau ada 3 error sementara
+MAX_FILE_RETRY                = 3
+MAX_UPSTREAM_FAIL_PERCENT     = 0.15   # ✅ Persen, bukan angka fix → scale otomatis
+
+# ============================================
+# 🚀 PARALLEL GENERATION
+# ============================================
+ENABLE_PARALLEL_GENERATION   = True
+MAX_PARALLEL_WORKERS         = None    # None = auto pakai jumlah API_KEYS
+PARALLEL_MIN_FILES           = 6       # Minimal file agar mode paralel dipakai
 
 # ============================================
 # 🌐 SERVER & NETWORK
@@ -126,11 +143,11 @@ MAX_UPSTREAM_FAIL_PER_BUILD   = 5    # ✅ Naik dari 3 → jangan langsung skip 
 PORT_START           = 9001
 PORT_END             = 9100
 
-RATE_LIMIT_PER_MIN   = 30
+RATE_LIMIT_PER_MIN   = 60   # ✅ Naik sedikit karena paralel butuh lebih banyak request/menit
 CACHE_TTL_SECONDS    = 3600
 AUTO_CLEANUP_MIN     = 60
 
-app = FastAPI(title="AI Project Maker — ULTIMATE Edition v2.3")
+app = FastAPI(title="AI Project Maker — ULTIMATE Edition v2.4")
 
 projects: dict = {}
 STATE_FILE = Path("projects_state.json")
@@ -232,7 +249,7 @@ def check_rate_limit(client_id: str) -> bool:
         return True
 
 # ================================================
-# ✅ CIRCUIT BREAKER — FIXED LOGIC
+# ✅ CIRCUIT BREAKER
 # ================================================
 def circuit_is_open() -> bool:
     with _circuit_lock:
@@ -248,7 +265,6 @@ def circuit_is_open() -> bool:
         return True
 
 def circuit_record_failure():
-    """Dipanggil HANYA setelah upstream_retries exhausted — bukan setiap 502"""
     with _circuit_lock:
         _circuit_state["fail_count"] += 1
         if (_circuit_state["fail_count"] >= CIRCUIT_BREAKER_THRESHOLD
@@ -273,7 +289,7 @@ def circuit_force_reset():
         print("[CIRCUIT] ♻️ Force reset")
 
 # ================================================
-# MULTI KEY MANAGER
+# MULTI KEY MANAGER (thread-safe untuk paralel)
 # ================================================
 class MultiKeyManager:
     def __init__(self, keys: list):
@@ -286,11 +302,20 @@ class MultiKeyManager:
         self.last_used      = [0.0] * len(keys)
         self.upstream_fails = [0] * len(keys)
         self._lock          = threading.Lock()
+        self._round_robin   = 0  # ✅ untuk distribusi paralel
 
     def get_info(self) -> dict:
         with self._lock:
             self.last_used[self.current_idx] = time.time()
             return self.keys[self.current_idx]
+
+    def get_info_round_robin(self) -> dict:
+        """✅ Untuk worker paralel — distribusi merata ke semua key"""
+        with self._lock:
+            idx = self._round_robin % len(self.keys)
+            self._round_robin += 1
+            self.last_used[idx] = time.time()
+            return self.keys[idx], idx
 
     def get_best_key(self) -> int:
         with self._lock:
@@ -310,22 +335,27 @@ class MultiKeyManager:
         with self._lock:
             self.current_idx = (self.current_idx + 1) % len(self.keys)
 
-    def mark_error(self, error: str = ""):
+    def mark_error(self, error: str = "", idx: int = None):
         with self._lock:
-            self.error_counts[self.current_idx] += 1
-            self.last_error[self.current_idx]    = error[:100]
-        self.next_key()
+            target = idx if idx is not None else self.current_idx
+            self.error_counts[target] += 1
+            self.last_error[target]    = error[:100]
+        if idx is None:
+            self.next_key()
 
-    def mark_upstream_error(self, status_code: int):
+    def mark_upstream_error(self, status_code: int, idx: int = None):
         with self._lock:
-            self.upstream_fails[self.current_idx] += 1
-            self.last_error[self.current_idx]      = f"Upstream {status_code}"
-        self.next_key()
+            target = idx if idx is not None else self.current_idx
+            self.upstream_fails[target] += 1
+            self.last_error[target]      = f"Upstream {status_code}"
+        if idx is None:
+            self.next_key()
 
-    def mark_success(self, elapsed: float):
+    def mark_success(self, elapsed: float, idx: int = None):
         with self._lock:
-            self.success_counts[self.current_idx] += 1
-            self.total_time[self.current_idx]     += elapsed
+            target = idx if idx is not None else self.current_idx
+            self.success_counts[target] += 1
+            self.total_time[target]     += elapsed
 
     def reset_errors(self):
         with self._lock:
@@ -390,18 +420,12 @@ def ambil_text(resp) -> str:
     return hasil.strip()
 
 # ================================================
-# ✅ TANYA AI — FIXED CIRCUIT BREAKER LOGIC
-#
-# PERBAIKAN UTAMA:
-#   • circuit_record_failure() dipanggil HANYA setelah upstream_retries
-#     benar-benar habis — bukan setiap kali 502 terjadi
-#   • Setiap upstream retry → ganti key otomatis
-#   • consecutive_upstream dihapus, cukup upstream_retries
+# ✅ TANYA AI — dengan support key index eksplisit untuk paralel
 # ================================================
 def tanya_ai(system_prompt: str, user_prompt: str,
-             max_tokens: int = 4096, use_cache: bool = True) -> str:
+             max_tokens: int = 4096, use_cache: bool = True,
+             force_key_idx: int = None) -> str:
 
-    # ── Cache check ──
     if use_cache:
         cached = cache_get(system_prompt, user_prompt)
         if cached:
@@ -409,7 +433,6 @@ def tanya_ai(system_prompt: str, user_prompt: str,
                 request_stats["cache_hit"]["count"] += 1
             return cached
 
-    # ── Circuit breaker check ──
     if circuit_is_open():
         raise Exception(
             f"🔴 Provider sedang down (circuit breaker aktif). "
@@ -421,12 +444,21 @@ def tanya_ai(system_prompt: str, user_prompt: str,
     total_attempts   = 0
     max_total        = len(API_KEYS) * 2 + UPSTREAM_MAX_RETRY
 
-    key_manager.get_best_key()
+    # ✅ Jika dipanggil dari worker paralel, pakai key tertentu di awal
+    if force_key_idx is not None:
+        cur_idx = force_key_idx
+    else:
+        cur_idx = key_manager.get_best_key()
 
     while total_attempts < max_total:
         total_attempts += 1
-        key_info = key_manager.get_info()
-        model    = key_info["model"]
+
+        if force_key_idx is not None:
+            key_info = key_manager.keys[cur_idx]
+        else:
+            key_info = key_manager.get_info()
+
+        model = key_info["model"]
 
         print(f"[AI] Try {total_attempts}/{max_total} | {model} | upstream_retry={upstream_retries}")
         t_start = time.time()
@@ -447,9 +479,8 @@ def tanya_ai(system_prompt: str, user_prompt: str,
             if not hasil:
                 raise Exception("Response kosong")
 
-            # ✅ Success → reset circuit & stats
             circuit_record_success()
-            key_manager.mark_success(elapsed)
+            key_manager.mark_success(elapsed, idx=cur_idx if force_key_idx is not None else None)
             with _stats_lock:
                 request_stats["total"]["count"]      += 1
                 request_stats["total"]["success"]    += 1
@@ -465,13 +496,17 @@ def tanya_ai(system_prompt: str, user_prompt: str,
         except anthropic.AuthenticationError as e:
             last_error = f"401: {str(e)[:200]}"
             print(f"[AI] ❌ Auth: {last_error}")
-            key_manager.mark_error(last_error)
+            key_manager.mark_error(last_error, idx=cur_idx if force_key_idx is not None else None)
+            if force_key_idx is not None:
+                cur_idx = (cur_idx + 1) % len(API_KEYS)
             time.sleep(1)
 
         except anthropic.RateLimitError as e:
             last_error = f"429: {str(e)[:200]}"
             print(f"[AI] ❌ RateLimit: {last_error}")
-            key_manager.mark_error(last_error)
+            key_manager.mark_error(last_error, idx=cur_idx if force_key_idx is not None else None)
+            if force_key_idx is not None:
+                cur_idx = (cur_idx + 1) % len(API_KEYS)
             time.sleep(5)
 
         except anthropic.APIStatusError as e:
@@ -481,11 +516,10 @@ def tanya_ai(system_prompt: str, user_prompt: str,
 
             if status in (502, 503, 504):
                 upstream_retries += 1
-                key_manager.mark_upstream_error(status)
+                key_manager.mark_upstream_error(status, idx=cur_idx if force_key_idx is not None else None)
 
-                # ✅ KUNCI FIX: circuit_record_failure HANYA jika sudah exhausted
                 if upstream_retries > UPSTREAM_MAX_RETRY:
-                    circuit_record_failure()   # ← satu "failure event" ke circuit
+                    circuit_record_failure()
                     with _stats_lock:
                         request_stats["total"]["failed"] += 1
 
@@ -500,7 +534,6 @@ def tanya_ai(system_prompt: str, user_prompt: str,
                         f"Provider mungkin maintenance. Coba lagi nanti."
                     )
 
-                # Masih dalam batas → exponential backoff + ganti key
                 wait_time = min(
                     UPSTREAM_WAIT_BASE * (2 ** (upstream_retries - 1)),
                     UPSTREAM_MAX_WAIT
@@ -508,17 +541,21 @@ def tanya_ai(system_prompt: str, user_prompt: str,
                 print(f"[AI] ⏳ Upstream {status}, wait {wait_time:.0f}s "
                       f"(retry {upstream_retries}/{UPSTREAM_MAX_RETRY})...")
                 time.sleep(wait_time)
-                key_manager.next_key()  # ✅ Ganti key setiap upstream retry
+
+                if force_key_idx is not None:
+                    cur_idx = (cur_idx + 1) % len(API_KEYS)
+                else:
+                    key_manager.next_key()
 
             else:
-                key_manager.mark_error(last_error)
+                key_manager.mark_error(last_error, idx=cur_idx if force_key_idx is not None else None)
                 time.sleep(2)
 
         except anthropic.APIConnectionError as e:
             last_error       = f"Connection: {str(e)[:200]}"
             upstream_retries += 1
             print(f"[AI] ❌ {last_error}")
-            key_manager.mark_error(last_error)
+            key_manager.mark_error(last_error, idx=cur_idx if force_key_idx is not None else None)
 
             if upstream_retries > UPSTREAM_MAX_RETRY:
                 circuit_record_failure()
@@ -530,11 +567,10 @@ def tanya_ai(system_prompt: str, user_prompt: str,
 
         except Exception as e:
             last_error = str(e)[:200]
-            # Re-raise pesan circuit/upstream
             if "🔴" in last_error or "circuit" in last_error.lower():
                 raise
             print(f"[AI] ❌ {last_error}")
-            key_manager.mark_error(last_error)
+            key_manager.mark_error(last_error, idx=cur_idx if force_key_idx is not None else None)
             time.sleep(2)
 
     with _stats_lock:
@@ -803,14 +839,163 @@ def list_backups(nama: str = None) -> list:
     return hasil
 
 # ================================================
-# ✅ GENERATE SATU FILE — DENGAN SPLIT FILE BESAR
+# ✅ NEW: DEDUP LINES (bersihkan hasil chunking dari duplikasi)
+# ================================================
+def dedup_consecutive_blocks(code: str) -> str:
+    """
+    Hapus baris yang persis sama berturut-turut (biasa terjadi saat AI
+    mengulang bagian akhir chunk sebelumnya di awal chunk berikutnya).
+    """
+    lines = code.split("\n")
+    if len(lines) < 30:
+        return code
+
+    cleaned = []
+    i = 0
+    while i < len(lines):
+        # cek apakah 5 baris ke depan sama persis dengan 5 baris terakhir yg sudah ditulis
+        if len(cleaned) >= 5 and i + 5 <= len(lines):
+            window_new = lines[i:i+5]
+            window_old = cleaned[-5:]
+            if window_new == window_old:
+                # skip blok duplikat ini
+                i += 5
+                continue
+        cleaned.append(lines[i])
+        i += 1
+
+    return "\n".join(cleaned)
+
+# ================================================
+# ✅ NEW: TARGET LINES CALCULATOR
+# ================================================
+def hitung_target_lines(filename: str, deskripsi: str) -> int:
+    """Tentukan target baris berdasarkan jenis file"""
+    fname_lower = filename.lower()
+
+    if filename in ["requirements.txt", "README.md", ".env.example", ".gitignore",
+                    "package.json", "Dockerfile", ".dockerignore"]:
+        return 0
+
+    if "test" in fname_lower or filename in ["config.py", "settings.py", "constants.py"]:
+        return 100
+
+    if filename in ["models.py", "schemas.py", "types.py"]:
+        return 200
+
+    is_heavy = any(kw in fname_lower for kw in [
+        "stealth", "engine", "core", "manager", "handler",
+        "processor", "controller", "service", "worker",
+        "nexus", "main", "app", "launcher", "orchestrat",
+    ])
+    if is_heavy:
+        return MAX_LINES_PER_FILE
+
+    return 300
+
+# ================================================
+# ✅ NEW: CHUNKED FILE GENERATOR (untuk file 200-700+ baris)
+# ================================================
+def generate_file_chunked(
+    nama_project: str,
+    deskripsi: str,
+    filename: str,
+    daftar_file: list,
+    target_lines: int,
+    force_key_idx: int = None,
+) -> str:
+    files_hint  = ", ".join(daftar_file[:8])
+    desc_short  = deskripsi[:200]
+
+    system = (
+        "Kamu programmer expert. Tulis code Python/JS production-ready, "
+        "tanpa placeholder, tanpa TODO kosong. Semua fungsi harus benar-benar "
+        "diimplementasikan lengkap dan berfungsi."
+    )
+
+    user_first = (
+        f"Project: {nama_project}\n{desc_short}\n"
+        f"File lain di project: {files_hint}\n\n"
+        f"Tulis file: {filename}\n"
+        f"Target total: ~{target_lines} baris (akan dilanjutkan bertahap).\n\n"
+        f"SEKARANG tulis BAGIAN AWAL saja (~{CHUNK_SIZE_LINES} baris): "
+        "imports, konstanta, class/function signature dengan docstring singkat, "
+        "dan mulai implementasi bagian pertama.\n\n"
+        "Akhiri output dengan baris PERSIS:\n# ===CHUNK_END===\n"
+        "JANGAN tulis penjelasan, JANGAN markdown ```."
+    )
+
+    try:
+        raw = tanya_ai(system, user_first, max_tokens=CHUNK_MAX_TOKENS,
+                       use_cache=False, force_key_idx=force_key_idx)
+    except Exception as e:
+        raise Exception(f"Chunk 1 gagal untuk {filename}: {e}")
+
+    chunk_text  = bersihkan_code(raw).replace("# ===CHUNK_END===", "").rstrip()
+    full_code   = chunk_text
+    total_lines = len(full_code.splitlines())
+    chunk_num   = 1
+
+    print(f"[CHUNK] {filename} chunk {chunk_num}: {total_lines} baris (target {target_lines})")
+
+    while total_lines < target_lines and chunk_num < MAX_CHUNKS_PER_FILE:
+        chunk_num += 1
+
+        tail_lines = "\n".join(full_code.splitlines()[-CONTEXT_TAIL_LINES:])
+        sisa_baris = target_lines - total_lines
+
+        user_next = (
+            f"File: {filename} (lanjutan, project: {nama_project})\n\n"
+            f"Ini {CONTEXT_TAIL_LINES} baris TERAKHIR yang sudah ditulis "
+            "(untuk konteks, JANGAN diulang):\n"
+            f"```\n{tail_lines}\n```\n\n"
+            f"LANJUTKAN langsung dari situ (~{min(CHUNK_SIZE_LINES, sisa_baris)} baris berikutnya). "
+            "Jangan ulangi kode di atas, jangan tulis ulang import.\n\n"
+            "Jika file SUDAH LENGKAP dan selesai secara logis, akhiri dengan:\n"
+            "# ===FILE_COMPLETE===\n"
+            "Jika BELUM selesai, akhiri dengan:\n"
+            "# ===CHUNK_END===\n"
+            "JANGAN tulis penjelasan, JANGAN markdown ```."
+        )
+
+        try:
+            raw = tanya_ai(system, user_next, max_tokens=CHUNK_MAX_TOKENS,
+                           use_cache=False, force_key_idx=force_key_idx)
+        except Exception as e:
+            print(f"[CHUNK] {filename} chunk {chunk_num} gagal: {e} — stop, pakai yang ada")
+            break
+
+        is_complete = "===FILE_COMPLETE===" in raw
+        chunk_text  = (
+            bersihkan_code(raw)
+            .replace("# ===FILE_COMPLETE===", "")
+            .replace("# ===CHUNK_END===", "")
+            .rstrip()
+        )
+
+        full_code   += "\n\n" + chunk_text
+        total_lines  = len(full_code.splitlines())
+
+        print(f"[CHUNK] {filename} chunk {chunk_num}: total {total_lines} baris"
+              f" {'(SELESAI)' if is_complete else ''}")
+
+        if is_complete:
+            break
+
+    # ✅ Bersihkan duplikasi hasil chunking
+    full_code = dedup_consecutive_blocks(full_code)
+    return full_code
+
+# ================================================
+# ✅ GENERATE SATU FILE — router utama (chunked / non-chunked)
 # ================================================
 def generate_satu_file(nama_project: str, deskripsi: str,
-                       filename: str, daftar_file: list) -> str:
+                       filename: str, daftar_file: list,
+                       force_key_idx: int = None) -> str:
     if filename.endswith("__init__.py"):
         return '"""Package init."""\n'
 
-    desc_short = deskripsi[:200]   # ✅ lebih pendek dari 250 → hemat token
+    desc_short = deskripsi[:200]
     files_hint = ", ".join(daftar_file[:6])
 
     ANTI_MARKDOWN = (
@@ -822,82 +1007,63 @@ def generate_satu_file(nama_project: str, deskripsi: str,
         "port = int(os.environ.get('PORT', 8000)). Bind ke 0.0.0.0."
     )
 
-    # ── requirements.txt ──
     if filename == "requirements.txt":
         system = "Tulis requirements.txt Python. Satu library per baris, tanpa versi kecuali perlu."
         user   = f"Project: {nama_project}\n{desc_short}\nTulis requirements.txt:" + ANTI_MARKDOWN
-        return bersihkan_code(tanya_ai(system, user, max_tokens=350))
+        return bersihkan_code(tanya_ai(system, user, max_tokens=350,
+                                       force_key_idx=force_key_idx))
 
-    # ── README.md ──
     elif filename == "README.md":
         system = "Tulis README.md singkat dan jelas."
         user   = (f"Project: {nama_project}\n{desc_short}\n"
                   "Tulis README.md: judul, deskripsi, install, cara pakai. Max 60 baris.")
-        return bersihkan_code(tanya_ai(system, user, max_tokens=1000))
+        return bersihkan_code(tanya_ai(system, user, max_tokens=1000,
+                                       force_key_idx=force_key_idx))
 
-    # ── Test files ──
     elif "test" in filename.lower():
         system = "Tulis unit test pytest sederhana."
         user   = (f"Project: {nama_project}\n{desc_short}\n"
                   f"Tulis {filename}: 3-4 test dasar, gunakan mock jika perlu. Max 60 baris."
                   + ANTI_MARKDOWN)
-        return bersihkan_code(tanya_ai(system, user, max_tokens=1200))
+        return bersihkan_code(tanya_ai(system, user, max_tokens=1200,
+                                       force_key_idx=force_key_idx))
 
-    # ── Config / Database ──
     elif filename in ["config.py", "database.py", "settings.py"]:
         system = "Tulis file konfigurasi Python ringkas."
         user   = (f"Project: {nama_project}\n{desc_short}\n"
                   f"Tulis {filename} ringkas, max 60 baris." + ANTI_MARKDOWN)
-        return bersihkan_code(tanya_ai(system, user, max_tokens=1000))
+        return bersihkan_code(tanya_ai(system, user, max_tokens=1000,
+                                       force_key_idx=force_key_idx))
 
-    # ── Models / Schemas / CRUD ──
     elif filename in ["models.py", "schemas.py", "crud.py"]:
         system = "Programmer Python expert FastAPI + SQLAlchemy."
         user   = (f"Project: {nama_project}\n{desc_short}\nFile lain: {files_hint}\n\n"
                   f"Tulis {filename} lengkap, max 120 baris." + ANTI_MARKDOWN)
-        return bersihkan_code(tanya_ai(system, user, max_tokens=2000))
+        return bersihkan_code(tanya_ai(system, user, max_tokens=2000,
+                                       force_key_idx=force_key_idx))
 
-    # ── File utama / kompleks ──
-    else:
-        # ✅ Deteksi file kompleks → pecah jadi 2 request lebih kecil
-        is_complex = any(kw in filename.lower() for kw in [
-            "stealth", "engine", "core", "manager", "handler",
-            "processor", "controller", "service", "worker",
-            "nexus", "main", "app",
-        ])
+    # ── File lain: pakai target_lines + chunking otomatis jika perlu ──
+    target_lines = hitung_target_lines(filename, deskripsi)
 
-        system = "Programmer Python expert. Tulis code ringkas, langsung jalan."
+    if target_lines == 0:
+        user = (f"Project: {nama_project}\n{desc_short}\nFile lain: {files_hint}\n\n"
+                f"Tulis {filename} lengkap." + PORT_HINT + ANTI_MARKDOWN)
+        return bersihkan_code(tanya_ai(
+            "Programmer expert.", user, max_tokens=1500, force_key_idx=force_key_idx
+        ))
 
-        if is_complex:
-            # ── Part 1: struktur ──
-            user_p1 = (
-                f"Project: {nama_project}\n{desc_short}\nFile: {files_hint}\n\n"
-                f"Tulis {filename} BAGIAN 1: imports, constants, class/function signatures. "
-                f"Max 100 baris. Akhiri dengan komentar # === LANJUT ===\n"
-                + ANTI_MARKDOWN
-            )
-            part1 = bersihkan_code(tanya_ai(system, user_p1, max_tokens=2000))
+    if target_lines <= 150:
+        user = (f"Project: {nama_project}\n{desc_short}\nFile lain: {files_hint}\n\n"
+                f"Tulis {filename} lengkap, ~{target_lines} baris."
+                + PORT_HINT + ANTI_MARKDOWN)
+        return bersihkan_code(tanya_ai(
+            "Programmer expert.", user, max_tokens=3000, force_key_idx=force_key_idx
+        ))
 
-            # ── Part 2: implementasi ──
-            user_p2 = (
-                f"Project: {nama_project}\n{desc_short}\n\n"
-                f"Tulis {filename} BAGIAN 2: implementasi method dan fungsi utama. "
-                f"Lanjutan dari bagian 1. Max 100 baris. Jangan import ulang."
-                + ANTI_MARKDOWN
-            )
-            part2 = bersihkan_code(tanya_ai(system, user_p2, max_tokens=2000))
-
-            # Gabung + bersihkan marker
-            part1 = part1.replace("# === LANJUT ===", "").rstrip()
-            return part1 + "\n\n" + part2
-
-        else:
-            user = (
-                f"Project: {nama_project}\n{desc_short}\nFile lain: {files_hint}\n\n"
-                f"Tulis {filename} lengkap, langsung jalan. Max {MAX_LINES_PER_FILE} baris."
-                + PORT_HINT + ANTI_MARKDOWN
-            )
-            return bersihkan_code(tanya_ai(system, user, max_tokens=3000))
+    return generate_file_chunked(
+        nama_project, deskripsi, filename, daftar_file, target_lines,
+        force_key_idx=force_key_idx
+    )
 
 # ================================================
 # ✅ GENERATE FILE DENGAN RETRY PER-FILE
@@ -907,15 +1073,13 @@ def generate_satu_file_with_retry(
     deskripsi: str,
     filename: str,
     daftar_file: list,
+    force_key_idx: int = None,
 ) -> str:
-    """
-    Wrapper dengan retry khusus upstream error per file.
-    Jika provider 502 → tunggu + force-reset circuit → coba lagi.
-    """
     last_err = ""
     for attempt in range(1, MAX_FILE_RETRY + 1):
         try:
-            return generate_satu_file(nama_project, deskripsi, filename, daftar_file)
+            return generate_satu_file(nama_project, deskripsi, filename,
+                                      daftar_file, force_key_idx=force_key_idx)
 
         except Exception as e:
             last_err    = str(e)
@@ -927,18 +1091,97 @@ def generate_satu_file_with_retry(
             print(f"[FILE-RETRY] {filename} attempt {attempt}/{MAX_FILE_RETRY}: {last_err[:120]}")
 
             if is_upstream and attempt < MAX_FILE_RETRY:
-                wait_sec = 20 * attempt   # 20s lalu 40s
+                wait_sec = 20 * attempt
                 print(f"[FILE-RETRY] Wait {wait_sec}s lalu reset circuit & coba lagi...")
                 time.sleep(wait_sec)
-                # ✅ Reset agar file berikutnya tidak langsung diblok circuit
                 circuit_force_reset()
                 key_manager.reset_errors()
                 continue
 
-            # Non-upstream atau sudah max retry → propagate ke caller
             raise Exception(last_err)
 
     raise Exception(last_err)
+
+# ================================================
+# ✅ NEW: PARALLEL FILE GENERATION
+# ================================================
+def generate_files_parallel(
+    project_id: str,
+    nama_project: str,
+    deskripsi: str,
+    daftar_file: list,
+    project_dir: Path,
+) -> tuple:
+    """
+    Generate banyak file secara paralel dengan distribusi API key round-robin.
+    """
+    max_workers = MAX_PARALLEL_WORKERS or max(1, len(API_KEYS))
+    file_berhasil = []
+    file_gagal    = []
+    lock          = threading.Lock()
+    done_count    = [0]
+
+    def worker(filename: str, key_idx: int):
+        filename = str(filename).strip().lstrip("/")
+        if not filename:
+            return None
+        t_start = time.time()
+        try:
+            isi     = generate_satu_file_with_retry(
+                nama_project, deskripsi, filename, daftar_file,
+                force_key_idx=key_idx
+            )
+            elapsed = time.time() - t_start
+
+            target = (project_dir / filename).resolve()
+            if not str(target).startswith(str(project_dir.resolve())):
+                return None
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(isi, encoding="utf-8")
+
+            with lock:
+                file_berhasil.append(filename)
+                done_count[0] += 1
+                log(project_id,
+                    f"[{done_count[0]}/{len(daftar_file)}] ✓ {filename} "
+                    f"({len(isi)} chars, {elapsed:.1f}s)", "success")
+                projects[project_id]["files"] = file_berhasil.copy()
+                save_state()
+            return filename
+
+        except Exception as e:
+            err_msg = str(e)[:150]
+            with lock:
+                file_gagal.append(filename)
+                done_count[0] += 1
+                log(project_id,
+                    f"[{done_count[0]}/{len(daftar_file)}] ✗ {filename}: {err_msg}",
+                    "warning")
+
+            placeholder = f"# {filename} — GAGAL GENERATE\n# Error: {err_msg}\n"
+            target = (project_dir / filename).resolve()
+            if str(target).startswith(str(project_dir.resolve())):
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(placeholder, encoding="utf-8")
+            return None
+
+    log(project_id,
+        f"🚀 Generate {len(daftar_file)} file paralel ({max_workers} workers, "
+        f"{len(API_KEYS)} API key)...", "loading")
+
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = {}
+        for i, f in enumerate(daftar_file):
+            key_idx = i % len(API_KEYS)  # distribusi merata
+            futures[executor.submit(worker, f, key_idx)] = f
+
+        for future in as_completed(futures):
+            try:
+                future.result()
+            except Exception as e:
+                print(f"[PARALLEL] Worker exception: {e}")
+
+    return file_berhasil, file_gagal
 
 # ================================================
 # PERBAIKI ERROR
@@ -979,7 +1222,7 @@ def perbaiki_error(project_id: str, project_dir: Path, error_msg: str):
         log(project_id, f"Error perbaiki: {e}", "error")
 
 # ================================================
-# ✅ BUAT PROJECT — FULL FIX v2.3
+# ✅ BUAT PROJECT — v2.4 (parallel + chunking + dynamic threshold)
 # ================================================
 def buat_project_background(project_id: str, deskripsi: str, nama: str):
     try:
@@ -996,28 +1239,32 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
             return
 
         key_info = key_manager.get_info()
-        log(project_id, f"Model: {key_info['model']}", "info")
+        log(project_id, f"Model: {key_info['model']} | {len(API_KEYS)} API key tersedia", "info")
         log(project_id, "Tahap 1: AI merancang struktur...", "loading")
 
         system_plan = (
-            "Kamu arsitek software Python profesional.\n\n"
+            "Kamu arsitek software profesional.\n\n"
             "TUGAS: Balas HANYA dengan JSON valid. TIDAK ADA teks lain.\n"
             "TIDAK ADA ```json, TIDAK ADA penjelasan, TIDAK ADA markdown.\n"
             "Langsung mulai dengan { dan akhiri dengan }.\n\n"
             "FORMAT WAJIB:\n"
             "{\n"
             '  "description": "...",\n'
-            '  "tech_stack": "Python + FastAPI",\n'
-            '  "files": ["main.py", "requirements.txt", "README.md"],\n'
-            '  "install_cmd": "pip install -r requirements.txt",\n'
-            '  "run_cmd": "python main.py",\n'
-            '  "test_cmd": "pytest",\n'
+            '  "tech_stack": "...",\n'
+            '  "files": ["file1.py", "file2.py"],\n'
+            '  "install_cmd": "...",\n'
+            '  "run_cmd": "...",\n'
+            '  "test_cmd": "...",\n'
             '  "project_type": "script"\n'
             "}\n\n"
-            "ATURAN:\n"
-            "- project_type: cli | fastapi | flask | script\n"
-            "- files: array of string\n"
-            f"- MAKSIMAL {MAX_FILES_PER_PROJ} file, idealnya 4-6 file saja\n"
+            "ATURAN PENTING:\n"
+            "- Project SEDERHANA (script/tool kecil): 4-8 file\n"
+            "- Project MENENGAH (web app, API beberapa endpoint): 15-30 file\n"
+            "- Project KOMPLEKS (sistem besar, banyak modul): 40-100 file\n"
+            "- PECAH modul besar jadi file-file kecil terpisah (folder src/, utils/, models/)\n"
+            "- Single Responsibility: 1 file = 1 tanggung jawab jelas\n"
+            "- project_type: cli | fastapi | flask | script | node\n"
+            f"- MAKSIMAL {MAX_FILES_PER_PROJ} file\n"
             "- Balas HANYA JSON\n"
         )
         user_plan = (
@@ -1028,7 +1275,7 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
 
         plan = None
         try:
-            raw_plan = tanya_ai(system_plan, user_plan, max_tokens=600, use_cache=False)
+            raw_plan = tanya_ai(system_plan, user_plan, max_tokens=1500, use_cache=False)
             print(f"[PLAN] Raw (300 chars): {raw_plan[:300]}")
             plan = parse_json_toleran(raw_plan)
             log(project_id, "✓ Planning JSON valid", "success")
@@ -1044,7 +1291,7 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
                     raw_retry = tanya_ai(
                         "JSON only. Start { end }.",
                         f"Project: {nama} - {deskripsi[:150]}\nJSON:",
-                        max_tokens=500, use_cache=False
+                        max_tokens=1000, use_cache=False
                     )
                     plan = parse_json_toleran(raw_retry)
                     log(project_id, "✓ Retry planning OK", "success")
@@ -1068,7 +1315,7 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
         description  = plan.get("description")   or deskripsi
         project_type = (plan.get("project_type") or "script").lower()
 
-        if project_type not in ["cli", "fastapi", "flask", "script"]:
+        if project_type not in ["cli", "fastapi", "flask", "script", "node"]:
             project_type = "script"
 
         log(project_id, f"Struktur: {len(daftar_file)} file", "info")
@@ -1089,79 +1336,93 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
         log(project_id, f"Folder: workspace/{nama}/", "folder")
         log(project_id, "Tahap 2: Generate file...", "loading")
 
+        # ✅ Dynamic threshold berdasarkan jumlah file
+        max_upstream_fail_dynamic = max(3, int(len(daftar_file) * MAX_UPSTREAM_FAIL_PERCENT))
+        log(project_id,
+            f"Toleransi upstream fail: {max_upstream_fail_dynamic}x "
+            f"(dari {len(daftar_file)} file)", "info")
+
         file_berhasil       = []
         file_gagal          = []
-        upstream_fail_count = 0
 
-        for idx, filename in enumerate(daftar_file, 1):
-            filename = str(filename).strip().lstrip("/")
-            if not filename:
-                continue
+        # ✅ Pilih mode: paralel atau sequential
+        use_parallel = (ENABLE_PARALLEL_GENERATION
+                        and len(daftar_file) >= PARALLEL_MIN_FILES
+                        and len(API_KEYS) >= 1)
 
-            # ✅ Skip sisanya jika terlalu banyak upstream failure
-            if upstream_fail_count >= MAX_UPSTREAM_FAIL_PER_BUILD:
-                log(project_id,
-                    f"⚠️ {upstream_fail_count}x upstream down — skip sisa file. "
-                    "POST /circuit-reset lalu 'Lanjutkan Project' untuk melanjutkan.",
-                    "warning")
-                for remaining in daftar_file[idx - 1:]:
-                    remaining = str(remaining).strip().lstrip("/")
-                    if remaining and remaining not in file_berhasil:
-                        file_gagal.append(remaining)
-                        placeholder = (
-                            f"# {remaining} — BELUM DIBUAT (provider down)\n"
-                            "# Gunakan 'Lanjutkan Project' saat provider pulih\n"
-                        )
-                        target = (project_dir / remaining).resolve()
-                        if str(target).startswith(str(project_dir.resolve())):
-                            target.parent.mkdir(parents=True, exist_ok=True)
-                            target.write_text(placeholder, encoding="utf-8")
-                break
+        if use_parallel:
+            file_berhasil, file_gagal = generate_files_parallel(
+                project_id, nama, deskripsi, daftar_file, project_dir
+            )
+        else:
+            upstream_fail_count = 0
+            for idx, filename in enumerate(daftar_file, 1):
+                filename = str(filename).strip().lstrip("/")
+                if not filename:
+                    continue
 
-            log(project_id, f"[{idx}/{len(daftar_file)}] {filename}...", "loading")
-            t_start = time.time()
-
-            try:
-                # ✅ Pakai wrapper dengan per-file retry
-                isi     = generate_satu_file_with_retry(nama, deskripsi, filename, daftar_file)
-                elapsed = time.time() - t_start
-                log(project_id, f"  ✓ {len(isi)} chars ({elapsed:.1f}s)", "success")
-                upstream_fail_count = 0  # reset on success
-
-            except Exception as e:
-                elapsed = time.time() - t_start
-                err_msg = str(e)[:200]
-                is_upstream = any(kw in err_msg for kw in [
-                    "🔴", "circuit", "502", "503", "504",
-                    "down", "upstream", "maintenance",
-                ])
-
-                if is_upstream:
-                    upstream_fail_count += 1
+                if upstream_fail_count >= max_upstream_fail_dynamic:
                     log(project_id,
-                        f"  ⚠️ Upstream ({upstream_fail_count}x): {err_msg[:80]}",
+                        f"⚠️ {upstream_fail_count}x upstream down — skip sisa file. "
+                        "POST /circuit-reset lalu 'Lanjutkan Project' untuk melanjutkan.",
                         "warning")
-                else:
-                    log(project_id, f"  ✗ Gagal: {err_msg[:100]}", "warning")
+                    for remaining in daftar_file[idx - 1:]:
+                        remaining = str(remaining).strip().lstrip("/")
+                        if remaining and remaining not in file_berhasil:
+                            file_gagal.append(remaining)
+                            placeholder = (
+                                f"# {remaining} — BELUM DIBUAT (provider down)\n"
+                                "# Gunakan 'Lanjutkan Project' saat provider pulih\n"
+                            )
+                            target = (project_dir / remaining).resolve()
+                            if str(target).startswith(str(project_dir.resolve())):
+                                target.parent.mkdir(parents=True, exist_ok=True)
+                                target.write_text(placeholder, encoding="utf-8")
+                    break
 
-                file_gagal.append(filename)
-                isi = (
-                    f"# {filename} — GAGAL GENERATE\n"
-                    f"# Error: {err_msg}\n"
-                    "# Gunakan 'Lanjutkan Project' untuk regenerate\n"
-                )
+                log(project_id, f"[{idx}/{len(daftar_file)}] {filename}...", "loading")
+                t_start = time.time()
 
-            target = (project_dir / filename).resolve()
-            if not str(target).startswith(str(project_dir.resolve())):
-                continue
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(isi, encoding="utf-8")
-            file_berhasil.append(filename)
-            log(project_id, f"  💾 {filename}", "file")
+                try:
+                    isi     = generate_satu_file_with_retry(nama, deskripsi, filename, daftar_file)
+                    elapsed = time.time() - t_start
+                    log(project_id, f"  ✓ {len(isi)} chars ({elapsed:.1f}s)", "success")
+                    upstream_fail_count = 0
 
-            with _log_lock:
-                projects[project_id]["files"] = file_berhasil.copy()
-                save_state()
+                except Exception as e:
+                    elapsed = time.time() - t_start
+                    err_msg = str(e)[:200]
+                    is_upstream = any(kw in err_msg for kw in [
+                        "🔴", "circuit", "502", "503", "504",
+                        "down", "upstream", "maintenance",
+                    ])
+
+                    if is_upstream:
+                        upstream_fail_count += 1
+                        log(project_id,
+                            f"  ⚠️ Upstream ({upstream_fail_count}x): {err_msg[:80]}",
+                            "warning")
+                    else:
+                        log(project_id, f"  ✗ Gagal: {err_msg[:100]}", "warning")
+
+                    file_gagal.append(filename)
+                    isi = (
+                        f"# {filename} — GAGAL GENERATE\n"
+                        f"# Error: {err_msg}\n"
+                        "# Gunakan 'Lanjutkan Project' untuk regenerate\n"
+                    )
+
+                target = (project_dir / filename).resolve()
+                if not str(target).startswith(str(project_dir.resolve())):
+                    continue
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(isi, encoding="utf-8")
+                file_berhasil.append(filename)
+                log(project_id, f"  💾 {filename}", "file")
+
+                with _log_lock:
+                    projects[project_id]["files"] = file_berhasil.copy()
+                    save_state()
 
         # ── Auto-add libs ke requirements.txt ──
         req_file = project_dir / "requirements.txt"
@@ -1197,7 +1458,6 @@ def buat_project_background(project_id: str, deskripsi: str, nama: str):
             json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8"
         )
 
-        # ── Install deps jika mayoritas file berhasil ──
         if len(file_gagal) < len(daftar_file) / 2 and req_file.exists():
             log(project_id, "Install dependencies...", "loading")
             hasil_install = jalankan_cmd(install_cmd, str(project_dir), timeout=180)
@@ -1279,10 +1539,45 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
             except Exception:
                 pass
 
-        semua_file = baca_semua_file(project_dir, max_chars=400)
+        semua_file    = baca_semua_file(project_dir, max_chars=400)
+        failed_files  = meta.get("failed_files", [])
+
+        # ✅ Jika ada file gagal sebelumnya, prioritaskan regenerate itu dulu
+        if failed_files:
+            log(project_id, f"Regenerate {len(failed_files)} file yang gagal...", "lanjut")
+            daftar_semua = meta.get("files", []) or list(semua_file.keys())
+
+            regenerated = []
+            regen_failed = []
+            for fname in failed_files:
+                fname = str(fname).strip().lstrip("/")
+                log(project_id, f"Regenerate: {fname}...", "loading")
+                try:
+                    isi = generate_satu_file_with_retry(nama, meta.get("deskripsi", permintaan),
+                                                        fname, daftar_semua)
+                    target = (project_dir / fname).resolve()
+                    if str(target).startswith(str(project_dir.resolve())):
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        target.write_text(isi, encoding="utf-8")
+                        regenerated.append(fname)
+                        log(project_id, f"  ✓ {fname} berhasil", "success")
+                except Exception as e:
+                    regen_failed.append(fname)
+                    log(project_id, f"  ✗ {fname} masih gagal: {str(e)[:100]}", "warning")
+
+            meta["failed_files"] = regen_failed
+            meta_file.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+
+            if not permintaan or permintaan.strip() == "":
+                log(project_id, f"Regenerate selesai: {len(regenerated)} berhasil, "
+                                 f"{len(regen_failed)} masih gagal", "done")
+                with _log_lock:
+                    projects[project_id]["status"] = "done" if not regen_failed else "partial"
+                    save_state()
+                return
 
         system_lanjut = (
-            "Kamu programmer Python expert.\n\n"
+            "Kamu programmer expert.\n\n"
             "TUGAS: Balas HANYA JSON valid. TIDAK ADA teks lain.\n"
             "TIDAK ADA ```json, TIDAK ADA markdown.\n"
             "Mulai dengan { akhiri dengan }.\n\n"
@@ -1386,7 +1681,7 @@ def lanjut_project_background(project_id: str, nama: str, permintaan: str):
         meta["files"]           = all_files
         meta["run_cmd"]         = run_cmd
         meta["last_modified"]   = datetime.now().isoformat()
-        meta["failed_files"]    = []  # reset setelah lanjut berhasil
+        meta["failed_files"]    = meta.get("failed_files", [])
         meta_file.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
 
         with _log_lock:
@@ -1666,13 +1961,16 @@ async def get_stats():
             "total_opens": circuit_info["total_opens"],
         },
         "system"  : {
-            "port_range"        : f"{PORT_START}-{PORT_END}",
-            "rate_limit"        : f"{RATE_LIMIT_PER_MIN}/min",
-            "cache_ttl"         : f"{CACHE_TTL_SECONDS}s",
-            "upstream_max_retry": UPSTREAM_MAX_RETRY,
-            "circuit_threshold" : CIRCUIT_BREAKER_THRESHOLD,
-            "circuit_timeout"   : CIRCUIT_BREAKER_TIMEOUT,
-            "max_file_retry"    : MAX_FILE_RETRY,
+            "port_range"          : f"{PORT_START}-{PORT_END}",
+            "rate_limit"          : f"{RATE_LIMIT_PER_MIN}/min",
+            "cache_ttl"           : f"{CACHE_TTL_SECONDS}s",
+            "upstream_max_retry"  : UPSTREAM_MAX_RETRY,
+            "circuit_threshold"   : CIRCUIT_BREAKER_THRESHOLD,
+            "circuit_timeout"     : CIRCUIT_BREAKER_TIMEOUT,
+            "max_file_retry"      : MAX_FILE_RETRY,
+            "max_lines_per_file"  : MAX_LINES_PER_FILE,
+            "parallel_enabled"    : ENABLE_PARALLEL_GENERATION,
+            "api_key_count"       : len(API_KEYS),
         },
     })
 
@@ -2124,17 +2422,20 @@ def cleanup_on_shutdown():
 
 # ================================================
 print("=" * 60)
-print("🚀 AI Project Maker ULTIMATE Edition v2.3")
+print("🚀 AI Project Maker ULTIMATE Edition v2.4")
 print("=" * 60)
-print(f"✨ Cache TTL       : {CACHE_TTL_SECONDS}s")
-print(f"🛡️  Rate limit     : {RATE_LIMIT_PER_MIN}/menit per IP")
-print(f"💾 Auto backup     : sebelum modifikasi")
-print(f"🧹 Auto cleanup    : idle {AUTO_CLEANUP_MIN} menit")
-print(f"🔴 Circuit breaker : threshold={CIRCUIT_BREAKER_THRESHOLD} | "
+print(f"✨ Cache TTL          : {CACHE_TTL_SECONDS}s")
+print(f"🛡️  Rate limit        : {RATE_LIMIT_PER_MIN}/menit per IP")
+print(f"💾 Auto backup        : sebelum modifikasi")
+print(f"🧹 Auto cleanup       : idle {AUTO_CLEANUP_MIN} menit")
+print(f"🔴 Circuit breaker    : threshold={CIRCUIT_BREAKER_THRESHOLD} | "
       f"timeout={CIRCUIT_BREAKER_TIMEOUT}s")
-print(f"⚡ Upstream retry  : {UPSTREAM_MAX_RETRY}x | backoff cap {UPSTREAM_MAX_WAIT}s")
-print(f"🔁 File retry      : {MAX_FILE_RETRY}x per file (upstream error)")
-print(f"⛔ Skip threshold  : {MAX_UPSTREAM_FAIL_PER_BUILD}x upstream fail → skip sisanya")
-print(f"✂️  Max lines/file  : {MAX_LINES_PER_FILE} | split file kompleks otomatis")
-print(f"📊 Stats           : /stats | Circuit: /circuit-status | /circuit-reset")
+print(f"⚡ Upstream retry     : {UPSTREAM_MAX_RETRY}x | backoff cap {UPSTREAM_MAX_WAIT}s")
+print(f"🔁 File retry         : {MAX_FILE_RETRY}x per file (upstream error)")
+print(f"⛔ Skip threshold     : {MAX_UPSTREAM_FAIL_PERCENT*100:.0f}% dynamic (min 3)")
+print(f"✂️  Max lines/file     : {MAX_LINES_PER_FILE} | chunking otomatis untuk file besar")
+print(f"📦 Chunk size         : {CHUNK_SIZE_LINES} baris/chunk, max {MAX_CHUNKS_PER_FILE} chunks")
+print(f"🚀 Parallel gen       : {'ON' if ENABLE_PARALLEL_GENERATION else 'OFF'} "
+      f"(min {PARALLEL_MIN_FILES} file, {len(API_KEYS)} API key)")
+print(f"📊 Stats              : /stats | Circuit: /circuit-status | /circuit-reset")
 print("=" * 60)
