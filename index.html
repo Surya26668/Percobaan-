@@ -3,136 +3,252 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🎓 AI Project Maker</title>
+  <title>🚀 AI Project Maker — ULTIMATE v3.0</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
-
-    header{background:linear-gradient(135deg,#1e40af,#7c3aed);padding:18px 28px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-    header h1{font-size:1.4rem;font-weight:700}
-    header p{font-size:.8rem;opacity:.85;margin-top:3px}
-    .key-badge{background:rgba(255,255,255,.15);border-radius:8px;padding:6px 14px;font-size:.78rem;cursor:pointer;border:1px solid rgba(255,255,255,.2)}
-    .key-badge:hover{background:rgba(255,255,255,.25)}
-
-    .container{display:grid;grid-template-columns:360px 1fr;height:calc(100vh - 70px)}
-
-    .sidebar{background:#1e293b;border-right:1px solid #334155;padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:16px}
-
-    .mode-tabs{display:flex;gap:8px}
-    .mode-tab{flex:1;padding:9px;border-radius:8px;border:2px solid #334155;background:transparent;color:#64748b;font-size:.82rem;font-weight:700;cursor:pointer;transition:.2s;text-align:center}
+    header{background:linear-gradient(135deg,#1e40af,#7c3aed,#ec4899);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;box-shadow:0 4px 20px rgba(0,0,0,.3)}
+    header h1{font-size:1.4rem;font-weight:800;display:flex;align-items:center;gap:8px}
+    header .version{font-size:.65rem;background:rgba(255,255,255,.2);padding:2px 8px;border-radius:6px;font-weight:700}
+    header p{font-size:.78rem;opacity:.85;margin-top:2px}
+    .header-right{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+    .badge-btn{background:rgba(255,255,255,.15);border-radius:8px;padding:6px 12px;font-size:.75rem;cursor:pointer;border:1px solid rgba(255,255,255,.2);transition:.2s;color:#fff;font-weight:600}
+    .badge-btn:hover{background:rgba(255,255,255,.25);transform:translateY(-1px)}
+    .status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
+    .status-dot.online{background:#4ade80;box-shadow:0 0 6px #4ade80}
+    .status-dot.offline{background:#f87171;box-shadow:0 0 6px #f87171}
+    .status-dot.checking{background:#fbbf24;animation:pulse 1s infinite}
+    @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .container{display:grid;grid-template-columns:400px 1fr;height:calc(100vh - 74px)}
+    @media(max-width:900px){.container{grid-template-columns:1fr;height:auto}}
+    .sidebar{background:#1e293b;border-right:1px solid #334155;padding:18px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
+    .mode-tabs{display:flex;gap:6px}
+    .mode-tab{flex:1;padding:9px;border-radius:8px;border:2px solid #334155;background:transparent;color:#64748b;font-size:.78rem;font-weight:700;cursor:pointer;transition:.2s;text-align:center}
     .mode-tab.active{border-color:#6366f1;background:#1e1b4b;color:#818cf8}
     .mode-panel{display:none}
-    .mode-panel.active{display:flex;flex-direction:column;gap:14px}
-
-    label{display:block;font-size:.75rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px}
-    input,textarea{width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;padding:9px 12px;font-size:.88rem;resize:vertical;transition:border-color .2s}
-    input:focus,textarea:focus{outline:none;border-color:#6366f1}
-    textarea{min-height:110px}
-
-    .chip-label{font-size:.72rem;color:#475569;margin-bottom:6px;font-weight:600}
-    .chip-list{display:flex;flex-wrap:wrap;gap:6px}
-    .chip{background:#1e3a5f;border:1px solid #2563eb;color:#93c5fd;border-radius:999px;padding:3px 10px;font-size:.72rem;cursor:pointer;transition:.2s}
-    .chip:hover{background:#2563eb;color:#fff}
-
-    .btn{width:100%;padding:11px;border-radius:9px;border:none;font-size:.95rem;font-weight:700;cursor:pointer;transition:opacity .2s,transform .1s}
+    .mode-panel.active{display:flex;flex-direction:column;gap:12px}
+    label{display:block;font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+    input,textarea,select{width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;padding:9px 12px;font-size:.86rem;resize:vertical;transition:border-color .2s;font-family:inherit}
+    input:focus,textarea:focus,select:focus{outline:none;border-color:#6366f1}
+    textarea{min-height:80px}
+    select option{background:#0f172a;color:#e2e8f0}
+    .chip-label{font-size:.7rem;color:#475569;margin-bottom:5px;font-weight:600}
+    .chip-list{display:flex;flex-wrap:wrap;gap:5px}
+    .chip{background:#1e3a5f;border:1px solid #2563eb;color:#93c5fd;border-radius:999px;padding:3px 10px;font-size:.7rem;cursor:pointer;transition:.15s}
+    .chip:hover{background:#2563eb;color:#fff;transform:translateY(-1px)}
+    .btn{width:100%;padding:11px;border-radius:9px;border:none;font-size:.9rem;font-weight:700;cursor:pointer;transition:opacity .2s,transform .1s}
     .btn:hover{opacity:.92;transform:translateY(-1px)}
     .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
     .btn-primary{background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff}
     .btn-green{background:linear-gradient(135deg,#059669,#10b981);color:#fff}
-    .btn-red{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff;margin-top:6px}
-
-    .project-list-wrap{display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto}
-    .project-card{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:10px 12px;cursor:pointer;transition:.2s}
-    .project-card:hover{border-color:#6366f1;background:#1e1b4b}
-    .project-card.selected{border-color:#6366f1;background:#1e1b4b}
-    .project-card .pname{font-size:.85rem;font-weight:700;color:#93c5fd}
-    .project-card .ptech{font-size:.72rem;color:#475569;margin-top:2px}
-    .project-card .pfiles{font-size:.7rem;color:#334155;margin-top:2px}
-
+    .btn-red{background:linear-gradient(135deg,#dc2626,#ef4444);color:#fff}
+    .btn-gray{background:#374151;color:#fff}
+    .btn-blue{background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff}
+    .btn-yellow{background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff}
+    .btn-figma{background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff}
+    .btn-sm{padding:6px 12px;font-size:.75rem;width:auto;border-radius:6px}
+    .btn-xs{padding:4px 8px;font-size:.68rem;width:auto;border-radius:5px}
+    .btn-group{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
     .main-panel{display:flex;flex-direction:column;overflow:hidden}
-    .tabs{display:flex;background:#1e293b;border-bottom:1px solid #334155}
-    .tab{padding:13px 22px;font-size:.82rem;font-weight:600;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;transition:.2s}
+    .tabs{display:flex;background:#1e293b;border-bottom:1px solid #334155;overflow-x:auto}
+    .tab{padding:12px 18px;font-size:.78rem;font-weight:600;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;transition:.2s;white-space:nowrap}
     .tab:hover{color:#e2e8f0}
     .tab.active{color:#818cf8;border-bottom-color:#818cf8}
-    .tab-content{flex:1;overflow-y:auto;display:none;padding:20px}
+    .tab-badge{display:inline-block;background:#22c55e;color:#fff;border-radius:999px;font-size:.6rem;padding:1px 6px;margin-left:4px;font-weight:700}
+    .tab-badge.live{background:#dc2626;animation:pulse 1.5s infinite}
+    .tab-content{flex:1;overflow-y:auto;display:none;padding:18px}
     .tab-content.active{display:block}
-
-    #log-panel{background:#020617;border-radius:10px;padding:14px;font-family:'Consolas',monospace;font-size:.8rem;line-height:1.8;min-height:200px;white-space:pre-wrap;word-break:break-word}
+    #log-panel{background:#020617;border-radius:10px;padding:14px;font-family:'Consolas','Courier New',monospace;font-size:.78rem;line-height:1.7;min-height:200px;white-space:pre-wrap;word-break:break-word}
     .log-loading{color:#facc15}
     .log-success{color:#4ade80}
     .log-error{color:#f87171}
     .log-warning{color:#fb923c}
-    .log-fix{color:#a78bfa}
-    .log-file{color:#38bdf8}
-    .log-folder{color:#818cf8}
-    .log-run{color:#f0abfc}
-    .log-done{color:#34d399;font-weight:bold}
     .log-info{color:#94a3b8}
-    .log-lanjut{color:#22d3ee}
-
+    .log-figma{color:#a855f7}
+    .log-done{color:#34d399;font-weight:bold}
+    .file-progress{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:14px;margin-bottom:12px}
+    .file-progress h3{font-size:.78rem;color:#64748b;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+    .file-progress-list{display:flex;flex-direction:column;gap:6px}
+    .file-progress-item{display:flex;align-items:center;gap:10px;padding:6px 10px;background:#0f172a;border-radius:6px;font-size:.78rem}
+    .file-progress-item .icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+    .file-progress-item.pending{color:#64748b}
+    .file-progress-item.loading{color:#fbbf24;background:linear-gradient(90deg,#1e293b,#422006)}
+    .file-progress-item.done{color:#4ade80;background:linear-gradient(90deg,#0f172a,#052e16)}
+    .file-progress-item.failed{color:#f87171;background:linear-gradient(90deg,#0f172a,#450a0a)}
+    .file-progress-item .time{margin-left:auto;font-size:.68rem;color:#64748b}
+    .spinner-mini{width:14px;height:14px;border:2px solid #334155;border-top-color:#fbbf24;border-radius:50%;animation:spin .8s linear infinite}
     .file-tree{display:flex;flex-direction:column;gap:4px}
     .file-item{background:#1e293b;border:1px solid #334155;border-radius:8px;overflow:hidden}
-    .file-header{padding:9px 13px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:.82rem;font-weight:600;color:#93c5fd;transition:background .15s}
+    .file-header{padding:9px 13px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:.8rem;font-weight:600;color:#93c5fd}
     .file-header:hover{background:#273549}
-    .file-size{margin-left:auto;font-size:.7rem;color:#475569;font-weight:400}
-    .file-code{display:none;background:#020617;padding:12px;font-family:'Consolas',monospace;font-size:.78rem;color:#e2e8f0;overflow-x:auto;white-space:pre;border-top:1px solid #334155;max-height:360px;overflow-y:auto}
-
-    .info-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:18px;margin-bottom:14px}
-    .info-card h3{font-size:.78rem;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em}
-    .info-row{display:flex;gap:10px;margin-bottom:7px;align-items:flex-start}
-    .info-label{font-size:.78rem;color:#64748b;min-width:80px}
-    .info-value{font-size:.82rem;color:#e2e8f0}
-    .cmd-box{background:#020617;border-radius:6px;padding:8px 12px;font-family:monospace;font-size:.8rem;color:#4ade80;margin-top:8px}
-
-    /* BADGE — didefinisikan di CSS utama (fix bug sebelumnya) */
-    .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700}
+    .file-size{margin-left:auto;font-size:.68rem;color:#475569}
+    .file-actions{display:flex;gap:4px;margin-left:6px}
+    .file-actions button{background:#334155;color:#fff;border:none;padding:3px 8px;border-radius:4px;font-size:.65rem;cursor:pointer}
+    .file-actions button:hover{background:#475569}
+    .file-actions button.edit{background:#2563eb}
+    .file-actions button.del{background:#dc2626}
+    .file-code{display:none;background:#020617;padding:12px;font-family:'Consolas','Courier New',monospace;font-size:.76rem;color:#e2e8f0;overflow-x:auto;white-space:pre;border-top:1px solid #334155;max-height:400px;overflow-y:auto}
+    .file-editor{display:none}
+    .file-editor textarea{background:#020617;color:#e2e8f0;font-family:monospace;font-size:.75rem;border:none;border-top:1px solid #334155;padding:12px;min-height:300px;border-radius:0;resize:vertical;width:100%}
+    .file-editor .editor-actions{padding:8px;background:#1e293b;display:flex;gap:6px;justify-content:flex-end}
+    .info-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px;margin-bottom:12px}
+    .info-card h3{font-size:.76rem;color:#64748b;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+    .info-row{display:flex;gap:10px;margin-bottom:6px;align-items:flex-start}
+    .info-label{font-size:.76rem;color:#64748b;min-width:80px;flex-shrink:0}
+    .info-value{font-size:.8rem;color:#e2e8f0;word-break:break-all}
+    .cmd-box{background:#020617;border-radius:6px;padding:8px 12px;font-family:'Consolas',monospace;font-size:.78rem;color:#4ade80;margin-top:8px;word-break:break-all}
+    .badge{display:inline-block;padding:3px 10px;border-radius:999px;font-size:.7rem;font-weight:700}
     .badge-loading{background:#422006;color:#fbbf24}
     .badge-done{background:#052e16;color:#4ade80}
     .badge-error{background:#450a0a;color:#f87171}
-
-    .key-card{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
-    .key-card.active-key{border-color:#22c55e}
-    .key-dot{width:10px;height:10px;border-radius:50%;background:#334155;flex-shrink:0}
-    .key-dot.green{background:#22c55e}
+    .badge-running{background:#052e16;color:#4ade80;animation:pulse 2s infinite}
+    .badge-stopped{background:#1e293b;color:#94a3b8}
+    .running-card{background:linear-gradient(135deg,#052e16,#064e3b);border:1px solid #22c55e;border-radius:10px;padding:14px;margin-bottom:12px}
+    .running-card .r-title{color:#4ade80;font-weight:700;font-size:.88rem;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+    .running-card .r-url{background:#020617;border-radius:6px;padding:10px 14px;font-family:monospace;color:#38bdf8;font-size:.82rem;word-break:break-all;text-decoration:none;display:block;margin-bottom:8px;border:1px solid #1e293b}
+    .upload-zone{border:2px dashed #475569;border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:.2s;background:#0f172a}
+    .upload-zone:hover{border-color:#6366f1;background:#1e1b4b}
+    .upload-zone.dragover{border-color:#a855f7;background:#3b0764}
+    .upload-zone .upload-icon{font-size:2rem;margin-bottom:8px}
+    .upload-zone p{font-size:.82rem;color:#94a3b8}
+    .upload-zone .upload-hint{font-size:.7rem;color:#64748b;margin-top:4px}
+    .merge-section{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:12px;margin-top:8px}
+    .merge-section h4{font-size:.78rem;color:#818cf8;margin-bottom:8px}
+    .merge-options{display:flex;flex-direction:column;gap:6px}
+    .merge-option{display:flex;align-items:center;gap:8px;padding:8px;background:#1e293b;border-radius:6px;cursor:pointer;border:1px solid transparent;transition:.15s}
+    .merge-option:hover{border-color:#6366f1}
+    .merge-option.selected{border-color:#a855f7;background:#3b0764}
+    .merge-option .opt-icon{font-size:1.1rem}
+    .merge-option .opt-info{flex:1}
+    .merge-option .opt-title{font-size:.8rem;color:#e2e8f0;font-weight:600}
+    .merge-option .opt-desc{font-size:.68rem;color:#64748b}
+    .toast{position:fixed;bottom:20px;right:20px;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px 18px;font-size:.82rem;z-index:9999;display:none;box-shadow:0 8px 24px rgba(0,0,0,.5);max-width:360px}
+    .toast.show{display:block;animation:slideIn .3s ease}
+    .toast.toast-ok{border-color:#22c55e;color:#4ade80}
+    .toast.toast-err{border-color:#ef4444;color:#f87171}
+    .toast.toast-info{border-color:#3b82f6;color:#60a5fa}
+    @keyframes slideIn{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+    .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;display:none;align-items:center;justify-content:center;padding:20px}
+    .modal-overlay.show{display:flex}
+    .modal{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:24px;max-width:600px;width:100%;max-height:80vh;overflow-y:auto}
+    .modal h3{margin-bottom:14px;font-size:1.05rem;color:#e2e8f0}
+    .modal p{font-size:.85rem;color:#94a3b8;margin-bottom:14px}
+    .modal-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+    .preview-toolbar{background:#1e293b;border-bottom:1px solid #334155;padding:9px 12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    .preview-url{flex:1;background:#020617;border:1px solid #334155;border-radius:6px;padding:6px 12px;font-family:monospace;font-size:.76rem;color:#38bdf8;min-width:180px;outline:none}
+    .preview-url:focus{border-color:#6366f1}
+    .preview-btn{background:#334155;border:none;color:#e2e8f0;padding:6px 10px;border-radius:6px;font-size:.72rem;cursor:pointer;font-weight:600;white-space:nowrap}
+    .preview-btn:hover{background:#475569}
+    .preview-btn.active{background:#6366f1;color:#fff}
+    .preview-btn.danger{background:#dc2626}
+    .preview-frame-wrap{flex:1;background:#94a3b8;overflow:auto;display:flex;position:relative}
+    .preview-iframe{width:100%;height:100%;border:none;background:#fff;display:block}
+    .preview-iframe.mobile{max-width:390px;margin:0 auto;box-shadow:0 0 20px rgba(0,0,0,.3)}
+    .preview-iframe.tablet{max-width:768px;margin:0 auto;box-shadow:0 0 20px rgba(0,0,0,.3)}
+    .ws-indicator{position:fixed;bottom:15px;left:15px;background:#1e293b;border:1px solid #334155;border-radius:20px;padding:5px 12px;font-size:.7rem;display:flex;align-items:center;gap:6px;z-index:100}
+    .ws-indicator.connected{border-color:#22c55e;color:#4ade80}
+    .ws-indicator.disconnected{border-color:#ef4444;color:#f87171}
+    .progress-wrap{background:#334155;border-radius:999px;height:3px;overflow:hidden;margin-top:4px}
+    .progress-bar{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6,#ec4899);border-radius:999px;transition:width .4s;background-size:200% 100%;animation:shimmer 2s linear infinite}
+    @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    .empty{text-align:center;color:#475569;padding:40px 20px}
+    .empty .icon{font-size:2.5rem;margin-bottom:10px}
+    .empty p{font-size:.85rem}
+    .cancel-floating{position:sticky;bottom:0;background:linear-gradient(180deg,transparent,#020617 30%);padding:20px 0 0;margin-top:15px;text-align:center}
+    .cancel-floating .btn{max-width:280px;display:inline-block}
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+    .stat-card{background:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid #334155;border-radius:10px;padding:14px;text-align:center}
+    .stat-card .icon{font-size:1.3rem;margin-bottom:4px}
+    .stat-card .value{font-size:1.3rem;font-weight:800}
+    .stat-card .label{font-size:.65rem;color:#64748b;margin-top:2px}
+    .stat-card.success{border-color:#22c55e}.stat-card.success .value{color:#4ade80}
+    .stat-card.warn{border-color:#f59e0b}.stat-card.warn .value{color:#fbbf24}
+    .stat-card.error{border-color:#ef4444}.stat-card.error .value{color:#f87171}
+    .stat-card.info{border-color:#3b82f6}.stat-card.info .value{color:#60a5fa}
+    .key-card{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:8px}
+    .key-card.active-key{border-color:#22c55e;background:linear-gradient(135deg,#1e293b,#052e16)}
+    .key-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    .key-dot.green{background:#22c55e;box-shadow:0 0 4px #22c55e}
     .key-dot.yellow{background:#f59e0b}
     .key-dot.red{background:#ef4444}
-    .key-info{flex:1}
-    .key-info .kurl{font-size:.78rem;color:#64748b}
-    .key-info .kmodel{font-size:.82rem;color:#93c5fd;font-weight:600}
-    .key-info .khint{font-size:.72rem;color:#475569;font-family:monospace}
-    .key-err{font-size:.72rem;color:#f87171}
+    .key-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding-top:8px;border-top:1px solid #334155;margin-top:8px}
+    .key-metric{text-align:center;background:#0f172a;padding:6px;border-radius:4px}
+    .key-metric .val{font-size:.85rem;font-weight:700}
+    .key-metric .lbl{color:#64748b;font-size:.6rem}
+    .val-ok{color:#4ade80}
+    .val-err{color:#f87171}
+    .val-info{color:#38bdf8}
+    .mode-tab[data-mode="mode-upload"]{border-color:#10b981;color:#6ee7b7}
+    .mode-tab[data-mode="mode-upload"].active{background:#052e16;border-color:#10b981;color:#6ee7b7}
+    .mode-tab[data-mode="mode-figma"]{border-color:#7c3aed;color:#c084fc}
+    .mode-tab[data-mode="mode-figma"].active{background:#3b0764;border-color:#a855f7;color:#c084fc}
 
-    .progress-wrap{background:#334155;border-radius:999px;height:3px;overflow:hidden;margin-top:4px}
-    .progress-bar{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6);border-radius:999px;transition:width .4s}
-
-    .empty{text-align:center;color:#475569;padding:50px 20px}
-    .empty .icon{font-size:2.5rem;margin-bottom:10px}
-    .empty p{font-size:.88rem}
-
-    ::-webkit-scrollbar{width:5px;height:5px}
-    ::-webkit-scrollbar-track{background:#0f172a}
-    ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+    /* ── API URL CONFIG ──────────────────────────────────── */
+    .api-config{position:fixed;top:74px;right:0;background:#1e293b;border:1px solid #334155;border-radius:0 0 0 10px;padding:12px 16px;z-index:100;display:none;box-shadow:0 4px 12px rgba(0,0,0,.3);min-width:300px}
+    .api-config.show{display:block}
+    .api-config h4{font-size:.82rem;color:#818cf8;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+    .api-config input{font-size:.78rem;padding:8px 10px}
+    .api-config .api-status{font-size:.7rem;margin-top:6px;padding:6px 8px;border-radius:4px;background:#0f172a}
+    .api-config .api-actions{display:flex;gap:6px;margin-top:8px}
+    .api-saved{color:#4ade80}
+    .api-error{color:#f87171}
+    .api-connecting{color:#fbbf24}
   </style>
 </head>
 <body>
 
 <header>
   <div>
-    <h1>🎓 AI Project Maker</h1>
-    <p>Generate &amp; kembangkan project kuliah tingkat tinggi otomatis</p>
+    <h1>🚀 AI Project Maker <span class="version">v3.0</span></h1>
+    <p>Generate · Kembangkan · Upload Merge · Figma Sync · Live Preview</p>
   </div>
-  <div class="key-badge" id="btn-key-header">🔑 API Keys</div>
+  <div class="header-right">
+    <span id="server-status">
+      <span class="status-dot checking"></span>
+      <span style="font-size:.75rem">Mengecek...</span>
+    </span>
+    <div class="badge-btn" id="btn-api-config" style="background:rgba(234,179,8,.3);border-color:rgba(234,179,8,.5)">⚙️ API</div>
+    <div class="badge-btn" id="btn-stats" style="background:rgba(59,130,246,.3)">📊 Stats</div>
+    <div class="badge-btn" id="btn-test-ai" style="background:rgba(16,185,129,.3)">🧪 Test AI</div>
+    <div class="badge-btn" id="btn-key-header" style="background:rgba(139,92,246,.3)">🔑 Keys</div>
+  </div>
 </header>
+
+<!-- API Config Panel -->
+<div class="api-config" id="api-config-panel">
+  <h4>⚙️ Backend API Configuration</h4>
+  <label>🌐 API URL Backend</label>
+  <input type="text" id="api-url-input" placeholder="https://your-backend.com" />
+  <div class="api-status" id="api-status">
+    <span class="api-connecting">Masukkan URL backend server...</span>
+  </div>
+  <div class="api-actions">
+    <button class="btn btn-blue btn-sm" onclick="testApiConnection()">🔌 Test</button>
+    <button class="btn btn-green btn-sm" onclick="saveApiUrl()">💾 Simpan</button>
+    <button class="btn btn-gray btn-sm" onclick="toggleApiConfig()">✕</button>
+  </div>
+  <div style="margin-top:10px;font-size:.68rem;color:#64748b">
+    <p>💡 Contoh URL:</p>
+    <p>• <code>http://localhost:8000</code> (local)</p>
+    <p>• <code>https://api.yourdomain.com</code> (hosting)</p>
+    <p>• <code>https://your-project.up.railway.app</code> (Railway)</p>
+    <p>• <code>https://your-app.onrender.com</code> (Render)</p>
+  </div>
+</div>
 
 <div class="container">
   <aside class="sidebar">
-
-    <div class="mode-tabs">
-      <div class="mode-tab active" id="tab-mode-baru"   onclick="ganti_mode('mode-baru',   this)">➕ Buat Baru</div>
-      <div class="mode-tab"       id="tab-mode-lanjut"  onclick="ganti_mode('mode-lanjut', this); muat_project_list()">🔄 Lanjutkan</div>
+    <div class="mode-tabs" style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+      <div class="mode-tab active" data-mode="mode-baru">➕ Buat Baru</div>
+      <div class="mode-tab" data-mode="mode-lanjut">🔄 Lanjutkan</div>
+    </div>
+    <div class="mode-tabs" style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+      <div class="mode-tab" data-mode="mode-upload">📤 Upload</div>
+      <div class="mode-tab" data-mode="mode-figma">🎨 Figma</div>
     </div>
 
-    <!-- MODE: BUAT BARU -->
+    <!-- Panel Baru -->
     <div class="mode-panel active" id="mode-baru">
       <div>
         <label>📌 Nama Project</label>
@@ -146,18 +262,18 @@
         <p class="chip-label">💡 Contoh Cepat</p>
         <div class="chip-list" id="chips-baru"></div>
       </div>
-      <button class="btn btn-primary" id="btn-buat" onclick="buatProject()">🚀 Generate Project</button>
+      <button class="btn btn-primary" id="btn-buat">🚀 Generate Project</button>
       <div class="progress-wrap" id="pw-baru" style="display:none">
         <div class="progress-bar" id="pb-baru" style="width:5%"></div>
       </div>
     </div>
 
-    <!-- MODE: LANJUTKAN -->
+    <!-- Panel Lanjut -->
     <div class="mode-panel" id="mode-lanjut">
       <div>
-        <label>📂 Pilih Project Yang Ada</label>
-        <div class="project-list-wrap" id="project-list">
-          <div class="empty"><p>Klik tab Lanjutkan untuk muat list.</p></div>
+        <label>📂 Pilih Project</label>
+        <div id="project-list" style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:5px">
+          <div class="empty"><p style="font-size:.78rem">Klik tab ini untuk muat list.</p></div>
         </div>
       </div>
       <div>
@@ -172,33 +288,157 @@
         <p class="chip-label">💡 Contoh Pengembangan</p>
         <div class="chip-list" id="chips-lanjut"></div>
       </div>
-      <button class="btn btn-green" id="btn-lanjut" onclick="lanjutProject()">🔄 Kembangkan Project</button>
+      <button class="btn btn-green" id="btn-lanjut">🔄 Kembangkan Project</button>
       <div class="progress-wrap" id="pw-lanjut" style="display:none">
         <div class="progress-bar" id="pb-lanjut" style="width:5%"></div>
       </div>
     </div>
 
+    <!-- Panel Figma -->
+    <div class="mode-panel" id="mode-figma">
+      <div style="background:linear-gradient(135deg,#1e1b4b,#3b0764);border:1px solid #7c3aed;border-radius:10px;padding:16px">
+        <h3 style="color:#c084fc;font-size:.85rem;margin-bottom:12px">🎨 Figma Design → Code</h3>
+        <div>
+          <label>🔗 URL Figma File</label>
+          <input type="text" id="figma-url" placeholder="https://www.figma.com/file/..."/>
+        </div>
+        <div style="margin-top:10px">
+          <label>📸 Upload Desain</label>
+          <div class="upload-zone" id="upload-zone">
+            <div class="upload-icon">📤</div>
+            <p>Klik atau drag & drop gambar desain</p>
+            <div class="upload-hint">PNG, JPG, SVG • Max 10MB</div>
+          </div>
+          <input type="file" id="design-file-input" accept="image/*,.svg" style="display:none"/>
+          <div id="uploaded-design-preview" style="display:none;margin-top:8px">
+            <img id="uploaded-design-img" src="" alt="Design" style="width:100%;max-height:200px;object-fit:contain;border-radius:6px"/>
+            <button class="btn btn-gray btn-xs" onclick="clearUploadedDesign()" style="margin-top:6px">🗑️ Hapus</button>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <label>📁 Merge ke Project</label>
+          <select id="figma-target-project"><option value="">-- Buat project baru --</option></select>
+        </div>
+        <div class="merge-section">
+          <h4>🔀 Mode Merge</h4>
+          <div class="merge-options">
+            <div class="merge-option selected" data-mode="replace"><span class="opt-icon">🔄</span><div class="opt-info"><div class="opt-title">Replace UI</div><div class="opt-desc">Ganti HTML/CSS dengan desain baru</div></div></div>
+            <div class="merge-option" data-mode="merge"><span class="opt-icon">🔀</span><div class="opt-info"><div class="opt-title">Merge Design</div><div class="opt-desc">Gabungkan desain dengan kode existing</div></div></div>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btn-figma-generate" style="margin-top:10px">🚀 Generate & Merge ke Code</button>
+        <div class="progress-wrap" id="pw-figma" style="display:none"><div class="progress-bar" id="pb-figma" style="width:5%"></div></div>
+      </div>
+    </div>
+
+    <!-- Panel Upload -->
+    <div class="mode-panel" id="mode-upload">
+      <div style="background:linear-gradient(135deg,#064e3b,#052e16);border:1px solid #10b981;border-radius:10px;padding:16px">
+        <h3 style="color:#6ee7b7;font-size:.85rem;margin-bottom:10px">📤 Upload & Merge Code</h3>
+        <div class="upload-zone" id="code-upload-zone" style="border-color:#10b981">
+          <div class="upload-icon">📁</div>
+          <p>Drag & drop file/folder/ZIP di sini</p>
+          <div class="upload-hint">.py .html .css .js .json .zip • Multiple files OK</div>
+        </div>
+        <input type="file" id="code-file-input" multiple style="display:none"/>
+        <input type="file" id="code-folder-input" webkitdirectory style="display:none"/>
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="btn btn-gray btn-xs" onclick="document.getElementById('code-file-input').click()" style="flex:1">📄 Files</button>
+          <button class="btn btn-gray btn-xs" onclick="document.getElementById('code-folder-input').click()" style="flex:1">📂 Folder</button>
+          <button class="btn btn-red btn-xs" onclick="clearUploadedCode()" style="flex:0;width:auto">🗑️</button>
+        </div>
+        <div id="uploaded-code-list" style="display:none;margin-top:10px">
+          <label>📋 File Terupload (<span id="uploaded-count">0</span>)</label>
+          <div id="uploaded-files-tree" style="max-height:200px;overflow-y:auto;background:#0f172a;border-radius:6px;padding:8px;font-size:.72rem;font-family:monospace"></div>
+          <div style="display:flex;gap:8px;margin-top:6px;font-size:.7rem;color:#64748b">
+            <span>📦 Total: <b id="uploaded-total-size">0 KB</b></span>
+            <span>📄 <b id="uploaded-file-count">0</b> file</span>
+          </div>
+        </div>
+        <div style="margin-top:12px">
+          <label>📁 Merge ke Project</label>
+          <select id="upload-target-project"><option value="">-- Buat project baru --</option></select>
+        </div>
+        <div style="margin-top:8px">
+          <label>✨ Instruksi untuk AI</label>
+          <textarea id="upload-merge-instruksi" placeholder="Contoh: Gabungkan file ini, sesuaikan import..."></textarea>
+        </div>
+        <div class="merge-section" style="border-color:#10b981">
+          <h4 style="color:#6ee7b7">🔀 Strategi Merge</h4>
+          <div class="merge-options">
+            <div class="merge-option selected" data-strategy="smart" onclick="selectMergeStrategy(this,'smart')"><span class="opt-icon">🧠</span><div class="opt-info"><div class="opt-title">Smart Merge</div><div class="opt-desc">AI otomatis deteksi & gabungkan</div></div></div>
+            <div class="merge-option" data-strategy="integrate" onclick="selectMergeStrategy(this,'integrate')"><span class="opt-icon">🔀</span><div class="opt-info"><div class="opt-title">Integrate</div><div class="opt-desc">Gabungkan ke struktur project</div></div></div>
+            <div class="merge-option" data-strategy="overlay" onclick="selectMergeStrategy(this,'overlay')"><span class="opt-icon">📋</span><div class="opt-info"><div class="opt-title">Overlay</div><div class="opt-desc">Timpa file yang sama</div></div></div>
+            <div class="merge-option" data-strategy="new" onclick="selectMergeStrategy(this,'new')"><span class="opt-icon">✨</span><div class="opt-info"><div class="opt-title">Buat Baru</div><div class="opt-desc">Buat project baru dari upload</div></div></div>
+          </div>
+        </div>
+        <button class="btn btn-green" id="btn-upload-merge" style="margin-top:10px">🚀 AI Merge & Generate</button>
+        <div class="progress-wrap" id="pw-upload" style="display:none"><div class="progress-bar" id="pb-upload" style="width:5%"></div></div>
+      </div>
+    </div>
   </aside>
 
   <div class="main-panel">
-    <div class="tabs">
-      <div class="tab active" data-tab="tab-log"  >📟 Log</div>
-      <div class="tab"        data-tab="tab-files">📂 Files</div>
-      <div class="tab"        data-tab="tab-info" >📋 Info</div>
-      <div class="tab"        data-tab="tab-keys" >🔑 API Keys</div>
+    <div class="tabs" id="main-tabs">
+      <div class="tab active" data-tab="tab-log">📟 Log</div>
+      <div class="tab" data-tab="tab-files">📂 Files</div>
+      <div class="tab" data-tab="tab-info">📋 Info</div>
+      <div class="tab" data-tab="tab-preview">🖥️ Preview <span id="preview-badge" style="display:none" class="tab-badge live">LIVE</span></div>
+      <div class="tab" data-tab="tab-run">▶️ Run</div>
+      <div class="tab" data-tab="tab-stats">📊 Stats</div>
+      <div class="tab" data-tab="tab-keys">🔑 Keys</div>
     </div>
 
     <div class="tab-content active" id="tab-log">
-      <div id="log-panel"><span class="log-info">Belum ada proses. Isi form lalu klik Generate.</span></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h3 style="font-size:.85rem;color:#94a3b8">📟 Live Log</h3>
+        <button class="btn btn-gray btn-sm" onclick="clearLogs()">🗑️ Clear</button>
+      </div>
+      <div id="file-progress-wrapper"></div>
+      <div id="log-panel"><span class="log-info">Belum ada proses. Isi form di kiri lalu klik Generate.</span></div>
     </div>
+
     <div class="tab-content" id="tab-files">
       <div id="file-list"><div class="empty"><div class="icon">📂</div><p>File muncul setelah project selesai.</p></div></div>
     </div>
+
     <div class="tab-content" id="tab-info">
-      <div id="info-panel"><div class="empty"><div class="icon">📋</div><p>Info muncul setelah project selesai.</p></div></div>
+      <div id="info-panel"><div class="empty"><div class="icon">📋</div><p>Info project muncul setelah proses dimulai.</p></div></div>
     </div>
+
+    <div class="tab-content" id="tab-preview" style="padding:0;display:flex;flex-direction:column">
+      <div id="preview-panel" style="flex:1;display:flex;flex-direction:column">
+        <div class="empty" style="margin:auto"><div class="icon">🖥️</div><p>Preview muncul setelah project di-RUN.</p></div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-run">
+      <div id="run-panel"><div class="empty"><div class="icon">▶️</div><p>Klik RUN di tab Info untuk jalankan.</p></div></div>
+    </div>
+
+    <div class="tab-content" id="tab-stats">
+      <div id="stats-panel"><div class="empty"><div class="icon">📊</div><p>Loading statistics...</p></div></div>
+    </div>
+
     <div class="tab-content" id="tab-keys">
-      <div id="key-panel"><div class="empty"><div class="icon">🔑</div><p>Klik tab API Keys untuk lihat status.</p></div></div>
+      <div id="key-panel"><div class="empty"><div class="icon">🔑</div><p>Klik untuk melihat status.</p></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<div class="ws-indicator disconnected" id="ws-indicator">
+  <span>🔌</span><span id="ws-status">Disconnected</span>
+</div>
+
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3 id="modal-title">Konfirmasi</h3>
+    <p id="modal-body">Yakin?</p>
+    <div class="modal-actions">
+      <button class="btn btn-gray btn-sm" onclick="closeModal()">Batal</button>
+      <button class="btn btn-red btn-sm" id="modal-confirm">Ya, Lanjutkan</button>
     </div>
   </div>
 </div>
@@ -206,459 +446,1140 @@
 <script>
 'use strict';
 
-// ================================================
-// DATA CHIPS
-// ================================================
-const CHIPS_BARU = [
-  {label:'📚 Perpustakaan', desc:'Sistem manajemen perpustakaan kampus dengan FastAPI, SQLAlchemy, SQLite, fitur pinjam buku, pengembalian, denda, laporan, dan unit test', nama:'sistem_perpustakaan'},
-  {label:'🎓 Akademik',     desc:'Sistem informasi akademik dengan KRS online, input nilai, jadwal kuliah, absensi, dashboard statistik FastAPI SQLite', nama:'sistem_akademik'},
-  {label:'🤖 ML Prediksi',  desc:'Machine learning prediksi kelulusan mahasiswa berdasarkan IPK, absensi, nilai menggunakan scikit-learn pandas matplotlib', nama:'ml_kelulusan'},
-  {label:'🛒 E-Commerce',   desc:'REST API e-commerce kampus untuk jual beli barang bekas mahasiswa dengan JWT, CRUD produk, keranjang, pembayaran mock FastAPI', nama:'ecommerce_kampus'},
-  {label:'📱 Absensi QR',   desc:'Sistem absensi mahasiswa QR Code Python, generate QR, scan simulasi, rekap kehadiran, laporan CSV', nama:'absensi_qr'},
-  {label:'📊 Analisis Data',desc:'Analisis data nilai mahasiswa visualisasi matplotlib, statistik deskriptif, korelasi, export PDF Python', nama:'analisis_nilai'},
-  {label:'🖥️ Inventaris',   desc:'Manajemen inventaris laboratorium komputer kampus CRUD perangkat peminjaman pengembalian laporan kerusakan FastAPI SQLite', nama:'inventaris_lab'},
-  {label:'💬 Chatbot',      desc:'Chatbot FAQ kampus Python NLP NLTK basis pengetahuan JSON antarmuka CLI interaktif', nama:'chatbot_kampus'},
-];
+// ══════════════════════════════════════════════════════════
+//  API URL CONFIGURATION (NEW - untuk connect ke backend lain)
+// ══════════════════════════════════════════════════════════
+let API_BASE_URL = localStorage.getItem('api_base_url') || '';  // '' = same origin
 
-const CHIPS_LANJUT = [
-  {label:'📄 Export PDF',  text:'Tambahkan fitur export laporan ke PDF menggunakan reportlab'},
-  {label:'🔐 Auth JWT',    text:'Tambahkan autentikasi JWT dengan login dan register endpoint'},
-  {label:'📊 Dashboard',   text:'Tambahkan dashboard statistik dengan grafik matplotlib yang disimpan sebagai gambar'},
-  {label:'📧 Email',       text:'Tambahkan fitur notifikasi email menggunakan smtplib'},
-  {label:'📑 Pagination',  text:'Tambahkan pagination dan filtering pada semua endpoint list'},
-  {label:'🧪 Unit Test',   text:'Tambahkan unit test lengkap menggunakan pytest untuk semua endpoint'},
-  {label:'🐳 Docker',      text:'Tambahkan Dockerfile dan docker-compose.yml untuk deployment'},
-  {label:'📝 Logging',     text:'Tambahkan logging system dan error handling yang lebih baik'},
-];
-
-// Render chips
-function render_chips() {
-  const baru = document.getElementById('chips-baru');
-  baru.innerHTML = CHIPS_BARU.map(c =>
-    `<span class="chip" data-desc="${escAttr(c.desc)}" data-nama="${escAttr(c.nama)}">${c.label}</span>`
-  ).join('');
-
-  baru.querySelectorAll('.chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      document.getElementById('deskripsi').value = chip.dataset.desc;
-      document.getElementById('nama').value      = chip.dataset.nama;
-    });
-  });
-
-  const lanjut = document.getElementById('chips-lanjut');
-  lanjut.innerHTML = CHIPS_LANJUT.map(c =>
-    `<span class="chip" data-text="${escAttr(c.text)}">${c.label}</span>`
-  ).join('');
-
-  lanjut.querySelectorAll('.chip').forEach(chip => {
-    chip.addEventListener('click', () => {
-      document.getElementById('permintaan').value = chip.dataset.text;
-    });
-  });
+function getApiUrl(path) {
+  // Jika API_BASE_URL kosong, gunakan relative path (same origin)
+  if (!API_BASE_URL) return path;
+  // Pastikan tidak double slash
+  const base = API_BASE_URL.replace(/\/+$/, '');
+  return base + path;
 }
 
-// ================================================
-// STATE
-// ================================================
-let currentProjectId = null;
-let pollingInterval  = null;
-let progressMode     = 'baru';
-let progressVal      = 5;
-
-// ================================================
-// MODE SWITCH
-// ================================================
-function ganti_mode(modeId, el) {
-  document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById(modeId).classList.add('active');
-  el.classList.add('active');
+function getWsUrl(projectId) {
+  if (!API_BASE_URL) {
+    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${proto}//${location.host}/ws/${projectId}`;
+  }
+  const url = new URL(API_BASE_URL);
+  const proto = url.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${url.host}/ws/${projectId}`;
 }
 
-// ================================================
-// TAB SWITCH — pakai event delegation (bukan onclick inline)
-// ================================================
-document.querySelector('.tabs').addEventListener('click', function(e) {
-  const tab = e.target.closest('.tab');
-  if (!tab) return;
+function toggleApiConfig() {
+  const panel = document.getElementById('api-config-panel');
+  panel.classList.toggle('show');
+}
 
-  const tabId = tab.dataset.tab;
+function saveApiUrl() {
+  const input = document.getElementById('api-url-input');
+  let url = input.value.trim();
+  
+  // Remove trailing slash
+  if (url.endsWith('/')) url = url.slice(0, -1);
+  
+  // Save to localStorage
+  API_BASE_URL = url;
+  localStorage.setItem('api_base_url', url);
+  
+  // Update status
+  const status = document.getElementById('api-status');
+  if (url) {
+    status.innerHTML = `<span class="api-saved">✅ Disimpan: ${esc(url)}</span>`;
+  } else {
+    status.innerHTML = `<span class="api-saved">✅ Mode same-origin (localhost)</span>`;
+  }
+  
+  showToast('✅ API URL disimpan!', 'ok');
+  
+  // Re-check connection
+  setTimeout(cekServer, 500);
+}
 
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById(tabId).classList.add('active');
-  tab.classList.add('active');
-
-  if (tabId === 'tab-keys') muat_key_status();
-});
-
-// Tombol key di header
-document.getElementById('btn-key-header').addEventListener('click', () => {
-  const keysTab = document.querySelector('[data-tab="tab-keys"]');
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-keys').classList.add('active');
-  keysTab.classList.add('active');
-  muat_key_status();
-});
-
-// ================================================
-// MUAT LIST PROJECT — FIX: pakai data-* attribute
-// ================================================
-async function muat_project_list() {
-  const el = document.getElementById('project-list');
-  el.innerHTML = '<div class="empty"><p>⏳ Memuat...</p></div>';
-
+async function testApiConnection() {
+  const input = document.getElementById('api-url-input');
+  const status = document.getElementById('api-status');
+  let url = input.value.trim();
+  
+  if (url.endsWith('/')) url = url.slice(0, -1);
+  
+  status.innerHTML = '<span class="api-connecting">🔌 Testing koneksi...</span>';
+  
   try {
-    const resp = await fetch('/list-projects');
-    const data = await resp.json();
-    const list = data.projects || [];
-
-    if (list.length === 0) {
-      el.innerHTML = '<div class="empty"><p>Belum ada project. Buat dulu.</p></div>';
-      return;
-    }
-
-    el.innerHTML = list.map(p => `
-      <div class="project-card"
-           data-nama="${escAttr(p.nama)}"
-           title="${escAttr(p.deskripsi)}">
-        <div class="pname">📁 ${escHtml(p.nama)}</div>
-        <div class="ptech">${escHtml(p.tech_stack)}</div>
-        <div class="pfiles">${p.file_count} file &nbsp;|&nbsp; ${escHtml(p.run_cmd)}</div>
-      </div>
-    `).join('');
-
-    // FIX: event listener, bukan onclick inline dengan global event
-    el.querySelectorAll('.project-card').forEach(card => {
-      card.addEventListener('click', function() {
-        document.getElementById('nama-lanjut').value = this.dataset.nama;
-        el.querySelectorAll('.project-card').forEach(c => c.classList.remove('selected'));
-        this.classList.add('selected');
-      });
+    const testUrl = url ? url + '/key-status' : '/key-status';
+    const resp = await fetch(testUrl, { 
+      signal: AbortSignal.timeout(5000),
+      mode: 'cors'
     });
-
+    
+    if (resp.ok) {
+      const data = await resp.json();
+      status.innerHTML = `<span class="api-saved">✅ Terhubung! ${(data.keys||[]).length} API key aktif</span>`;
+    } else {
+      status.innerHTML = `<span class="api-error">❌ Response ${resp.status}</span>`;
+    }
   } catch(e) {
-    el.innerHTML = `<div class="empty"><p>Gagal muat: ${escHtml(String(e))}</p></div>`;
+    status.innerHTML = `<span class="api-error">❌ Gagal: ${e.message}</span>`;
   }
 }
 
-// ================================================
-// BUAT PROJECT BARU
-// ================================================
-async function buatProject() {
+// Initialize API URL input
+document.addEventListener('DOMContentLoaded', () => {
+  const input = document.getElementById('api-url-input');
+  input.value = API_BASE_URL;
+  
+  document.getElementById('btn-api-config').addEventListener('click', toggleApiConfig);
+});
+
+// ══════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════
+let currentProjectId = null;
+let pollingInterval = null;
+let progressMode = 'baru';
+let progressVal = 5;
+let currentPreviewUrl = null;
+let previewMode = 'desktop';
+let ws = null;
+let wsReconnectTimer = null;
+let isProcessing = false;
+let fileProgressState = {};
+let uploadedDesign = null;
+let selectedMergeMode = 'replace';
+let uploadedCodeFiles = [];
+let uploadMergeStrategy = 'smart';
+
+// ══════════════════════════════════════════════════════════
+//  CHIPS DATA
+// ══════════════════════════════════════════════════════════
+const CHIPS_BARU = [
+  {label:'📚 Perpustakaan', desc:'Sistem manajemen perpustakaan FastAPI SQLAlchemy SQLite, pinjam buku, denda, halaman HTML lengkap dengan Bootstrap 5', nama:'sistem_perpustakaan'},
+  {label:'🎓 Akademik',     desc:'Sistem informasi akademik FastAPI dengan KRS online, input nilai, jadwal kuliah, absensi, dashboard, HTML Bootstrap', nama:'sistem_akademik'},
+  {label:'🤖 ML Prediksi',  desc:'ML prediksi kelulusan mahasiswa scikit-learn pandas dengan web interface FastAPI dan HTML dashboard', nama:'ml_kelulusan'},
+  {label:'🛒 E-Commerce',   desc:'REST API e-commerce kampus FastAPI dengan JWT auth, CRUD produk, keranjang, halaman HTML lengkap', nama:'ecommerce_kampus'},
+  {label:'📱 Absensi QR',   desc:'Sistem absensi mahasiswa QR Code FastAPI, generate QR, scan, rekap, halaman HTML Bootstrap', nama:'absensi_qr'},
+  {label:'📊 Analisis Data',desc:'Analisis data nilai mahasiswa FastAPI matplotlib statistik export PDF dengan web interface', nama:'analisis_nilai'},
+  {label:'🖥️ Inventaris',   desc:'Manajemen inventaris lab FastAPI SQLite CRUD perangkat peminjaman laporan HTML lengkap', nama:'inventaris_lab'},
+  {label:'💬 Chatbot',      desc:'Chatbot FAQ kampus FastAPI dengan halaman web chat interaktif JavaScript', nama:'chatbot_kampus'},
+];
+const CHIPS_LANJUT = [
+  {label:'🎨 UI Lengkap', text:'Tambahkan halaman web HTML lengkap Bootstrap 5 dengan home, list, form, dashboard'},
+  {label:'📄 Export PDF',  text:'Tambahkan fitur export laporan PDF menggunakan reportlab'},
+  {label:'🔐 Auth JWT',    text:'Tambahkan autentikasi JWT dengan login dan register endpoint'},
+  {label:'📊 Dashboard',   text:'Tambahkan dashboard statistik dengan grafik Chart.js'},
+  {label:'📑 Pagination',  text:'Tambahkan pagination dan filtering pada semua endpoint'},
+  {label:'🧪 Unit Test',   text:'Tambahkan unit test lengkap menggunakan pytest'},
+];
+
+// ══════════════════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════════════════
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = String(s ?? '');
+  return d.innerHTML;
+}
+function escAttr(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function iconFile(path) {
+  const ext = (path||'').split('.').pop().toLowerCase();
+  return {py:'🐍',md:'📖',txt:'📄',json:'📦',html:'🌐',css:'🎨',js:'⚡',ts:'⚡',yaml:'⚙️',yml:'⚙️',sql:'🗄️',env:'🔒'}[ext] || '📄';
+}
+function fmtSize(b) {
+  if (!b||b<1024) return (b||0)+' B';
+  if (b<1048576) return (b/1024).toFixed(1)+' KB';
+  return (b/1048576).toFixed(1)+' MB';
+}
+function fmtUptime(s) {
+  if (!s||s<60) return s+'s';
+  if (s<3600) return Math.floor(s/60)+'m '+(s%60)+'s';
+  return Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'m';
+}
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + (type==='ok'?'toast-ok':type==='info'?'toast-info':'toast-err');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.className = 'toast'; }, 4000);
+}
+function showModal(title, body, onConfirm) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').textContent = body;
+  document.getElementById('modal-overlay').classList.add('show');
+  document.getElementById('modal-confirm').onclick = () => { onConfirm(); closeModal(); };
+}
+function closeModal() { document.getElementById('modal-overlay').classList.remove('show'); }
+document.getElementById('modal-overlay').addEventListener('click', e => { if (e.target===e.currentTarget) closeModal(); });
+function clearLogs() {
+  document.getElementById('log-panel').innerHTML = '<span class="log-info">Logs cleared.</span>';
+  document.getElementById('file-progress-wrapper').innerHTML = '';
+  fileProgressState = {};
+}
+
+// ══════════════════════════════════════════════════════════
+//  WEBSOCKET (menggunakan API_BASE_URL)
+// ══════════════════════════════════════════════════════════
+function connectWebSocket(projectId) {
+  if (ws) { ws.close(); ws = null; }
+  if (!projectId) return;
+  const wsUrl = getWsUrl(projectId);
+  ws = new WebSocket(wsUrl);
+  ws.onopen = () => {
+    document.getElementById('ws-indicator').className = 'ws-indicator connected';
+    document.getElementById('ws-status').textContent = 'Live';
+  };
+  ws.onmessage = e => {
+    try { handleWsMessage(JSON.parse(e.data)); } catch(_) {}
+  };
+  ws.onclose = () => {
+    document.getElementById('ws-indicator').className = 'ws-indicator disconnected';
+    document.getElementById('ws-status').textContent = 'Offline';
+    if (currentProjectId && isProcessing) {
+      clearTimeout(wsReconnectTimer);
+      wsReconnectTimer = setTimeout(() => connectWebSocket(currentProjectId), 3000);
+    }
+  };
+}
+
+function handleWsMessage(data) {
+  if (data.type === 'log') {
+    parseLogForFileProgress(data.message);
+    appendLog(data.message);
+  } else if (data.type === 'status') {
+    const msgMap = { done:'✅ Selesai!', error:'❌ Error!', cancelled:'🛑 Dibatalkan' };
+    const typeMap = { done:'ok', error:'err', cancelled:'info' };
+    if (msgMap[data.status]) showToast(msgMap[data.status], typeMap[data.status]);
+  }
+}
+
+function appendLog(line) {
+  const panel = document.getElementById('log-panel');
+  const div = document.createElement('div');
+  div.className = getLogClass(line);
+  div.textContent = line;
+  panel.appendChild(div);
+  panel.scrollTop = panel.scrollHeight;
+}
+
+function getLogClass(line) {
+  if (line.includes('🎨') || line.includes('figma')) return 'log-figma';
+  if (line.includes('⏳') || line.includes('loading')) return 'log-loading';
+  if (line.includes('✅') || line.includes('✓') || line.includes('sukses')) return 'log-success';
+  if (line.includes('❌') || line.includes('✗') || line.includes('error')) return 'log-error';
+  if (line.includes('⚠️') || line.includes('warning')) return 'log-warning';
+  if (line.includes('🎉') || line.includes('selesai')) return 'log-done';
+  return 'log-info';
+}
+
+// ══════════════════════════════════════════════════════════
+//  FILE PROGRESS
+// ══════════════════════════════════════════════════════════
+function parseLogForFileProgress(line) {
+  const m1 = line.match(/\[(\d+)\/(\d+)\]\s+(\S+)\.\.\./);
+  if (m1) { fileProgressState[m1[3]] = 'loading'; renderFileProgress(); return; }
+  const m2 = line.match(/✓\s+(\d+)\s+chars\s+\(([\d.]+)s\)/);
+  if (m2) {
+    for (const [f, st] of Object.entries(fileProgressState)) {
+      if (st === 'loading') { fileProgressState[f] = {status:'done', chars:m2[1], time:m2[2]}; break; }
+    }
+    renderFileProgress(); return;
+  }
+  if (line.includes('📝') || line.includes('fallback')) {
+    for (const [f, st] of Object.entries(fileProgressState)) {
+      if (st === 'loading') { fileProgressState[f] = {status:'done', chars:'FB', time:'0.0'}; break; }
+    }
+    renderFileProgress(); return;
+  }
+  if (line.includes('✗') || line.includes('Gagal')) {
+    for (const [f, st] of Object.entries(fileProgressState)) {
+      if (st === 'loading') { fileProgressState[f] = 'failed'; break; }
+    }
+    renderFileProgress(); return;
+  }
+  if (/Struktur:/.test(line)) { fileProgressState = {}; }
+}
+
+function renderFileProgress() {
+  const wrapper = document.getElementById('file-progress-wrapper');
+  const keys = Object.keys(fileProgressState);
+  if (!keys.length) { wrapper.innerHTML = ''; return; }
+  let doneCount = 0;
+  const items = keys.map(file => {
+    const st = fileProgressState[file];
+    let icon, cls, time = '';
+    if (st === 'loading') { icon = '<div class="spinner-mini"></div>'; cls = 'loading'; }
+    else if (st === 'failed') { icon = '❌'; cls = 'failed'; }
+    else if (typeof st === 'object' && st.status === 'done') {
+      icon = '✅'; cls = 'done'; doneCount++;
+      time = `<span class="time">${st.time}s · ${st.chars}c</span>`;
+    } else { icon = '⚪'; cls = 'pending'; }
+    return `<div class="file-progress-item ${cls}"><span class="icon">${icon}</span><span>${iconFile(file)} ${esc(file)}</span>${time}</div>`;
+  }).join('');
+  wrapper.innerHTML = `<div class="file-progress"><h3>📦 File Progress <span style="font-size:.7rem;color:#4ade80">${doneCount}/${keys.length}</span></h3><div class="file-progress-list">${items}</div></div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  FIGMA / DESIGN UPLOAD
+// ══════════════════════════════════════════════════════════
+function initFigma() {
+  const uploadZone = document.getElementById('upload-zone');
+  const fileInput = document.getElementById('design-file-input');
+  uploadZone.addEventListener('click', () => fileInput.click());
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault(); uploadZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) handleDesignFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', e => { if (e.target.files.length) handleDesignFile(e.target.files[0]); });
+  document.getElementById('btn-figma-generate').addEventListener('click', generateWithDesign);
+  document.querySelectorAll('.merge-option').forEach(el => {
+    el.addEventListener('click', () => {
+      document.querySelectorAll('.merge-option').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+      selectedMergeMode = el.dataset.mode;
+    });
+  });
+  loadProjectSelect();
+}
+
+function handleDesignFile(file) {
+  if (!file.type.startsWith('image/') && !file.name.endsWith('.svg')) {
+    showToast('File harus gambar (PNG, JPG, SVG)', 'err'); return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    showToast('File terlalu besar (max 10MB)', 'err'); return;
+  }
+  const reader = new FileReader();
+  reader.onload = e => {
+    uploadedDesign = { type: 'file', data: e.target.result, name: file.name };
+    document.getElementById('uploaded-design-img').src = e.target.result;
+    document.getElementById('uploaded-design-preview').style.display = 'block';
+    document.getElementById('upload-zone').style.display = 'none';
+    showToast(`✅ Design "${file.name}" dimuat`, 'ok');
+  };
+  reader.readAsDataURL(file);
+}
+
+function clearUploadedDesign() {
+  uploadedDesign = null;
+  document.getElementById('uploaded-design-preview').style.display = 'none';
+  document.getElementById('upload-zone').style.display = 'block';
+  document.getElementById('design-file-input').value = '';
+  showToast('🗑️ Design dihapus', 'info');
+}
+
+async function loadProjectSelect() {
+  try {
+    const data = await fetch(getApiUrl('/list-projects')).then(r => r.json());
+    const sels = ['figma-target-project', 'upload-target-project'];
+    sels.forEach(id => {
+      const sel = document.getElementById(id);
+      if (!sel) return;
+      sel.innerHTML = '<option value="">-- Buat project baru --</option>';
+      (data.projects || []).forEach(p => {
+        sel.innerHTML += `<option value="${escAttr(p.nama)}">📁 ${esc(p.nama)} (${esc(p.tech_stack)})</option>`;
+      });
+    });
+  } catch(_) {}
+}
+
+async function generateWithDesign() {
+  const targetProject = document.getElementById('figma-target-project').value;
+  if (!uploadedDesign && !targetProject) {
+    showToast('Upload desain atau pilih project!', 'err'); return;
+  }
+  progressMode = 'figma';
+  document.getElementById('pw-figma').style.display = 'block';
+  document.getElementById('pb-figma').style.width = '5%';
+  document.getElementById('btn-figma-generate').disabled = true;
+  switchToTab('tab-log');
+  fileProgressState = {};
+  document.getElementById('log-panel').innerHTML = '<div class="log-loading">⏳ Memulai proses merge desain...</div>';
+
+  const formData = new FormData();
+  if (uploadedDesign) {
+    if (uploadedDesign.type === 'file') {
+      const blob = await fetch(uploadedDesign.data).then(r => r.blob());
+      formData.append('design_file', blob, uploadedDesign.name);
+    } else {
+      formData.append('design_url', uploadedDesign.data);
+    }
+    formData.append('design_type', uploadedDesign.type);
+  }
+  formData.append('merge_mode', selectedMergeMode);
+  formData.append('target_project', targetProject);
+  formData.append('figma_url', document.getElementById('figma-url').value || '');
+
+  try {
+    const resp = await fetch(getApiUrl('/figma-merge'), { method: 'POST', body: formData });
+    if (!resp.ok) { const err = await resp.json(); throw new Error(err.error || 'HTTP ' + resp.status); }
+    const json = await resp.json();
+    currentProjectId = json.project_id;
+    isProcessing = true;
+    connectWebSocket(currentProjectId);
+    showToast(`🚀 Merge "${json.nama}" dimulai!`, 'ok');
+    mulaiPolling();
+  } catch(e) {
+    showToast('❌ ' + e.message, 'err');
+    document.getElementById('pw-figma').style.display = 'none';
+    document.getElementById('btn-figma-generate').disabled = false;
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  UPLOAD & MERGE CODE
+// ══════════════════════════════════════════════════════════
+function initUpload() {
+  const uploadZone = document.getElementById('code-upload-zone');
+  const fileInput = document.getElementById('code-file-input');
+  const folderInput = document.getElementById('code-folder-input');
+  uploadZone.addEventListener('click', () => fileInput.click());
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault(); uploadZone.classList.remove('dragover');
+    handleDroppedItems(e.dataTransfer.items);
+  });
+  fileInput.addEventListener('change', e => { handleFileList(e.target.files); });
+  folderInput.addEventListener('change', e => { handleFileList(e.target.files); });
+  document.getElementById('btn-upload-merge').addEventListener('click', generateWithUploadedCode);
+  loadUploadProjectSelect();
+}
+
+function selectMergeStrategy(el, strategy) {
+  document.querySelectorAll('#mode-upload .merge-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  uploadMergeStrategy = strategy;
+}
+
+async function handleDroppedItems(items) {
+  const files = [];
+  const entries = [];
+  for (const item of items) {
+    if (item.kind === 'file') {
+      const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+      if (entry) entries.push(entry);
+      else { const file = item.getAsFile(); if (file) files.push(file); }
+    }
+  }
+  for (const entry of entries) await readEntryRecursive(entry, '', files);
+  if (files.length) handleFileList(files);
+}
+
+function readEntryRecursive(entry, basePath, files) {
+  return new Promise(resolve => {
+    if (entry.isFile) {
+      entry.file(file => {
+        files.push(new File([file], basePath + file.name, { type: file.type }));
+        resolve();
+      });
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      reader.readEntries(async entries => {
+        for (const e of entries) await readEntryRecursive(e, basePath + entry.name + '/', files);
+        resolve();
+      });
+    } else resolve();
+  });
+}
+
+async function handleFileList(fileList) {
+  const files = Array.from(fileList);
+  if (!files.length) return;
+  showToast(`⏳ Membaca ${files.length} file...`, 'info');
+  const readPromises = files.map(file => {
+    return new Promise(resolve => {
+      if (file.size > 50 * 1024 * 1024) {
+        resolve({ name: file.name, path: file.webkitRelativePath || file.name, content: '[File terlalu besar]', size: file.size, type: 'skipped' });
+        return;
+      }
+      const isBinary = ['png','jpg','jpeg','gif','bmp','webp','ico','svg','zip','tar','gz','rar','7z','pdf','pyc','so','dll','exe','mp3','mp4','wav'].includes(file.name.split('.').pop().toLowerCase());
+      const reader = new FileReader();
+      reader.onload = e => resolve({
+        name: file.name, path: file.webkitRelativePath || file.name,
+        content: e.target.result, size: file.size,
+        type: isBinary ? 'binary' : 'text'
+      });
+      reader.onerror = () => resolve({ name: file.name, path: file.webkitRelativePath || file.name, content: '[Error]', size: file.size, type: 'error' });
+      if (isBinary) reader.readAsDataURL(file);
+      else reader.readAsText(file);
+    });
+  });
+  uploadedCodeFiles = await Promise.all(readPromises);
+  renderUploadedCodeList();
+  showToast(`✅ ${uploadedCodeFiles.length} file dimuat`, 'ok');
+}
+
+function renderUploadedCodeList() {
+  const listEl = document.getElementById('uploaded-code-list');
+  const treeEl = document.getElementById('uploaded-files-tree');
+  if (!uploadedCodeFiles.length) { listEl.style.display = 'none'; return; }
+  listEl.style.display = 'block';
+  document.getElementById('uploaded-count').textContent = uploadedCodeFiles.length;
+  document.getElementById('uploaded-file-count').textContent = uploadedCodeFiles.length;
+  document.getElementById('uploaded-total-size').textContent = fmtSize(uploadedCodeFiles.reduce((a, f) => a + f.size, 0));
+  treeEl.innerHTML = uploadedCodeFiles.map(f => {
+    const icon = f.type === 'binary' ? '📦' : f.type === 'skipped' ? '⏭️' : iconFile(f.name);
+    const color = f.type === 'error' ? '#f87171' : f.type === 'skipped' ? '#fbbf24' : '#4ade80';
+    return `<div style="padding:2px 0;color:#93c5fd;display:flex;align-items:center;gap:6px">
+      <span>${icon}</span>
+      <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.path)}</span>
+      <span style="font-size:.65rem;color:#64748b">${fmtSize(f.size)}</span>
+      <span style="width:6px;height:6px;background:${color};border-radius:50%;flex-shrink:0"></span>
+    </div>`;
+  }).join('');
+}
+
+function clearUploadedCode() {
+  uploadedCodeFiles = [];
+  document.getElementById('code-file-input').value = '';
+  document.getElementById('code-folder-input').value = '';
+  document.getElementById('uploaded-code-list').style.display = 'none';
+  showToast('🗑️ Upload dihapus', 'info');
+}
+
+async function loadUploadProjectSelect() {
+  try {
+    const data = await fetch(getApiUrl('/list-projects')).then(r => r.json());
+    const sel = document.getElementById('upload-target-project');
+    sel.innerHTML = '<option value="">-- Buat project baru dari upload --</option>';
+    (data.projects || []).forEach(p => {
+      sel.innerHTML += `<option value="${escAttr(p.nama)}">📁 ${esc(p.nama)} (${esc(p.tech_stack)})</option>`;
+    });
+  } catch(_) {}
+}
+
+async function generateWithUploadedCode() {
+  if (!uploadedCodeFiles.length) { showToast('Upload file terlebih dahulu!', 'err'); return; }
+  const targetProject = document.getElementById('upload-target-project').value;
+  const instruksi = document.getElementById('upload-merge-instruksi').value.trim();
+  progressMode = 'upload';
+  document.getElementById('pw-upload').style.display = 'block';
+  document.getElementById('pb-upload').style.width = '5%';
+  document.getElementById('btn-upload-merge').disabled = true;
+  switchToTab('tab-log');
+  fileProgressState = {};
+  document.getElementById('log-panel').innerHTML = '<div class="log-loading">⏳ Memuat & merge file...</div>';
+
+  const formData = new FormData();
+  const fileDataForJson = [];
+  for (const f of uploadedCodeFiles) {
+    if (f.type === 'binary' && f.content.startsWith('data:')) {
+      const blob = await fetch(f.content).then(r => r.blob());
+      formData.append('files', blob, f.path);
+    } else if (f.type === 'text') {
+      formData.append('files', new Blob([f.content], { type: 'text/plain' }), f.path);
+    }
+    fileDataForJson.push({ path: f.path, type: f.type, size: f.size });
+  }
+  formData.append('files_info', JSON.stringify(fileDataForJson));
+  formData.append('strategy', uploadMergeStrategy);
+  formData.append('target_project', targetProject);
+  formData.append('instruksi', instruksi);
+  formData.append('file_count', uploadedCodeFiles.length);
+
+  try {
+    const resp = await fetch(getApiUrl('/upload-merge'), { method: 'POST', body: formData });
+    if (!resp.ok) { const err = await resp.json(); throw new Error(err.error || 'HTTP ' + resp.status); }
+    const json = await resp.json();
+    currentProjectId = json.project_id;
+    isProcessing = true;
+    connectWebSocket(currentProjectId);
+    showToast(`🚀 Merge "${json.nama}" dimulai! (${uploadedCodeFiles.length} file)`, 'ok');
+    mulaiPolling();
+  } catch(e) {
+    showToast('❌ ' + e.message, 'err');
+    document.getElementById('pw-upload').style.display = 'none';
+    document.getElementById('btn-upload-merge').disabled = false;
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  CHIPS
+// ══════════════════════════════════════════════════════════
+function initChips() {
+  const baruEl = document.getElementById('chips-baru');
+  baruEl.innerHTML = CHIPS_BARU.map(c =>
+    `<span class="chip" data-desc="${escAttr(c.desc)}" data-nama="${escAttr(c.nama)}">${c.label}</span>`
+  ).join('');
+  baruEl.addEventListener('click', e => {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    document.getElementById('deskripsi').value = chip.dataset.desc;
+    document.getElementById('nama').value = chip.dataset.nama;
+  });
+  const lanjutEl = document.getElementById('chips-lanjut');
+  lanjutEl.innerHTML = CHIPS_LANJUT.map(c =>
+    `<span class="chip" data-text="${escAttr(c.text)}">${c.label}</span>`
+  ).join('');
+  lanjutEl.addEventListener('click', e => {
+    const chip = e.target.closest('.chip');
+    if (!chip) return;
+    document.getElementById('permintaan').value = chip.dataset.text;
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+//  TAB & MODE SWITCH
+// ══════════════════════════════════════════════════════════
+document.querySelectorAll('.mode-tabs').forEach(tabsEl => {
+  tabsEl.addEventListener('click', e => {
+    const tab = e.target.closest('.mode-tab');
+    if (!tab) return;
+    switchMode(tab.dataset.mode);
+    if (tab.dataset.mode === 'mode-lanjut') muatProjectList();
+    if (tab.dataset.mode === 'mode-figma') { initFigma(); loadProjectSelect(); }
+    if (tab.dataset.mode === 'mode-upload') { initUpload(); loadUploadProjectSelect(); }
+  });
+});
+
+document.getElementById('main-tabs').addEventListener('click', e => {
+  const tab = e.target.closest('.tab');
+  if (tab) switchToTab(tab.dataset.tab);
+});
+document.getElementById('btn-stats').addEventListener('click', () => switchToTab('tab-stats'));
+document.getElementById('btn-key-header').addEventListener('click', () => switchToTab('tab-keys'));
+document.getElementById('btn-test-ai').addEventListener('click', testAI);
+
+function switchMode(modeId) {
+  document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(modeId)?.classList.add('active');
+  document.querySelector(`[data-mode="${modeId}"]`)?.classList.add('active');
+}
+
+function switchToTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(tabId)?.classList.add('active');
+  document.querySelector(`[data-tab="${tabId}"]`)?.classList.add('active');
+  if (tabId === 'tab-keys') muatKeyStatus();
+  if (tabId === 'tab-stats') loadStats();
+  if (tabId === 'tab-preview') refreshPreview();
+  if (tabId === 'tab-run') mulaiRunPolling();
+}
+
+// ══════════════════════════════════════════════════════════
+//  SERVER STATUS (menggunakan getApiUrl)
+// ══════════════════════════════════════════════════════════
+async function cekServer() {
+  const el = document.getElementById('server-status');
+  try {
+    const resp = await fetch(getApiUrl('/key-status'), { signal: AbortSignal.timeout(5000) });
+    if (resp.ok) {
+      const data = await resp.json();
+      el.innerHTML = `<span class="status-dot online"></span><span style="font-size:.75rem">${(data.keys||[]).length} Key</span>`;
+    } else throw new Error();
+  } catch(_) {
+    el.innerHTML = '<span class="status-dot offline"></span><span style="font-size:.75rem">Offline</span>';
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  TEST AI
+// ══════════════════════════════════════════════════════════
+async function testAI() {
+  switchToTab('tab-keys');
+  const el = document.getElementById('key-panel');
+  el.innerHTML = '<div class="empty"><p>🧪 Testing API Keys...</p></div>';
+  try {
+    const data = await fetch(getApiUrl('/test-ai')).then(r => r.json());
+    const keys = data.keys || [];
+    el.innerHTML = `<div class="info-card"><h3>🧪 Test Result</h3><div style="background:#020617;border-radius:8px;padding:12px;font-family:monospace;font-size:.76rem">${keys.map(k => {
+      const ok = k.status === '✅' || (k.status||'').includes('sukses');
+      return `<div style="color:${ok?'#4ade80':'#f87171'}">${ok?'✅':'❌'} [${k.index}] ${esc(k.model)} → ${ok?'"'+esc(k.reply)+'"':esc(k.error||k.status)}</div>`;
+    }).join('')}</div></div>`;
+    const ok = keys.filter(k => k.status === '✅' || (k.status||'').includes('sukses')).length;
+    showToast(`Test: ${ok}/${keys.length} OK`, ok > 0 ? 'ok' : 'err');
+  } catch(e) { el.innerHTML = `<div class="empty"><p>❌ ${esc(String(e))}</p></div>`; }
+}
+
+// ══════════════════════════════════════════════════════════
+//  PROJECT LIST
+// ══════════════════════════════════════════════════════════
+async function muatProjectList() {
+  const el = document.getElementById('project-list');
+  el.innerHTML = '<div class="empty"><p>⏳ Memuat...</p></div>';
+  try {
+    const data = await fetch(getApiUrl('/list-projects')).then(r => r.json());
+    const list = data.projects || [];
+    if (!list.length) { el.innerHTML = '<div class="empty"><p>Belum ada project.</p></div>'; return; }
+    el.innerHTML = list.map(p => 
+      `<div class="project-card" style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:9px 11px;cursor:pointer;transition:.15s;position:relative" data-nama="${escAttr(p.nama)}">
+        <button class="del-btn" data-del="${escAttr(p.nama)}" style="position:absolute;top:5px;right:5px;background:#dc2626;color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:.65rem;cursor:pointer;opacity:0;transition:.2s">🗑️</button>
+        <div style="font-size:.83rem;font-weight:700;color:#93c5fd;display:flex;align-items:center;gap:6px">
+          ${p.is_running ? '<span style="width:6px;height:6px;background:#22c55e;border-radius:50%;box-shadow:0 0 4px #22c55e"></span>' : ''}📁 ${esc(p.nama)}
+        </div>
+        <div style="font-size:.7rem;color:#475569;margin-top:2px">${esc(p.tech_stack)} · ${p.file_count} file</div>
+      </div>`).join('');
+
+    el.querySelectorAll('.project-card').forEach(card => {
+      card.addEventListener('click', e => {
+        if (e.target.closest('.del-btn')) {
+          e.stopPropagation();
+          const nama = e.target.closest('.del-btn').dataset.del;
+          showModal('Hapus Project?', `Yakin hapus "${nama}"?`, async () => {
+            const r = await fetch(getApiUrl(`/project/${encodeURIComponent(nama)}`), {method:'DELETE'});
+            if (r.ok) { showToast('✅ Dihapus', 'ok'); muatProjectList(); loadProjectSelect(); }
+          });
+          return;
+        }
+        document.getElementById('nama-lanjut').value = card.dataset.nama;
+        el.querySelectorAll('.project-card').forEach(c => c.style.borderColor = '#334155');
+        card.style.borderColor = '#6366f1';
+      });
+    });
+  } catch(e) { el.innerHTML = `<div class="empty"><p>❌ ${esc(String(e))}</p></div>`; }
+}
+
+// ══════════════════════════════════════════════════════════
+//  BUAT / LANJUT PROJECT
+// ══════════════════════════════════════════════════════════
+document.getElementById('btn-buat').addEventListener('click', async () => {
   const deskripsi = document.getElementById('deskripsi').value.trim();
-  const nama      = document.getElementById('nama').value.trim();
-
-  if (!deskripsi) { alert('Masukkan deskripsi project!'); return; }
-  if (!nama)      { alert('Masukkan nama project!'); return; }
-
+  const nama = document.getElementById('nama').value.trim();
+  if (!deskripsi) { showToast('Masukkan deskripsi!', 'err'); return; }
+  if (!nama) { showToast('Masukkan nama!', 'err'); return; }
   progressMode = 'baru';
-  reset_ui('baru');
-
+  resetUI('baru');
   const fd = new FormData();
   fd.append('deskripsi', deskripsi);
   fd.append('nama', nama);
-
   try {
-    const resp = await fetch('/buat-project', { method: 'POST', body: fd });
+    const resp = await fetch(getApiUrl('/buat-project'), {method:'POST', body:fd});
+    if (!resp.ok) { const e = await resp.json(); throw new Error(e.error || 'HTTP '+resp.status); }
     const json = await resp.json();
     currentProjectId = json.project_id;
-    mulai_polling();
-  } catch(e) {
-    alert('Gagal menghubungi server: ' + e);
-    reset_btn();
-  }
-}
+    isProcessing = true;
+    connectWebSocket(currentProjectId);
+    showToast(`🚀 "${json.nama}" dimulai!`, 'ok');
+    mulaiPolling();
+  } catch(e) { showToast('Gagal: '+e, 'err'); resetBtn(); }
+});
 
-// ================================================
-// LANJUT PROJECT
-// ================================================
-async function lanjutProject() {
-  const nama       = document.getElementById('nama-lanjut').value.trim();
+document.getElementById('btn-lanjut').addEventListener('click', async () => {
+  const nama = document.getElementById('nama-lanjut').value.trim();
   const permintaan = document.getElementById('permintaan').value.trim();
-
-  if (!nama)       { alert('Pilih atau ketik nama project!'); return; }
-  if (!permintaan) { alert('Masukkan permintaan pengembangan!'); return; }
-
+  if (!nama) { showToast('Pilih project!', 'err'); return; }
+  if (!permintaan) { showToast('Masukkan permintaan!', 'err'); return; }
   progressMode = 'lanjut';
-  reset_ui('lanjut');
-
+  resetUI('lanjut');
   const fd = new FormData();
   fd.append('nama', nama);
   fd.append('permintaan', permintaan);
-
   try {
-    const resp = await fetch('/lanjut-project', { method: 'POST', body: fd });
+    const resp = await fetch(getApiUrl('/lanjut-project'), {method:'POST', body:fd});
+    if (!resp.ok) { const e = await resp.json(); throw new Error(e.error || 'HTTP '+resp.status); }
     const json = await resp.json();
     currentProjectId = json.project_id;
-    mulai_polling();
-  } catch(e) {
-    alert('Gagal menghubungi server: ' + e);
-    reset_btn();
-  }
-}
+    isProcessing = true;
+    connectWebSocket(currentProjectId);
+    showToast(`🔄 "${json.nama}" dikembangkan!`, 'ok');
+    mulaiPolling();
+  } catch(e) { showToast('Gagal: '+e, 'err'); resetBtn(); }
+});
 
-// ================================================
-// RESET UI
-// ================================================
-function reset_ui(mode) {
+function resetUI(mode) {
+  fileProgressState = {};
+  document.getElementById('file-progress-wrapper').innerHTML = '';
   document.getElementById('log-panel').innerHTML = '<div class="log-loading">⏳ Memulai proses...</div>';
-  document.getElementById(`pw-${mode}`).style.display = 'block';
-  document.getElementById(`pb-${mode}`).style.width   = '5%';
-  document.getElementById(mode === 'baru' ? 'btn-buat' : 'btn-lanjut').disabled = true;
+  const pwEl = document.getElementById('pw-'+mode);
+  if (pwEl) pwEl.style.display = 'block';
+  const pbEl = document.getElementById('pb-'+mode);
+  if (pbEl) pbEl.style.width = '5%';
+  const btnMap = {baru:'btn-buat', lanjut:'btn-lanjut', figma:'btn-figma-generate', upload:'btn-upload-merge'};
+  const btnEl = document.getElementById(btnMap[mode]);
+  if (btnEl) btnEl.disabled = true;
   progressVal = 5;
-
-  // Switch ke tab log
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  document.getElementById('tab-log').classList.add('active');
-  document.querySelector('[data-tab="tab-log"]').classList.add('active');
+  switchToTab('tab-log');
 }
 
-function reset_btn() {
-  document.getElementById('btn-buat').disabled   = false;
+function resetBtn() {
+  document.getElementById('btn-buat').disabled = false;
   document.getElementById('btn-lanjut').disabled = false;
-  document.getElementById('pw-baru').style.display   = 'none';
+  document.getElementById('btn-figma-generate').disabled = false;
+  const uploadBtn = document.getElementById('btn-upload-merge');
+  if (uploadBtn) uploadBtn.disabled = false;
+  document.getElementById('pw-baru').style.display = 'none';
   document.getElementById('pw-lanjut').style.display = 'none';
+  document.getElementById('pw-figma').style.display = 'none';
+  const pwUpload = document.getElementById('pw-upload');
+  if (pwUpload) pwUpload.style.display = 'none';
+  isProcessing = false;
 }
 
-// ================================================
-// POLLING
-// ================================================
-function mulai_polling() {
-  if (pollingInterval) clearInterval(pollingInterval);
+// ══════════════════════════════════════════════════════════
+//  POLLING
+// ══════════════════════════════════════════════════════════
+function mulaiPolling() {
+  clearInterval(pollingInterval);
   pollingInterval = setInterval(polling, 1500);
 }
 
 async function polling() {
   if (!currentProjectId) return;
-
   try {
-    const resp = await fetch(`/status/${currentProjectId}`);
+    const resp = await fetch(getApiUrl('/status/'+currentProjectId));
     if (!resp.ok) return;
     const data = await resp.json();
-
-    render_log(data.logs || []);
-    render_info(data);
-
+    (data.logs||[]).forEach(parseLogForFileProgress);
+    renderFileProgress();
+    renderLog(data.logs||[], data.status==='loading');
+    renderInfo(data);
+    document.getElementById('preview-badge').style.display = (data.running?.alive && data.running?.url) ? 'inline-block' : 'none';
     if (data.status === 'loading') {
-      progressVal = Math.min(progressVal + 2, 88);
-      document.getElementById(`pb-${progressMode}`).style.width = progressVal + '%';
+      progressVal = Math.min(progressVal + 1.2, 88);
+      const bar = document.getElementById('pb-'+progressMode);
+      if (bar) bar.style.width = progressVal+'%';
     }
-
-    if (data.status === 'done' || data.status === 'error') {
-      clearInterval(pollingInterval);
-      document.getElementById(`pb-${progressMode}`).style.width = '100%';
-      document.getElementById(progressMode === 'baru' ? 'btn-buat' : 'btn-lanjut').disabled = false;
-
-      // Load files
+    if (['done','error','cancelled'].includes(data.status)) {
+      clearInterval(pollingInterval); pollingInterval = null;
+      isProcessing = false;
+      const bar = document.getElementById('pb-'+progressMode);
+      if (bar) bar.style.width = '100%';
+      resetBtn();
+      const toastMap = { done:['✅ Selesai!','ok'], cancelled:['🛑 Dibatalkan','info'], error:['❌ Gagal.','err'] };
+      showToast(...(toastMap[data.status]||['Done','ok']));
       try {
-        const fresp = await fetch(`/files/${currentProjectId}`);
-        const fdata = await fresp.json();
-        render_files(fdata.files || []);
-      } catch(e) {}
-
-      setTimeout(() => {
-        document.getElementById(`pw-${progressMode}`).style.display = 'none';
-      }, 2000);
+        const fd = await fetch(getApiUrl('/files/'+currentProjectId)).then(r=>r.json());
+        renderFiles(fd.files||[]);
+      } catch(_) {}
+      setTimeout(() => { const pw = document.getElementById('pw-'+progressMode); if(pw) pw.style.display='none'; }, 2500);
     }
-  } catch(e) {
-    console.error('Polling error:', e);
-  }
+  } catch(e) { console.error(e); }
 }
 
-// ================================================
-// RENDER LOG
-// ================================================
-function render_log(logs) {
+// ══════════════════════════════════════════════════════════
+//  RENDER LOG
+// ══════════════════════════════════════════════════════════
+function renderLog(logs, isLoading) {
   const panel = document.getElementById('log-panel');
-  const map   = {
-    '⏳':'log-loading','✅':'log-success','❌':'log-error',
-    '⚠️':'log-warning','🔧':'log-fix','📄':'log-file',
-    '📁':'log-folder','🧪':'log-run','🎉':'log-done',
-    'ℹ️':'log-info','🔄':'log-lanjut'
-  };
-
-  if (!logs.length) {
-    panel.innerHTML = '<span class="log-info">Menunggu proses...</span>';
-    return;
+  if (!logs.length) { panel.innerHTML='<span class="log-info">Menunggu proses...</span>'; return; }
+  let html = logs.map(l => `<div class="${getLogClass(l)}">${esc(l)}</div>`).join('');
+  if (isLoading) {
+    html += `<div class="cancel-floating">
+      <button class="btn btn-red" onclick="cancelProject()" style="max-width:280px;display:inline-block">🛑 Batalkan Proses</button>
+    </div>`;
   }
-
-  panel.innerHTML = logs.map(line => {
-    let cls = 'log-info';
-    for (const [em, klass] of Object.entries(map)) {
-      if (line.includes(em)) { cls = klass; break; }
-    }
-    return `<div class="${cls}">${escHtml(line)}</div>`;
-  }).join('');
-
+  panel.innerHTML = html;
   panel.scrollTop = panel.scrollHeight;
 }
 
-// ================================================
-// RENDER FILES
-// ================================================
-function render_files(files) {
+// ══════════════════════════════════════════════════════════
+//  RENDER FILES
+// ══════════════════════════════════════════════════════════
+function renderFiles(files) {
   const el = document.getElementById('file-list');
-
-  if (!files || files.length === 0) {
+  if (!files?.length) {
     el.innerHTML = '<div class="empty"><div class="icon">📂</div><p>Belum ada file.</p></div>';
     return;
   }
-
-  const items = files.map((f, i) => {
-    const id = `code-${i}`;
-    return `
-      <div class="file-item">
-        <div class="file-header" data-target="${id}">
-          <span>${icon_file(f.path)}</span>
-          <span>${escHtml(f.path)}</span>
-          <span class="file-size">${fmt_size(f.size)}</span>
+  el.innerHTML = '<div class="file-tree">' + files.map((f,i) => 
+    `<div class="file-item">
+      <div class="file-header" data-idx="${i}" onclick="toggleFileCode(${i})">
+        <span>${iconFile(f.path)}</span>
+        <span>${esc(f.path)}</span>
+        <span class="file-size">${fmtSize(f.size)}</span>
+        <div class="file-actions">
+          <button class="edit" onclick="event.stopPropagation();openEditor(${i})">✏️</button>
+          <button class="del" onclick="event.stopPropagation();deleteFile('${escAttr(f.path)}')">🗑️</button>
         </div>
-        <pre class="file-code" id="${id}">${escHtml(f.content)}</pre>
       </div>
-    `;
-  }).join('');
+      <pre class="file-code" id="fcode-${i}">${esc(f.content)}</pre>
+      <div class="file-editor" id="feditor-${i}">
+        <textarea id="fedit-ta-${i}">${esc(f.content)}</textarea>
+        <div class="editor-actions">
+          <button class="btn btn-gray btn-sm" onclick="cancelEdit(${i})">Batal</button>
+          <button class="btn btn-green btn-sm" onclick="saveEdit(${i},'${escAttr(f.path)}')">💾 Simpan</button>
+        </div>
+      </div>
+    </div>`).join('') + '</div>';
+}
 
-  el.innerHTML = `<div class="file-tree">${items}</div>`;
-
-  // Event listener untuk toggle (bukan onclick inline)
-  el.querySelectorAll('.file-header').forEach(header => {
-    header.addEventListener('click', function() {
-      const target = document.getElementById(this.dataset.target);
-      if (target) {
-        target.style.display = target.style.display === 'block' ? 'none' : 'block';
-      }
-    });
+function toggleFileCode(idx) {
+  const c = document.getElementById('fcode-'+idx);
+  if (c) c.style.display = c.style.display==='block' ? 'none' : 'block';
+}
+function openEditor(idx) {
+  document.getElementById('fcode-'+idx).style.display = 'none';
+  document.getElementById('feditor-'+idx).style.display = 'block';
+}
+function cancelEdit(idx) {
+  document.getElementById('feditor-'+idx).style.display = 'none';
+  document.getElementById('fcode-'+idx).style.display = 'block';
+}
+async function saveEdit(idx, path) {
+  const content = document.getElementById('fedit-ta-'+idx).value;
+  const fd = new FormData(); fd.append('path',path); fd.append('content',content);
+  try {
+    const r = await fetch(getApiUrl(`/files/${currentProjectId}/save`), {method:'POST',body:fd});
+    if (r.ok) {
+      showToast('✅ Disimpan','ok'); cancelEdit(idx);
+      const d = await fetch(getApiUrl('/files/'+currentProjectId)).then(r=>r.json());
+      renderFiles(d.files||[]);
+    } else showToast('❌ Gagal','err');
+  } catch(e) { showToast('❌ '+e,'err'); }
+}
+async function deleteFile(path) {
+  showModal('Hapus File?', `Yakin hapus "${path}"?`, async () => {
+    const r = await fetch(getApiUrl(`/files/${currentProjectId}/delete?path=${encodeURIComponent(path)}`), {method:'DELETE'});
+    if (r.ok) { showToast('✅ Dihapus','ok'); const d=await fetch(getApiUrl('/files/'+currentProjectId)).then(r=>r.json()); renderFiles(d.files||[]); }
+    else showToast('❌ Gagal','err');
   });
 }
 
-// ================================================
-// RENDER INFO
-// ================================================
-function render_info(data) {
-  const el    = document.getElementById('info-panel');
-  const bmap  = {
-    loading: ['badge-loading','⏳ Diproses'],
-    done:    ['badge-done',   '✅ Selesai'],
-    error:   ['badge-error',  '❌ Gagal'],
-  };
-  const badge = bmap[data.status] || ['badge-loading', data.status];
+// ══════════════════════════════════════════════════════════
+//  RENDER INFO
+// ══════════════════════════════════════════════════════════
+function renderInfo(data) {
+  const el = document.getElementById('info-panel');
+  const badgeMap = { loading:['badge-loading','⏳ Diproses'], done:['badge-done','✅ Selesai'], error:['badge-error','❌ Gagal'], cancelled:['badge-stopped','🛑 Dibatalkan'] };
+  const [badgeCls, badgeTxt] = badgeMap[data.status] || ['badge-loading', data.status];
 
-  el.innerHTML = `
+  let runningHtml = '';
+  if (data.status === 'done') {
+    if (data.running?.alive) {
+      const url = data.running.url;
+      const isWeb = url && ['fastapi','flask'].includes(data.running.type);
+      runningHtml = `<div class="running-card">
+        <div class="r-title"><span class="badge badge-running">● RUNNING</span> Project berjalan</div>
+        ${isWeb ? `<a href="${escAttr(getApiUrl(url))}" target="_blank" class="r-url">🌐 ${esc(url)}</a>` : `<div style="color:#94a3b8;font-size:.8rem;margin-bottom:8px">CLI/Script — lihat tab Run</div>`}
+        <div class="r-info"><span>⏱️ <b>${fmtUptime(data.running.uptime)}</b></span><span>🔌 <b>${data.running.port}</b></span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px">
+          ${isWeb ? `<button class="btn btn-blue btn-sm" onclick="openPreview()">🖥️ Preview</button>` : `<span></span>`}
+          <button class="btn btn-yellow btn-sm" onclick="stopProject()">⏹️ Stop</button>
+          <button class="btn btn-gray btn-sm" onclick="downloadProject()">📥 ZIP</button>
+        </div>
+      </div>`;
+    } else {
+      runningHtml = `<div class="info-card">
+        <h3>🚀 Jalankan Project</h3>
+        <div class="btn-group">
+          <button class="btn btn-green" onclick="runProject()">▶️ RUN</button>
+          <button class="btn btn-gray" onclick="downloadProject()">📥 ZIP</button>
+        </div>
+      </div>`;
+    }
+  }
+
+  el.innerHTML = `${runningHtml}
     <div class="info-card">
       <h3>📋 Info Project</h3>
-      <div class="info-row">
-        <span class="info-label">Status</span>
-        <span><span class="badge ${badge[0]}">${badge[1]}</span></span>
-      </div>
-      <div class="info-row"><span class="info-label">Nama</span><span class="info-value">${escHtml(data.nama||'-')}</span></div>
-      <div class="info-row"><span class="info-label">Deskripsi</span><span class="info-value">${escHtml(data.desc||'-')}</span></div>
-      <div class="info-row"><span class="info-label">Tech</span><span class="info-value">${escHtml(data.tech||'-')}</span></div>
+      <div class="info-row"><span class="info-label">Status</span><span class="badge ${badgeCls}">${badgeTxt}</span></div>
+      <div class="info-row"><span class="info-label">Nama</span><span class="info-value">${esc(data.nama||'-')}</span></div>
+      <div class="info-row"><span class="info-label">Deskripsi</span><span class="info-value">${esc(data.desc||'-')}</span></div>
+      <div class="info-row"><span class="info-label">Tech</span><span class="info-value">${esc(data.tech||'-')}</span></div>
       <div class="info-row"><span class="info-label">Files</span><span class="info-value">${(data.files||[]).length} file</span></div>
-      <div class="info-row"><span class="info-label">Lokasi</span><span class="info-value">${escHtml(data.folder||'-')}</span></div>
     </div>
     <div class="info-card">
-      <h3>⚡ Cara Jalankan</h3>
-      <div class="cmd-box">${escHtml(data.run_cmd||'Belum tersedia')}</div>
-    </div>
-    ${data.error ? `
-    <div class="info-card">
-      <h3>❌ Error Detail</h3>
-      <div class="cmd-box" style="color:#f87171;white-space:pre-wrap">${escHtml(data.error)}</div>
-    </div>` : ''}
-  `;
+      <h3>⚡ Run Command</h3>
+      <div class="cmd-box">${esc(data.run_cmd||'Belum tersedia')}</div>
+    </div>`;
 }
 
-// ================================================
-// RENDER KEY STATUS
-// ================================================
-async function muat_key_status() {
-  const el = document.getElementById('key-panel');
-  el.innerHTML = '<div class="empty"><p>⏳ Memuat status key...</p></div>';
-
+// ══════════════════════════════════════════════════════════
+//  RUN / STOP / DOWNLOAD
+// ══════════════════════════════════════════════════════════
+async function runProject() {
+  if (!currentProjectId) { showToast('No project','err'); return; }
+  showToast('🚀 Memulai...','info');
   try {
-    const resp = await fetch('/key-status');
-    const data = await resp.json();
+    const data = await fetch(getApiUrl('/run/'+currentProjectId), {method:'POST'}).then(r=>r.json());
+    if (data.sukses) {
+      showToast(`✅ Port ${data.port}!`,'ok');
+      if (data.url) {
+        showToast('⏳ Tunggu server siap...','info');
+        setTimeout(() => { loadPreview(data.url); switchToTab('tab-preview'); }, 3000);
+      } else { switchToTab('tab-run'); mulaiRunPolling(); }
+    } else { showToast('❌ '+(data.error||'Failed'),'err'); }
+  } catch(e) { showToast('❌ '+e,'err'); }
+}
 
-    const dot_class = (k) => {
-      if (k.error_count === 0) return 'green';
-      if (k.error_count >= 2)  return 'red';
-      return 'yellow';
-    };
+async function stopProject() {
+  if (!currentProjectId) return;
+  await fetch(getApiUrl('/stop/'+currentProjectId), {method:'POST'});
+  showToast('⏹️ Dihentikan','ok');
+  clearPreview();
+}
 
-    el.innerHTML = `
-      <div class="info-card">
-        <h3>🔑 Status API Keys</h3>
-        <p style="font-size:.78rem;color:#64748b;margin-bottom:12px">
-          Key aktif: Index ${data.current_index} dari ${data.keys.length} key
-        </p>
-        ${data.keys.map(k => `
-          <div class="key-card ${k.active ? 'active-key' : ''}">
-            <div class="key-dot ${dot_class(k)}"></div>
-            <div class="key-info">
-              <div class="kmodel">${escHtml(k.model)}${k.active ? ' ← AKTIF' : ''}</div>
-              <div class="kurl">${escHtml(k.base_url)}</div>
-              <div class="khint">Key: ${escHtml(k.api_key_hint)}</div>
-            </div>
-            <div class="key-err">${k.error_count > 0 ? k.error_count+'× error' : '✓ OK'}</div>
-          </div>
-        `).join('')}
-        <button class="btn btn-red" id="btn-reset-key">🔄 Reset Error Counter</button>
-      </div>
-      <div class="info-card">
-        <h3>📖 Cara Tambah API Key</h3>
-        <p style="font-size:.8rem;color:#94a3b8;line-height:1.8">
-          Buka <code style="color:#38bdf8">main.py</code>, cari <code style="color:#38bdf8">API_KEYS</code>,
-          tambahkan:<br/><br/>
-          <code style="color:#4ade80">
-          ("https://freetokenfaucet.com/v1", "tf_key_baru", "gpt-5.6-terra"),
-          </code>
-        </p>
-      </div>
-    `;
+function downloadProject() {
+  if (!currentProjectId) return;
+  window.open(getApiUrl('/download/'+currentProjectId), '_blank');
+  showToast('📥 Download...','ok');
+}
 
-    document.getElementById('btn-reset-key').addEventListener('click', async () => {
-      await fetch('/key-reset', { method: 'POST' });
-      muat_key_status();
-    });
+// ══════════════════════════════════════════════════════════
+//  CANCEL
+// ══════════════════════════════════════════════════════════
+async function cancelProject() {
+  if (!currentProjectId) return;
+  showModal('Batalkan Proses?', 'Yakin batalkan?', async () => {
+    try {
+      const r = await fetch(getApiUrl('/cancel/'+currentProjectId), {method:'POST'});
+      const d = await r.json();
+      if (d.success) showToast('🛑 Cancel dikirim', 'info');
+      else showToast('❌ '+(d.error||'Failed'), 'err');
+    } catch(e) { showToast('❌ '+e, 'err'); }
+  });
+}
 
-  } catch(e) {
-    el.innerHTML = `<div class="empty"><p>Gagal load: ${escHtml(String(e))}</p></div>`;
+// ══════════════════════════════════════════════════════════
+//  PREVIEW
+// ══════════════════════════════════════════════════════════
+function openPreview() { switchToTab('tab-preview'); }
+
+async function refreshPreview() {
+  if (!currentProjectId) return;
+  try {
+    const data = await fetch(getApiUrl('/status/'+currentProjectId)).then(r=>r.json());
+    if (data.running?.alive && data.running?.url && !currentPreviewUrl) {
+      loadPreview(data.running.url);
+    }
+  } catch(_) {}
+}
+
+function loadPreview(url) {
+  currentPreviewUrl = url;
+  const el = document.getElementById('preview-panel');
+  const displayUrl = url.startsWith('/') ? getApiUrl(url) : url;
+  el.innerHTML = `
+    <div class="preview-toolbar">
+      <button class="preview-btn" onclick="reloadPreview()">🔄</button>
+      <button class="preview-btn" onclick="if(document.getElementById('preview-iframe'))document.getElementById('preview-iframe').src=currentPreviewUrl">🏠</button>
+      <input type="text" class="preview-url" id="preview-url-input" value="${escAttr(displayUrl)}" onkeydown="if(event.key==='Enter')document.getElementById('preview-iframe').src=this.value"/>
+      <button class="preview-btn ${previewMode==='desktop'?'active':''}" onclick="setPreviewMode('desktop')">🖥️</button>
+      <button class="preview-btn ${previewMode==='tablet'?'active':''}" onclick="setPreviewMode('tablet')">📱</button>
+      <button class="preview-btn ${previewMode==='mobile'?'active':''}" onclick="setPreviewMode('mobile')">📱</button>
+      <button class="preview-btn" onclick="window.open(currentPreviewUrl,'_blank')">🔗</button>
+      <button class="preview-btn danger" onclick="stopProject()">⏹️</button>
+    </div>
+    <div class="preview-frame-wrap">
+      <iframe id="preview-iframe" class="preview-iframe ${previewMode!=='desktop'?previewMode:''}" src="${escAttr(displayUrl)}"></iframe>
+    </div>`;
+}
+
+function reloadPreview() {
+  const iframe = document.getElementById('preview-iframe');
+  if (iframe) { const src=iframe.src; iframe.src='about:blank'; setTimeout(()=>{iframe.src=src;},100); }
+}
+function setPreviewMode(mode) {
+  previewMode = mode;
+  const iframe = document.getElementById('preview-iframe');
+  if (iframe) iframe.className = 'preview-iframe'+(mode!=='desktop'?' '+mode:'');
+  document.querySelectorAll('.preview-toolbar .preview-btn').forEach(b => b.classList.remove('active'));
+  if (event?.target) event.target.classList.add('active');
+}
+function clearPreview() { currentPreviewUrl=null; }
+
+// ══════════════════════════════════════════════════════════
+//  RUN POLLING
+// ══════════════════════════════════════════════════════════
+let runPollingInterval = null;
+function mulaiRunPolling() {
+  clearInterval(runPollingInterval);
+  pollRunLogs();
+  runPollingInterval = setInterval(pollRunLogs, 2000);
+}
+async function pollRunLogs() {
+  if (!currentProjectId) return;
+  try {
+    const data = await fetch(getApiUrl('/run-logs/'+currentProjectId)).then(r=>r.json());
+    renderRunLog(data);
+  } catch(_) {}
+}
+function renderRunLog(data) {
+  const el = document.getElementById('run-panel');
+  const logs = data.logs||[];
+  if (!logs.length && !data.alive) {
+    el.innerHTML='<div class="empty"><div class="icon">▶️</div><p>Belum running.</p></div>';
+    return;
   }
+  const badge = data.alive ? '<span class="badge badge-running">● RUNNING</span>' : '<span class="badge badge-stopped">⏹️ STOPPED</span>';
+  el.innerHTML = `<div class="info-card">
+    <h3>▶️ Runtime</h3>
+    <div class="info-row"><span class="info-label">Status</span><span>${badge}</span></div>
+    <div class="info-row"><span class="info-label">Port</span><span class="info-value">${data.port||'-'}</span></div>
+    <div class="info-row"><span class="info-label">Uptime</span><span class="info-value">${data.uptime!=null?fmtUptime(data.uptime):'-'}</span></div>
+    ${data.alive ? `<div style="margin-top:10px"><button class="btn btn-red" onclick="stopProject()">⏹️ STOP</button></div>` : `<div style="margin-top:10px"><button class="btn btn-green" onclick="runProject()">▶️ START</button></div>`}
+  </div>
+  <div class="info-card">
+    <h3>📟 Output</h3>
+    <div id="run-log-panel" style="background:#020617;border-radius:8px;padding:12px;font-family:monospace;font-size:.76rem;max-height:300px;overflow-y:auto">${logs.map(l=>`<div class="${getLogClass(l)}">${esc(l)}</div>`).join('')||'<span class="log-info">Menunggu...</span>'}</div>
+  </div>`;
+  const p=document.getElementById('run-log-panel');
+  if(p) p.scrollTop=p.scrollHeight;
 }
 
-// ================================================
-// UTILS
-// ================================================
-function icon_file(path) {
-  const ext = (path || '').split('.').pop().toLowerCase();
-  const map = {py:'🐍',md:'📖',txt:'📄',json:'📦',html:'🌐',
-               css:'🎨',js:'⚡',ts:'⚡',yaml:'⚙️',yml:'⚙️',toml:'⚙️',sql:'🗄️'};
-  return map[ext] || '📄';
+// ══════════════════════════════════════════════════════════
+//  STATS
+// ══════════════════════════════════════════════════════════
+async function loadStats() {
+  const el = document.getElementById('stats-panel');
+  try {
+    const data = await fetch(getApiUrl('/stats')).then(r=>r.json());
+    const req=data.requests||{}, proj=data.projects||{};
+    const rate = req.total>0 ? Math.round((req.success/req.total)*100) : 0;
+    el.innerHTML = `<div class="stats-grid">
+      <div class="stat-card info"><div class="icon">📞</div><div class="value">${req.total||0}</div><div class="label">Requests</div></div>
+      <div class="stat-card success"><div class="icon">✅</div><div class="value">${req.success||0}</div><div class="label">Success</div></div>
+      <div class="stat-card error"><div class="icon">❌</div><div class="value">${req.failed||0}</div><div class="label">Failed</div></div>
+      <div class="stat-card ${rate>=80?'success':'warn'}"><div class="icon">📈</div><div class="value">${rate}%</div><div class="label">Rate</div></div>
+      <div class="stat-card info"><div class="icon">📁</div><div class="value">${proj.total||0}</div><div class="label">Projects</div></div>
+      <div class="stat-card success"><div class="icon">🟢</div><div class="value">${proj.running||0}</div><div class="label">Running</div></div>
+    </div>`;
+  } catch(e) { el.innerHTML=`<div class="empty"><p>❌ ${esc(String(e))}</p></div>`; }
 }
 
-function fmt_size(b) {
-  if (!b || b < 1024) return (b||0) + ' B';
-  return (b/1024).toFixed(1) + ' KB';
+// ══════════════════════════════════════════════════════════
+//  KEY STATUS
+// ══════════════════════════════════════════════════════════
+async function muatKeyStatus() {
+  const el = document.getElementById('key-panel');
+  el.innerHTML = '<div class="empty"><p>⏳ Loading...</p></div>';
+  try {
+    const data = await fetch(getApiUrl('/key-status')).then(r=>r.json());
+    const keys = data.keys||[];
+    el.innerHTML = `<div class="info-card"><h3>🔑 API Keys — ${keys.length}</h3><p style="font-size:.75rem;color:#64748b">Active: Index ${data.current_index}</p></div>
+      ${keys.map(k=>{
+        const dot = k.error_count===0?'green':k.error_count>=3?'red':'yellow';
+        return `<div class="key-card ${k.active?'active-key':''}">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <div class="key-dot ${dot}"></div>
+            <div><div style="font-size:.82rem;color:#93c5fd;font-weight:600">${esc(k.model)} ${k.active?'<span style="color:#4ade80;font-size:.7rem">← ACTIVE</span>':''}</div>
+            <div style="font-size:.72rem;color:#64748b">${esc(k.base_url)}</div>
+            <div style="font-size:.7rem;color:#475569;font-family:monospace">Key: ${esc(k.api_key_hint)}</div></div>
+          </div>
+          <div class="key-metrics">
+            <div class="key-metric"><div class="val val-ok">${k.success_count||0}</div><div class="lbl">Success</div></div>
+            <div class="key-metric"><div class="val val-err">${k.error_count||0}</div><div class="lbl">Errors</div></div>
+            <div class="key-metric"><div class="val val-info">${k.avg_time||0}s</div><div class="lbl">Avg</div></div>
+          </div>
+        </div>`;
+      }).join('')}
+      <button class="btn btn-red" style="margin-top:8px" onclick="fetch(getApiUrl('/key-reset'),{method:'POST'}).then(()=>showToast('Reset!','ok')).then(muatKeyStatus)">🔄 Reset Counter</button>`;
+  } catch(e) { el.innerHTML=`<div class="empty"><p>❌ ${esc(String(e))}</p></div>`; }
 }
 
-function escHtml(s) {
-  return String(s||'')
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
+// ══════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════
+initChips();
+cekServer();
+setInterval(cekServer, 30000);
 
-function escAttr(s) {
-  return String(s||'').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+// Show API config panel on first visit if no URL saved
+if (!localStorage.getItem('api_base_url') && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+  // Auto-show API config if not on localhost
+  setTimeout(() => {
+    document.getElementById('api-config-panel').classList.add('show');
+    showToast('⚙️ Konfigurasi API URL backend Anda', 'info');
+  }, 1000);
 }
-
-// ================================================
-// INIT
-// ================================================
-render_chips();
 </script>
 </body>
 </html>
-
