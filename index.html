@@ -316,6 +316,18 @@
           </div>
         </div>
         <div style="margin-top:10px">
+          <label>🌐 Prompt Engineer</label>
+          <textarea id="figma-prompt" placeholder="Contoh: Buat landing page modern dark theme dengan hero section, fitur cards, dan CTA button.&#10;Gunakan warna ungu biru, font Inter, animasi hover.&#10;Responsive untuk mobile dan desktop."></textarea>
+          <div style="display:flex;gap:4px;margin-top:4px;flex-wrap:wrap">
+            <span class="chip" onclick="document.getElementById('figma-prompt').value='Buat landing page modern dark theme dengan hero section, fitur cards, dan CTA button'" style="font-size:.65rem">📄 Landing Page</span>
+            <span class="chip" onclick="document.getElementById('figma-prompt').value='Buat dashboard admin dengan sidebar, charts, dan tabel data'" style="font-size:.65rem">📊 Dashboard</span>
+            <span class="chip" onclick="document.getElementById('figma-prompt').value='Buat form login dan register dengan validasi dan animasi'" style="font-size:.65rem">🔐 Auth Form</span>
+            <span class="chip" onclick="document.getElementById('figma-prompt').value='Buat e-commerce product page dengan galeri, harga, dan add to cart'" style="font-size:.65rem">🛒 E-Commerce</span>
+            <span class="chip" onclick="document.getElementById('figma-prompt').value='Buat portfolio personal dengan animasi scroll dan dark mode'" style="font-size:.65rem">💼 Portfolio</span>
+          </div>
+        </div>
+
+        <div style="margin-top:10px">
           <label>📁 Merge ke Project</label>
           <select id="figma-target-project"><option value="">-- Buat project baru --</option></select>
         </div>
@@ -449,7 +461,7 @@
 // ══════════════════════════════════════════════════════════
 //  API URL CONFIGURATION (NEW - untuk connect ke backend lain)
 // ══════════════════════════════════════════════════════════
-let API_BASE_URL = localStorage.getItem('api_base_url') || '';  // '' = same origin
+let API_BASE_URL = localStorage.getItem('api_base_url') || 'http://anonim.site.je';  // Backend default
 
 function getApiUrl(path) {
   // Jika API_BASE_URL kosong, gunakan relative path (same origin)
@@ -814,6 +826,7 @@ async function generateWithDesign() {
   formData.append('merge_mode', selectedMergeMode);
   formData.append('target_project', targetProject);
   formData.append('figma_url', document.getElementById('figma-url').value || '');
+  formData.append('prompt', document.getElementById('figma-prompt')?.value || '');
 
   try {
     const resp = await fetch(getApiUrl('/figma-merge'), { method: 'POST', body: formData });
@@ -1581,5 +1594,5 @@ if (!localStorage.getItem('api_base_url') && location.hostname !== 'localhost' &
   }, 1000);
 }
 </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1d62f6ecc4b6ca8',t:'MTc4NDQyNjk3OQ=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
