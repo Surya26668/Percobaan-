@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>🚀 AI Project Maker — ULTIMATE Edition v3.0</title>
+  <title>🚀 AI Project Maker — ULTIMATE v3.0 + Figma Sync</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:'Segoe UI',sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh}
@@ -16,10 +16,7 @@
     .header-right{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
     .badge-btn{background:rgba(255,255,255,.15);border-radius:8px;padding:6px 12px;font-size:.75rem;cursor:pointer;border:1px solid rgba(255,255,255,.2);transition:.2s;color:#fff;font-weight:600}
     .badge-btn:hover{background:rgba(255,255,255,.25);transform:translateY(-1px)}
-    .badge-btn.stats{background:rgba(59,130,246,.3);border-color:rgba(59,130,246,.5)}
-    .badge-btn.backup{background:rgba(245,158,11,.3);border-color:rgba(245,158,11,.5)}
-    .badge-btn.test{background:rgba(16,185,129,.3);border-color:rgba(16,185,129,.5)}
-    .badge-btn.key{background:rgba(139,92,246,.3);border-color:rgba(139,92,246,.5)}
+    .badge-btn.figma{background:rgba(168,85,247,.4);border-color:rgba(168,85,247,.6);display:flex;align-items:center;gap:6px}
     .status-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px}
     .status-dot.online{background:#4ade80;box-shadow:0 0 6px #4ade80}
     .status-dot.offline{background:#f87171;box-shadow:0 0 6px #f87171}
@@ -27,22 +24,24 @@
 
     /* ── LAYOUT ──────────────────────────────────────────── */
     @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-    .container{display:grid;grid-template-columns:380px 1fr;height:calc(100vh - 74px)}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .container{display:grid;grid-template-columns:400px 1fr;height:calc(100vh - 74px)}
     @media(max-width:900px){.container{grid-template-columns:1fr;height:auto}}
 
     /* ── SIDEBAR ─────────────────────────────────────────── */
     .sidebar{background:#1e293b;border-right:1px solid #334155;padding:18px;overflow-y:auto;display:flex;flex-direction:column;gap:14px}
     .mode-tabs{display:flex;gap:6px}
-    .mode-tab{flex:1;padding:9px;border-radius:8px;border:2px solid #334155;background:transparent;color:#64748b;font-size:.8rem;font-weight:700;cursor:pointer;transition:.2s;text-align:center}
+    .mode-tab{flex:1;padding:9px;border-radius:8px;border:2px solid #334155;background:transparent;color:#64748b;font-size:.78rem;font-weight:700;cursor:pointer;transition:.2s;text-align:center}
     .mode-tab.active{border-color:#6366f1;background:#1e1b4b;color:#818cf8}
     .mode-panel{display:none}
     .mode-panel.active{display:flex;flex-direction:column;gap:12px}
 
     /* ── FORM ────────────────────────────────────────────── */
     label{display:block;font-size:.72rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
-    input,textarea{width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;padding:9px 12px;font-size:.86rem;resize:vertical;transition:border-color .2s;font-family:inherit}
-    input:focus,textarea:focus{outline:none;border-color:#6366f1}
-    textarea{min-height:100px}
+    input,textarea,select{width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;padding:9px 12px;font-size:.86rem;resize:vertical;transition:border-color .2s;font-family:inherit}
+    input:focus,textarea:focus,select:focus{outline:none;border-color:#6366f1}
+    textarea{min-height:80px}
+    select option{background:#0f172a;color:#e2e8f0}
     .chip-label{font-size:.7rem;color:#475569;margin-bottom:5px;font-weight:600}
     .chip-list{display:flex;flex-wrap:wrap;gap:5px}
     .chip{background:#1e3a5f;border:1px solid #2563eb;color:#93c5fd;border-radius:999px;padding:3px 10px;font-size:.7rem;cursor:pointer;transition:.15s}
@@ -58,78 +57,55 @@
     .btn-gray{background:#374151;color:#fff}
     .btn-blue{background:linear-gradient(135deg,#2563eb,#3b82f6);color:#fff}
     .btn-yellow{background:linear-gradient(135deg,#d97706,#f59e0b);color:#fff}
+    .btn-figma{background:linear-gradient(135deg,#a855f7,#7c3aed);color:#fff}
     .btn-sm{padding:6px 12px;font-size:.75rem;width:auto;border-radius:6px}
+    .btn-xs{padding:4px 8px;font-size:.68rem;width:auto;border-radius:5px}
     .btn-group{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
     .btn-group-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:8px}
-    .btn-group-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:6px;margin-top:8px}
-
-    /* ── PROJECT LIST ────────────────────────────────────── */
-    .project-list-wrap{display:flex;flex-direction:column;gap:5px;max-height:220px;overflow-y:auto}
-    .project-card{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:9px 11px;cursor:pointer;transition:.15s;position:relative}
-    .project-card:hover,.project-card.selected{border-color:#6366f1;background:#1e1b4b}
-    .project-card .pname{font-size:.83rem;font-weight:700;color:#93c5fd;display:flex;align-items:center;gap:6px}
-    .project-card .ptech{font-size:.7rem;color:#475569;margin-top:2px}
-    .project-card .pfiles{font-size:.68rem;color:#334155;margin-top:1px}
-    .project-card .live-dot{width:6px;height:6px;background:#22c55e;border-radius:50%;box-shadow:0 0 4px #22c55e;animation:pulse 1.5s infinite}
-    .project-card .del-btn{position:absolute;top:5px;right:5px;background:#dc2626;color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:.65rem;cursor:pointer;opacity:0;transition:.2s}
-    .project-card:hover .del-btn{opacity:1}
 
     /* ── MAIN PANEL / TABS ───────────────────────────────── */
     .main-panel{display:flex;flex-direction:column;overflow:hidden}
     .tabs{display:flex;background:#1e293b;border-bottom:1px solid #334155;overflow-x:auto}
-    .tab{padding:12px 20px;font-size:.8rem;font-weight:600;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;transition:.2s;white-space:nowrap}
+    .tab{padding:12px 18px;font-size:.78rem;font-weight:600;color:#64748b;cursor:pointer;border-bottom:2px solid transparent;transition:.2s;white-space:nowrap}
     .tab:hover{color:#e2e8f0}
     .tab.active{color:#818cf8;border-bottom-color:#818cf8}
     .tab-badge{display:inline-block;background:#22c55e;color:#fff;border-radius:999px;font-size:.6rem;padding:1px 6px;margin-left:4px;font-weight:700}
     .tab-badge.live{background:#dc2626;animation:pulse 1.5s infinite}
     .tab-content{flex:1;overflow-y:auto;display:none;padding:18px}
     .tab-content.active{display:block}
-    .tab-content.preview-active{padding:0;overflow:hidden;display:none;flex-direction:column}
-    .tab-content.preview-active.active{display:flex}
 
-    /* ── LOG PANEL ───────────────────────────────────────── */
-    #log-panel,#run-log-panel{background:#020617;border-radius:10px;padding:14px;font-family:'Consolas','Courier New',monospace;font-size:.78rem;line-height:1.7;min-height:300px;white-space:pre-wrap;word-break:break-word}
+    /* ── LOG ─────────────────────────────────────────────── */
+    #log-panel{background:#020617;border-radius:10px;padding:14px;font-family:'Consolas','Courier New',monospace;font-size:.78rem;line-height:1.7;min-height:200px;white-space:pre-wrap;word-break:break-word}
     .log-loading{color:#facc15}
     .log-success{color:#4ade80}
     .log-error{color:#f87171}
     .log-warning{color:#fb923c}
-    .log-fix{color:#a78bfa}
-    .log-file{color:#38bdf8}
-    .log-folder{color:#818cf8}
-    .log-done{color:#34d399;font-weight:bold}
     .log-info{color:#94a3b8}
-    .log-lanjut{color:#22d3ee}
+    .log-figma{color:#a855f7}
+    .log-done{color:#34d399;font-weight:bold}
     .log-sys{color:#fbbf24;font-weight:bold}
-
-    /* ── CANCEL BUTTON ───────────────────────────────────── */
-    .cancel-floating{position:sticky;bottom:0;background:linear-gradient(180deg,transparent,#020617 30%);padding:20px 0 0;margin-top:15px;text-align:center}
-    .cancel-floating .btn{max-width:280px;display:inline-block;box-shadow:0 4px 15px rgba(220,38,38,.4);animation:pulseBtn 2s infinite}
-    @keyframes pulseBtn{0%,100%{box-shadow:0 4px 15px rgba(220,38,38,.4)}50%{box-shadow:0 4px 25px rgba(220,38,38,.7)}}
 
     /* ── FILE PROGRESS ───────────────────────────────────── */
     .file-progress{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:14px;margin-bottom:12px}
-    .file-progress h3{font-size:.78rem;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;justify-content:space-between}
+    .file-progress h3{font-size:.78rem;color:#64748b;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
     .file-progress-list{display:flex;flex-direction:column;gap:6px}
-    .file-progress-item{display:flex;align-items:center;gap:10px;padding:6px 10px;background:#0f172a;border-radius:6px;font-size:.78rem;transition:.2s}
+    .file-progress-item{display:flex;align-items:center;gap:10px;padding:6px 10px;background:#0f172a;border-radius:6px;font-size:.78rem}
     .file-progress-item .icon{width:20px;height:20px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
     .file-progress-item.pending{color:#64748b}
     .file-progress-item.loading{color:#fbbf24;background:linear-gradient(90deg,#1e293b,#422006)}
     .file-progress-item.done{color:#4ade80;background:linear-gradient(90deg,#0f172a,#052e16)}
-    .file-progress-item.fallback{color:#fb923c;background:linear-gradient(90deg,#0f172a,#431407)}
     .file-progress-item.failed{color:#f87171;background:linear-gradient(90deg,#0f172a,#450a0a)}
     .file-progress-item .time{margin-left:auto;font-size:.68rem;color:#64748b}
     .spinner-mini{width:14px;height:14px;border:2px solid #334155;border-top-color:#fbbf24;border-radius:50%;animation:spin .8s linear infinite}
 
     /* ── FILES TAB ───────────────────────────────────────── */
-    .log-toolbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
-    .log-toolbar h3{font-size:.85rem;color:#94a3b8}
     .file-tree{display:flex;flex-direction:column;gap:4px}
     .file-item{background:#1e293b;border:1px solid #334155;border-radius:8px;overflow:hidden}
-    .file-header{padding:9px 13px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:.8rem;font-weight:600;color:#93c5fd;transition:background .15s}
+    .file-header{padding:9px 13px;cursor:pointer;display:flex;align-items:center;gap:8px;font-size:.8rem;font-weight:600;color:#93c5fd}
     .file-header:hover{background:#273549}
-    .file-size{margin-left:auto;font-size:.68rem;color:#475569;font-weight:400}
+    .file-size{margin-left:auto;font-size:.68rem;color:#475569}
     .file-actions{display:flex;gap:4px;margin-left:6px}
-    .file-actions button{background:#334155;color:#fff;border:none;padding:3px 8px;border-radius:4px;font-size:.65rem;cursor:pointer;transition:.15s}
+    .file-actions button{background:#334155;color:#fff;border:none;padding:3px 8px;border-radius:4px;font-size:.65rem;cursor:pointer}
     .file-actions button:hover{background:#475569}
     .file-actions button.edit{background:#2563eb}
     .file-actions button.del{background:#dc2626}
@@ -140,7 +116,7 @@
 
     /* ── INFO CARDS ──────────────────────────────────────── */
     .info-card{background:#1e293b;border:1px solid #334155;border-radius:10px;padding:16px;margin-bottom:12px}
-    .info-card h3{font-size:.76rem;color:#64748b;margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;justify-content:space-between}
+    .info-card h3{font-size:.76rem;color:#64748b;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
     .info-row{display:flex;gap:10px;margin-bottom:6px;align-items:flex-start}
     .info-label{font-size:.76rem;color:#64748b;min-width:80px;flex-shrink:0}
     .info-value{font-size:.8rem;color:#e2e8f0;word-break:break-all}
@@ -151,70 +127,57 @@
     .badge-loading{background:#422006;color:#fbbf24}
     .badge-done{background:#052e16;color:#4ade80}
     .badge-error{background:#450a0a;color:#f87171}
-    .badge-cancelled{background:#1e293b;color:#94a3b8}
     .badge-running{background:#052e16;color:#4ade80;animation:pulse 2s infinite}
     .badge-stopped{background:#1e293b;color:#94a3b8}
+    .badge-figma{background:#3b0764;color:#c084fc}
 
     /* ── RUNNING CARD ────────────────────────────────────── */
     .running-card{background:linear-gradient(135deg,#052e16,#064e3b);border:1px solid #22c55e;border-radius:10px;padding:14px;margin-bottom:12px}
     .running-card .r-title{color:#4ade80;font-weight:700;font-size:.88rem;margin-bottom:8px;display:flex;align-items:center;gap:8px}
-    .running-card .r-url{background:#020617;border-radius:6px;padding:10px 14px;font-family:monospace;color:#38bdf8;font-size:.82rem;word-break:break-all;text-decoration:none;display:block;margin-bottom:8px;border:1px solid #1e293b;transition:.2s}
-    .running-card .r-url:hover{border-color:#38bdf8;background:#0c1220}
+    .running-card .r-url{background:#020617;border-radius:6px;padding:10px 14px;font-family:monospace;color:#38bdf8;font-size:.82rem;word-break:break-all;text-decoration:none;display:block;margin-bottom:8px;border:1px solid #1e293b}
+    .running-card .r-url:hover{border-color:#38bdf8}
     .running-card .r-info{font-size:.72rem;color:#94a3b8;display:flex;gap:12px;flex-wrap:wrap}
 
-    /* ── KEY STATUS ──────────────────────────────────────── */
-    .key-card{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:8px}
-    .key-card.active-key{border-color:#22c55e;background:linear-gradient(135deg,#1e293b,#052e16)}
-    .key-header{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-    .key-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
-    .key-dot.green{background:#22c55e;box-shadow:0 0 4px #22c55e}
-    .key-dot.yellow{background:#f59e0b}
-    .key-dot.red{background:#ef4444}
-    .key-info .kurl{font-size:.72rem;color:#64748b}
-    .key-info .kmodel{font-size:.82rem;color:#93c5fd;font-weight:600}
-    .key-info .khint{font-size:.7rem;color:#475569;font-family:monospace}
-    .key-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding-top:8px;border-top:1px solid #334155}
-    .key-metric{text-align:center;background:#0f172a;padding:6px;border-radius:4px}
-    .key-metric .val{font-size:.9rem;font-weight:700}
-    .key-metric .lbl{color:#64748b;font-size:.65rem}
-    .val-ok{color:#4ade80}
-    .val-err{color:#f87171}
-    .val-info{color:#38bdf8}
+    /* ── FIGMA DESIGN PANEL ──────────────────────────────── */
+    .figma-panel{display:flex;flex-direction:column;gap:12px;height:100%}
+    .figma-card{background:linear-gradient(135deg,#1e1b4b,#3b0764);border:1px solid #7c3aed;border-radius:10px;padding:16px}
+    .figma-card h3{color:#c084fc;font-size:.85rem;margin-bottom:12px;display:flex;align-items:center;gap:8px}
+    .figma-status{display:flex;align-items:center;gap:8px;padding:10px 12px;background:#0f172a;border-radius:6px;margin-bottom:10px}
+    .figma-connected{color:#4ade80;font-weight:600;font-size:.82rem}
+    .figma-disconnected{color:#f87171;font-weight:600;font-size:.82rem}
 
-    /* ── STATS ───────────────────────────────────────────── */
-    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
-    .stat-card{background:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid #334155;border-radius:10px;padding:16px;text-align:center;transition:.2s}
-    .stat-card:hover{border-color:#6366f1;transform:translateY(-2px)}
-    .stat-card .icon{font-size:1.5rem;margin-bottom:6px}
-    .stat-card .value{font-size:1.5rem;font-weight:800}
-    .stat-card .label{font-size:.7rem;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-top:4px}
-    .stat-card.success{border-color:#22c55e}.stat-card.success .value{color:#4ade80}
-    .stat-card.warn{border-color:#f59e0b}.stat-card.warn .value{color:#fbbf24}
-    .stat-card.error{border-color:#ef4444}.stat-card.error .value{color:#f87171}
-    .stat-card.info{border-color:#3b82f6}.stat-card.info .value{color:#60a5fa}
+    /* ── UPLOAD AREA ─────────────────────────────────────── */
+    .upload-zone{border:2px dashed #475569;border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:.2s;background:#0f172a}
+    .upload-zone:hover{border-color:#6366f1;background:#1e1b4b}
+    .upload-zone.dragover{border-color:#a855f7;background:#3b0764}
+    .upload-zone .upload-icon{font-size:2rem;margin-bottom:8px}
+    .upload-zone p{font-size:.82rem;color:#94a3b8}
+    .upload-zone .upload-hint{font-size:.7rem;color:#64748b;margin-top:4px}
 
-    /* ── BACKUP ──────────────────────────────────────────── */
-    .backup-card{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
-    .backup-icon{width:40px;height:40px;background:#0f172a;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;flex-shrink:0}
-    .backup-info{flex:1}
-    .backup-info .bname{font-size:.85rem;font-weight:600;color:#93c5fd}
-    .backup-info .bmeta{font-size:.7rem;color:#64748b;margin-top:2px}
-    .backup-actions{display:flex;gap:4px}
+    /* ── DESIGN PREVIEW ──────────────────────────────────── */
+    .design-preview-wrap{position:relative;background:#0f172a;border-radius:8px;overflow:hidden;max-height:300px}
+    .design-preview-wrap img{width:100%;height:auto;display:block;object-fit:contain}
+    .design-overlay{position:absolute;inset:0;background:rgba(139,92,246,.1);border:2px solid #a855f7;pointer-events:none;display:none}
+    .design-overlay.active{display:block}
+    .design-controls{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
 
-    /* ── TEST RESULT ─────────────────────────────────────── */
-    .test-result{background:#020617;border-radius:8px;padding:12px;margin-top:10px;font-family:monospace;font-size:.76rem;max-height:300px;overflow-y:auto}
-    .test-ok{color:#4ade80}
-    .test-fail{color:#f87171}
+    /* ── MERGE CONTROLS ──────────────────────────────────── */
+    .merge-section{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:12px;margin-top:8px}
+    .merge-section h4{font-size:.78rem;color:#818cf8;margin-bottom:8px}
+    .merge-options{display:flex;flex-direction:column;gap:6px}
+    .merge-option{display:flex;align-items:center;gap:8px;padding:8px;background:#1e293b;border-radius:6px;cursor:pointer;border:1px solid transparent;transition:.15s}
+    .merge-option:hover{border-color:#6366f1}
+    .merge-option.selected{border-color:#a855f7;background:#3b0764}
+    .merge-option .opt-icon{font-size:1.1rem}
+    .merge-option .opt-info{flex:1}
+    .merge-option .opt-title{font-size:.8rem;color:#e2e8f0;font-weight:600}
+    .merge-option .opt-desc{font-size:.68rem;color:#64748b}
 
-    /* ── PROGRESS BAR ────────────────────────────────────── */
-    .progress-wrap{background:#334155;border-radius:999px;height:3px;overflow:hidden;margin-top:4px}
-    .progress-bar{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6,#ec4899);border-radius:999px;transition:width .4s;background-size:200% 100%;animation:shimmer 2s linear infinite}
-    @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
-
-    /* ── MISC ────────────────────────────────────────────── */
-    .empty{text-align:center;color:#475569;padding:40px 20px}
-    .empty .icon{font-size:2.5rem;margin-bottom:10px}
-    .empty p{font-size:.85rem}
+    /* ── ALIGNMENT TOOL ──────────────────────────────────── */
+    .align-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;max-width:120px;margin:8px auto}
+    .align-btn{background:#1e293b;border:1px solid #334155;border-radius:4px;padding:6px;font-size:.7rem;cursor:pointer;text-align:center;transition:.15s}
+    .align-btn:hover{border-color:#6366f1;background:#273549}
+    .align-btn.active{border-color:#a855f7;background:#3b0764;color:#c084fc}
 
     /* ── TOAST ───────────────────────────────────────────── */
     .toast{position:fixed;bottom:20px;right:20px;background:#1e293b;border:1px solid #334155;border-radius:10px;padding:12px 18px;font-size:.82rem;z-index:9999;display:none;box-shadow:0 8px 24px rgba(0,0,0,.5);max-width:360px}
@@ -227,72 +190,127 @@
     /* ── MODAL ───────────────────────────────────────────── */
     .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9998;display:none;align-items:center;justify-content:center;padding:20px}
     .modal-overlay.show{display:flex}
-    .modal{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:24px;max-width:500px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 40px rgba(0,0,0,.5)}
+    .modal{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:24px;max-width:600px;width:100%;max-height:80vh;overflow-y:auto}
     .modal h3{margin-bottom:14px;font-size:1.05rem;color:#e2e8f0}
     .modal p{font-size:.85rem;color:#94a3b8;margin-bottom:14px}
     .modal-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
 
     /* ── PREVIEW ─────────────────────────────────────────── */
-    .preview-toolbar{background:#1e293b;border-bottom:1px solid #334155;padding:9px 12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex-shrink:0}
+    .preview-toolbar{background:#1e293b;border-bottom:1px solid #334155;padding:9px 12px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
     .preview-url{flex:1;background:#020617;border:1px solid #334155;border-radius:6px;padding:6px 12px;font-family:monospace;font-size:.76rem;color:#38bdf8;min-width:180px;outline:none}
     .preview-url:focus{border-color:#6366f1}
-    .preview-btn{background:#334155;border:none;color:#e2e8f0;padding:6px 10px;border-radius:6px;font-size:.72rem;cursor:pointer;transition:.15s;font-weight:600;white-space:nowrap}
+    .preview-btn{background:#334155;border:none;color:#e2e8f0;padding:6px 10px;border-radius:6px;font-size:.72rem;cursor:pointer;font-weight:600;white-space:nowrap}
     .preview-btn:hover{background:#475569}
     .preview-btn.active{background:#6366f1;color:#fff}
     .preview-btn.danger{background:#dc2626}
-    .preview-btn.danger:hover{background:#b91c1c}
-    .preview-frame-wrap{flex:1;background:#94a3b8;overflow:auto;display:flex;align-items:stretch;justify-content:center;position:relative}
+    .preview-frame-wrap{flex:1;background:#94a3b8;overflow:auto;display:flex;position:relative}
     .preview-iframe{width:100%;height:100%;border:none;background:#fff;display:block}
-    .preview-iframe.mobile{max-width:390px;box-shadow:0 0 20px rgba(0,0,0,.3);border:2px solid #1e293b}
-    .preview-iframe.tablet{max-width:768px;box-shadow:0 0 20px rgba(0,0,0,.3);border:2px solid #1e293b}
-    .preview-loading{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#1e293b;color:#e2e8f0;padding:20px 30px;border-radius:10px;font-size:.85rem;display:flex;align-items:center;gap:12px;z-index:10}
-    .preview-loading .spinner{width:20px;height:20px;border:3px solid #334155;border-top-color:#6366f1;border-radius:50%;animation:spin 1s linear infinite}
+    .preview-iframe.mobile{max-width:390px;margin:0 auto;box-shadow:0 0 20px rgba(0,0,0,.3)}
+    .preview-iframe.tablet{max-width:768px;margin:0 auto;box-shadow:0 0 20px rgba(0,0,0,.3)}
 
     /* ── WS INDICATOR ────────────────────────────────────── */
-    @keyframes spin{to{transform:rotate(360deg)}}
-    .ws-indicator{position:fixed;bottom:15px;left:15px;background:#1e293b;border:1px solid #334155;border-radius:20px;padding:5px 12px;font-size:.7rem;display:flex;align-items:center;gap:6px;z-index:100;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+    .ws-indicator{position:fixed;bottom:15px;left:15px;background:#1e293b;border:1px solid #334155;border-radius:20px;padding:5px 12px;font-size:.7rem;display:flex;align-items:center;gap:6px;z-index:100}
     .ws-indicator.connected{border-color:#22c55e;color:#4ade80}
     .ws-indicator.disconnected{border-color:#ef4444;color:#f87171}
+
+    /* ── PROGRESS ────────────────────────────────────────── */
+    .progress-wrap{background:#334155;border-radius:999px;height:3px;overflow:hidden;margin-top:4px}
+    .progress-bar{height:100%;background:linear-gradient(90deg,#6366f1,#8b5cf6,#ec4899);border-radius:999px;transition:width .4s;background-size:200% 100%;animation:shimmer 2s linear infinite}
+    @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+    /* ── MISC ────────────────────────────────────────────── */
+    .empty{text-align:center;color:#475569;padding:40px 20px}
+    .empty .icon{font-size:2.5rem;margin-bottom:10px}
+    .empty p{font-size:.85rem}
+    .cancel-floating{position:sticky;bottom:0;background:linear-gradient(180deg,transparent,#020617 30%);padding:20px 0 0;margin-top:15px;text-align:center}
+    .cancel-floating .btn{max-width:280px;display:inline-block}
+
+    /* ── STATS ───────────────────────────────────────────── */
+    .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+    .stat-card{background:linear-gradient(135deg,#1e293b,#0f172a);border:1px solid #334155;border-radius:10px;padding:14px;text-align:center}
+    .stat-card .icon{font-size:1.3rem;margin-bottom:4px}
+    .stat-card .value{font-size:1.3rem;font-weight:800}
+    .stat-card .label{font-size:.65rem;color:#64748b;margin-top:2px}
+    .stat-card.success{border-color:#22c55e}.stat-card.success .value{color:#4ade80}
+    .stat-card.warn{border-color:#f59e0b}.stat-card.warn .value{color:#fbbf24}
+    .stat-card.error{border-color:#ef4444}.stat-card.error .value{color:#f87171}
+    .stat-card.info{border-color:#3b82f6}.stat-card.info .value{color:#60a5fa}
+
+    /* ── KEY CARDS ───────────────────────────────────────── */
+    .key-card{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:8px}
+    .key-card.active-key{border-color:#22c55e;background:linear-gradient(135deg,#1e293b,#052e16)}
+    .key-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+    .key-dot.green{background:#22c55e;box-shadow:0 0 4px #22c55e}
+    .key-dot.yellow{background:#f59e0b}
+    .key-dot.red{background:#ef4444}
+    .key-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding-top:8px;border-top:1px solid #334155;margin-top:8px}
+    .key-metric{text-align:center;background:#0f172a;padding:6px;border-radius:4px}
+    .key-metric .val{font-size:.85rem;font-weight:700}
+    .key-metric .lbl{color:#64748b;font-size:.6rem}
+    .val-ok{color:#4ade80}
+    .val-err{color:#f87171}
+    .val-info{color:#38bdf8}
+
+    /* ── BACKUP ──────────────────────────────────────────── */
+    .backup-card{background:#1e293b;border:1px solid #334155;border-radius:8px;padding:12px;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+    .backup-icon{width:36px;height:36px;background:#0f172a;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+    .backup-info{flex:1}
+    .backup-info .bname{font-size:.82rem;font-weight:600;color:#93c5fd}
+    .backup-info .bmeta{font-size:.68rem;color:#64748b;margin-top:2px}
+    .backup-actions{display:flex;gap:4px}
 
     /* ── SCROLLBAR ───────────────────────────────────────── */
     ::-webkit-scrollbar{width:6px;height:6px}
     ::-webkit-scrollbar-track{background:#0f172a}
     ::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
     ::-webkit-scrollbar-thumb:hover{background:#475569}
+
+    /* ── UPLOAD SPECIFIC ─────────────────────────────────── */
+    .upload-tree-folder{color:#818cf8;font-weight:600;cursor:pointer}
+    .upload-tree-folder:hover{color:#a78bfa}
+    .upload-tree-file{color:#93c5fd;display:flex;align-items:center;gap:6px;padding:1px 0}
+    .upload-tree-file:hover{background:#1e293b}
+    .upload-status-ok{color:#4ade80}
+    .upload-status-warn{color:#fbbf24}
+    .upload-status-err{color:#f87171}
+
+    /* ── TAB COLORS ──────────────────────────────────────── */
+    .mode-tab[data-mode="mode-upload"]{border-color:#10b981;color:#6ee7b7}
+    .mode-tab[data-mode="mode-upload"].active{background:#052e16;border-color:#10b981;color:#6ee7b7}
+    .mode-tab[data-mode="mode-figma"]{border-color:#7c3aed;color:#c084fc}
+    .mode-tab[data-mode="mode-figma"].active{background:#3b0764;border-color:#a855f7;color:#c084fc}
   </style>
 </head>
 <body>
 
-<!-- ════════════════════════════════════════════════════════
-     HEADER
-════════════════════════════════════════════════════════ -->
 <header>
   <div>
-    <h1>🚀 AI Project Maker <span class="version">ULTIMATE v3.0</span></h1>
-    <p>Generate · Kembangkan · Jalankan · Auto Fallback · Live Preview</p>
+    <h1>🚀 AI Project Maker <span class="version">v3.0</span></h1>
+    <p>Generate · Kembangkan · Upload Merge · Figma Sync · Live Preview</p>
   </div>
   <div class="header-right">
     <span id="server-status">
       <span class="status-dot checking"></span>
       <span style="font-size:.75rem">Mengecek...</span>
     </span>
-    <div class="badge-btn stats" id="btn-stats">📊 Stats</div>
-    <div class="badge-btn backup" id="btn-backup">💾 Backup</div>
-    <div class="badge-btn test" id="btn-test-ai">🧪 Test AI</div>
-    <div class="badge-btn key" id="btn-key-header">🔑 Keys</div>
+    <div class="badge-btn figma" id="btn-figma-header">🎨 Figma</div>
+    <div class="badge-btn" id="btn-stats" style="background:rgba(59,130,246,.3)">📊 Stats</div>
+    <div class="badge-btn" id="btn-test-ai" style="background:rgba(16,185,129,.3)">🧪 Test AI</div>
+    <div class="badge-btn" id="btn-key-header" style="background:rgba(139,92,246,.3)">🔑 Keys</div>
   </div>
 </header>
 
-<!-- ════════════════════════════════════════════════════════
-     MAIN CONTAINER
-════════════════════════════════════════════════════════ -->
 <div class="container">
 
   <!-- ── SIDEBAR ─────────────────────────────────────── -->
   <aside class="sidebar">
-    <div class="mode-tabs">
+    <div class="mode-tabs" style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
       <div class="mode-tab active" data-mode="mode-baru">➕ Buat Baru</div>
       <div class="mode-tab" data-mode="mode-lanjut">🔄 Lanjutkan</div>
+    </div>
+    <div class="mode-tabs" style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+      <div class="mode-tab" data-mode="mode-upload">📤 Upload</div>
+      <div class="mode-tab" data-mode="mode-figma">🎨 Figma</div>
     </div>
 
     <!-- Panel Baru -->
@@ -319,8 +337,8 @@
     <div class="mode-panel" id="mode-lanjut">
       <div>
         <label>📂 Pilih Project</label>
-        <div class="project-list-wrap" id="project-list">
-          <div class="empty"><p>Klik tab Lanjutkan untuk muat list.</p></div>
+        <div id="project-list" style="max-height:180px;overflow-y:auto;display:flex;flex-direction:column;gap:5px">
+          <div class="empty"><p style="font-size:.78rem">Klik tab ini untuk muat list.</p></div>
         </div>
       </div>
       <div>
@@ -340,6 +358,190 @@
         <div class="progress-bar" id="pb-lanjut" style="width:5%"></div>
       </div>
     </div>
+
+    <!-- Panel Figma -->
+    <div class="mode-panel" id="mode-figma">
+      <div class="figma-card">
+        <h3>🎨 Figma Design → Code</h3>
+        <div class="figma-status" id="figma-conn-status">
+          <span class="status-dot checking"></span>
+          <span class="figma-disconnected">Mengecek koneksi...</span>
+        </div>
+
+        <!-- Option 1: URL Figma -->
+        <div>
+          <label>🔗 URL Figma File</label>
+          <div style="display:flex;gap:6px">
+            <input type="text" id="figma-url" placeholder="https://www.figma.com/file/..." style="flex:1"/>
+            <button class="btn btn-figma btn-sm" id="btn-load-figma" style="width:auto">Load</button>
+          </div>
+        </div>
+
+        <!-- Option 2: Upload Screenshot/Design -->
+        <div style="margin-top:10px">
+          <label>📸 Atau Upload Desain</label>
+          <div class="upload-zone" id="upload-zone">
+            <div class="upload-icon">📤</div>
+            <p>Klik atau drag & drop gambar desain di sini</p>
+            <div class="upload-hint">PNG, JPG, SVG, Figma export • Max 10MB</div>
+          </div>
+          <input type="file" id="design-file-input" accept="image/*,.svg,.figma" style="display:none"/>
+          <div id="uploaded-design-preview" style="display:none;margin-top:8px">
+            <div class="design-preview-wrap">
+              <img id="uploaded-design-img" src="" alt="Design"/>
+              <div class="design-overlay" id="design-overlay"></div>
+            </div>
+            <div class="design-controls">
+              <button class="btn btn-gray btn-xs" onclick="clearUploadedDesign()">🗑️ Hapus</button>
+              <button class="btn btn-blue btn-xs" onclick="toggleDesignOverlay()">👁️ Overlay</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Option 3: Paste URL Screenshot -->
+        <div style="margin-top:10px">
+          <label>🌐 URL Screenshot / Image</label>
+          <div style="display:flex;gap:6px">
+            <input type="text" id="design-image-url" placeholder="https://... atau data:image/..." style="flex:1"/>
+            <button class="btn btn-blue btn-sm" id="btn-load-image-url" style="width:auto">Load</button>
+          </div>
+        </div>
+
+        <!-- Target Project -->
+        <div style="margin-top:10px">
+          <label>📁 Merge ke Project</label>
+          <select id="figma-target-project">
+            <option value="">-- Pilih project yang sudah ada --</option>
+          </select>
+        </div>
+
+        <!-- Merge Options -->
+        <div class="merge-section">
+          <h4>🔀 Mode Merge</h4>
+          <div class="merge-options">
+            <div class="merge-option selected" data-mode="replace">
+              <span class="opt-icon">🔄</span>
+              <div class="opt-info">
+                <div class="opt-title">Replace UI</div>
+                <div class="opt-desc">Ganti HTML/CSS dengan desain baru</div>
+              </div>
+            </div>
+            <div class="merge-option" data-mode="merge">
+              <span class="opt-icon">🔀</span>
+              <div class="opt-info">
+                <div class="opt-title">Merge Design</div>
+                <div class="opt-desc">Gabungkan desain dengan kode existing</div>
+              </div>
+            </div>
+            <div class="merge-option" data-mode="append">
+              <span class="opt-icon">➕</span>
+              <div class="opt-info">
+                <div class="opt-title">Append Component</div>
+                <div class="opt-desc">Tambahkan komponen desain ke halaman</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Generate Button -->
+        <button class="btn btn-primary" id="btn-figma-generate" style="margin-top:10px">
+          🚀 Generate & Merge ke Code
+        </button>
+        <div class="progress-wrap" id="pw-figma" style="display:none">
+          <div class="progress-bar" id="pb-figma" style="width:5%"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel Upload -->
+    <div class="mode-panel" id="mode-upload">
+      <div class="figma-card" style="background:linear-gradient(135deg,#064e3b,#052e16);border-color:#10b981">
+        <h3 style="color:#6ee7b7">📤 Upload & Merge Code</h3>
+        <p style="font-size:.75rem;color:#94a3b8;margin-bottom:10px">Upload file, folder, atau ZIP yang sudah ada, lalu AI akan gabungkan ke project.</p>
+
+        <!-- Upload Zone -->
+        <div class="upload-zone" id="code-upload-zone" style="border-color:#10b981">
+          <div class="upload-icon">📁</div>
+          <p>Drag & drop file/folder/ZIP di sini</p>
+          <div class="upload-hint">.py .html .css .js .json .zip .tar.gz • Multiple files OK</div>
+        </div>
+        <input type="file" id="code-file-input" multiple style="display:none"/>
+        <input type="file" id="code-folder-input" webkitdirectory style="display:none"/>
+
+        <!-- Upload Actions -->
+        <div style="display:flex;gap:6px;margin-top:8px">
+          <button class="btn btn-gray btn-xs" onclick="document.getElementById('code-file-input').click()" style="flex:1">📄 Files</button>
+          <button class="btn btn-gray btn-xs" onclick="document.getElementById('code-folder-input').click()" style="flex:1">📂 Folder</button>
+          <button class="btn btn-red btn-xs" onclick="clearUploadedCode()" style="flex:0;width:auto">🗑️</button>
+        </div>
+
+        <!-- Uploaded Files List -->
+        <div id="uploaded-code-list" style="display:none;margin-top:10px">
+          <label>📋 File Terupload (<span id="uploaded-count">0</span>)</label>
+          <div id="uploaded-files-tree" style="max-height:200px;overflow-y:auto;background:#0f172a;border-radius:6px;padding:8px;font-size:.72rem;font-family:monospace"></div>
+          <div style="display:flex;gap:8px;margin-top:6px;font-size:.7rem;color:#64748b">
+            <span>📦 Total: <b id="uploaded-total-size">0 KB</b></span>
+            <span>📄 <b id="uploaded-file-count">0</b> file</span>
+          </div>
+        </div>
+
+        <!-- Target & Options -->
+        <div style="margin-top:12px">
+          <label>📁 Merge ke Project</label>
+          <select id="upload-target-project">
+            <option value="">-- Buat project baru --</option>
+          </select>
+        </div>
+
+        <div style="margin-top:8px">
+          <label>✨ Instruksi untuk AI</label>
+          <textarea id="upload-merge-instruksi" placeholder="Contoh: Gabungkan file ini ke project, sesuaikan import, buat routes baru...&#10;Atau kosongkan untuk auto-merge oleh AI."></textarea>
+        </div>
+
+        <!-- Merge Strategy -->
+        <div class="merge-section" style="border-color:#10b981">
+          <h4 style="color:#6ee7b7">🔀 Strategi Merge</h4>
+          <div class="merge-options">
+            <div class="merge-option selected" data-strategy="smart" onclick="selectMergeStrategy(this,'smart')">
+              <span class="opt-icon">🧠</span>
+              <div class="opt-info">
+                <div class="opt-title">Smart Merge</div>
+                <div class="opt-desc">AI otomatis deteksi & gabungkan dengan cerdas</div>
+              </div>
+            </div>
+            <div class="merge-option" data-strategy="integrate" onclick="selectMergeStrategy(this,'integrate')">
+              <span class="opt-icon">🔀</span>
+              <div class="opt-info">
+                <div class="opt-title">Integrate</div>
+                <div class="opt-desc">Gabungkan ke struktur project yang ada</div>
+              </div>
+            </div>
+            <div class="merge-option" data-strategy="overlay" onclick="selectMergeStrategy(this,'overlay')">
+              <span class="opt-icon">📋</span>
+              <div class="opt-info">
+                <div class="opt-title">Overlay</div>
+                <div class="opt-desc">Timpa file yang sama, sisanya ditambahkan</div>
+              </div>
+            </div>
+            <div class="merge-option" data-strategy="new" onclick="selectMergeStrategy(this,'new')">
+              <span class="opt-icon">✨</span>
+              <div class="opt-info">
+                <div class="opt-title">Buat Baru</div>
+                <div class="opt-desc">Buat project baru dari file yang diupload</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Generate Button -->
+        <button class="btn btn-green" id="btn-upload-merge" style="margin-top:10px">
+          🚀 AI Merge & Generate
+        </button>
+        <div class="progress-wrap" id="pw-upload" style="display:none">
+          <div class="progress-bar" id="pb-upload" style="width:5%"></div>
+        </div>
+      </div>
+    </div>
   </aside>
 
   <!-- ── MAIN PANEL ──────────────────────────────────── -->
@@ -348,17 +550,17 @@
       <div class="tab active" data-tab="tab-log">📟 Log</div>
       <div class="tab" data-tab="tab-files">📂 Files</div>
       <div class="tab" data-tab="tab-info">📋 Info</div>
+      <div class="tab" data-tab="tab-design">🎨 Design <span id="design-badge" style="display:none" class="tab-badge">NEW</span></div>
       <div class="tab" data-tab="tab-preview">🖥️ Preview <span id="preview-badge" style="display:none" class="tab-badge live">LIVE</span></div>
-      <div class="tab" data-tab="tab-run">▶️ Run <span id="run-badge" style="display:none" class="tab-badge">ON</span></div>
+      <div class="tab" data-tab="tab-run">▶️ Run</div>
       <div class="tab" data-tab="tab-stats">📊 Stats</div>
-      <div class="tab" data-tab="tab-backup">💾 Backup</div>
       <div class="tab" data-tab="tab-keys">🔑 Keys</div>
     </div>
 
     <!-- Log -->
     <div class="tab-content active" id="tab-log">
-      <div class="log-toolbar">
-        <h3>📟 Live Log</h3>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h3 style="font-size:.85rem;color:#94a3b8">📟 Live Log</h3>
         <button class="btn btn-gray btn-sm" onclick="clearLogs()">🗑️ Clear</button>
       </div>
       <div id="file-progress-wrapper"></div>
@@ -379,13 +581,42 @@
       </div>
     </div>
 
-    <!-- Preview -->
-    <div class="tab-content preview-active" id="tab-preview">
-      <div id="preview-panel" style="width:100%;height:100%;display:flex;flex-direction:column">
-        <div class="empty" style="margin:auto">
-          <div class="icon">🖥️</div>
-          <p>Preview muncul setelah project di-RUN.</p>
+    <!-- Design Comparison -->
+    <div class="tab-content" id="tab-design">
+      <div id="design-panel">
+        <div class="figma-card" style="background:linear-gradient(135deg,#0f172a,#1e293b)">
+          <h3>🎨 Design vs Code Comparison</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+            <div>
+              <label style="margin-bottom:8px;display:block">📸 Design Asli</label>
+              <div class="design-preview-wrap" id="original-design-wrap" style="min-height:200px;display:flex;align-items:center;justify-content:center">
+                <div class="empty" style="padding:20px"><p style="font-size:.78rem">Upload desain di tab Figma</p></div>
+              </div>
+            </div>
+            <div>
+              <label style="margin-bottom:8px;display:block">🖥️ Preview Code</label>
+              <div class="design-preview-wrap" id="code-preview-wrap" style="min-height:200px;display:flex;align-items:center;justify-content:center">
+                <div class="empty" style="padding:20px"><p style="font-size:.78rem">Preview muncul setelah RUN</p></div>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:12px;display:flex;gap:8px;justify-content:center">
+            <button class="btn btn-blue btn-sm" onclick="switchToTab('tab-preview')" style="width:auto">🖥️ Full Preview</button>
+            <button class="btn btn-figma btn-sm" onclick="syncDesignToPreview()" style="width:auto">🔄 Sync Design</button>
+            <button class="btn btn-green btn-sm" onclick="exportMergedCode()" style="width:auto">📥 Export Code</button>
+          </div>
         </div>
+        <div id="design-merge-info" class="info-card" style="display:none">
+          <h3>📋 Merge Info</h3>
+          <div id="design-merge-details"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Preview -->
+    <div class="tab-content" id="tab-preview" style="padding:0;display:flex;flex-direction:column">
+      <div id="preview-panel" style="flex:1;display:flex;flex-direction:column">
+        <div class="empty" style="margin:auto"><div class="icon">🖥️</div><p>Preview muncul setelah project di-RUN.</p></div>
       </div>
     </div>
 
@@ -403,31 +634,24 @@
       </div>
     </div>
 
-    <!-- Backup -->
-    <div class="tab-content" id="tab-backup">
-      <div id="backup-panel">
-        <div class="empty"><div class="icon">💾</div><p>Loading backups...</p></div>
-      </div>
-    </div>
-
     <!-- Keys -->
     <div class="tab-content" id="tab-keys">
       <div id="key-panel">
         <div class="empty"><div class="icon">🔑</div><p>Klik untuk melihat status.</p></div>
       </div>
     </div>
-  </div><!-- /main-panel -->
-</div><!-- /container -->
+  </div>
+</div>
 
-<!-- ── TOAST ──────────────────────────────────────────── -->
+<!-- Toast -->
 <div class="toast" id="toast"></div>
 
-<!-- ── WS INDICATOR ──────────────────────────────────── -->
+<!-- WS Indicator -->
 <div class="ws-indicator disconnected" id="ws-indicator">
   <span>🔌</span><span id="ws-status">Disconnected</span>
 </div>
 
-<!-- ── MODAL ──────────────────────────────────────────── -->
+<!-- Modal -->
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal">
     <h3 id="modal-title">Konfirmasi</h3>
@@ -439,13 +663,28 @@
   </div>
 </div>
 
-<!-- ════════════════════════════════════════════════════════
-     JAVASCRIPT
-════════════════════════════════════════════════════════ -->
 <script>
 'use strict';
 
-// ── CHIPS DATA ────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════════════════════
+let currentProjectId = null;
+let pollingInterval  = null;
+let progressMode     = 'baru';
+let progressVal      = 5;
+let currentPreviewUrl = null;
+let previewMode      = 'desktop';
+let ws               = null;
+let wsReconnectTimer = null;
+let isProcessing     = false;
+let fileProgressState = {};
+let uploadedDesign   = null;   // { type:'file'|'url'|'figma', data:... }
+let selectedMergeMode = 'replace';
+
+// ══════════════════════════════════════════════════════════
+//  CHIPS DATA
+// ══════════════════════════════════════════════════════════
 const CHIPS_BARU = [
   {label:'📚 Perpustakaan', desc:'Sistem manajemen perpustakaan FastAPI SQLAlchemy SQLite, pinjam buku, denda, halaman HTML lengkap dengan Bootstrap 5', nama:'sistem_perpustakaan'},
   {label:'🎓 Akademik',     desc:'Sistem informasi akademik FastAPI dengan KRS online, input nilai, jadwal kuliah, absensi, dashboard, HTML Bootstrap', nama:'sistem_akademik'},
@@ -457,31 +696,17 @@ const CHIPS_BARU = [
   {label:'💬 Chatbot',      desc:'Chatbot FAQ kampus FastAPI dengan halaman web chat interaktif JavaScript', nama:'chatbot_kampus'},
 ];
 const CHIPS_LANJUT = [
-  {label:'🎨 UI Lengkap', text:'Tambahkan halaman web HTML lengkap Bootstrap 5. Halaman home, list, form, dashboard. HTMLResponse dengan JS.'},
+  {label:'🎨 UI Lengkap', text:'Tambahkan halaman web HTML lengkap Bootstrap 5 dengan home, list, form, dashboard'},
   {label:'📄 Export PDF',  text:'Tambahkan fitur export laporan PDF menggunakan reportlab'},
   {label:'🔐 Auth JWT',    text:'Tambahkan autentikasi JWT dengan login dan register endpoint'},
   {label:'📊 Dashboard',   text:'Tambahkan dashboard statistik dengan grafik Chart.js'},
-  {label:'📧 Email',       text:'Tambahkan fitur notifikasi email menggunakan smtplib'},
   {label:'📑 Pagination',  text:'Tambahkan pagination dan filtering pada semua endpoint'},
   {label:'🧪 Unit Test',   text:'Tambahkan unit test lengkap menggunakan pytest'},
-  {label:'🐳 Docker',      text:'Tambahkan Dockerfile dan docker-compose.yml'},
 ];
 
-// ── STATE ─────────────────────────────────────────────────
-let currentProjectId     = null;
-let pollingInterval      = null;
-let runPollingInterval   = null;
-let statsPollingInterval = null;
-let progressMode         = 'baru';
-let progressVal          = 5;
-let currentPreviewUrl    = null;
-let previewMode          = 'desktop';
-let ws                   = null;
-let wsReconnectTimer     = null;
-let isProcessing         = false;
-let fileProgressState    = {};   // { filename: 'loading' | {status:'done',chars,time} | 'failed' | 'fallback' }
-
-// ── UTILS ─────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════════════════════
 function esc(s) {
   const d = document.createElement('div');
   d.textContent = String(s ?? '');
@@ -493,8 +718,7 @@ function escAttr(s) {
 }
 function iconFile(path) {
   const ext = (path||'').split('.').pop().toLowerCase();
-  return {py:'🐍',md:'📖',txt:'📄',json:'📦',html:'🌐',css:'🎨',
-    js:'⚡',ts:'⚡',yaml:'⚙️',yml:'⚙️',toml:'⚙️',sql:'🗄️',env:'🔒'}[ext] || '📄';
+  return {py:'🐍',md:'📖',txt:'📄',json:'📦',html:'🌐',css:'🎨',js:'⚡',ts:'⚡',yaml:'⚙️',yml:'⚙️',sql:'🗄️',env:'🔒'}[ext] || '📄';
 }
 function fmtSize(b) {
   if (!b||b<1024) return (b||0)+' B';
@@ -505,9 +729,6 @@ function fmtUptime(s) {
   if (!s||s<60) return s+'s';
   if (s<3600) return Math.floor(s/60)+'m '+(s%60)+'s';
   return Math.floor(s/3600)+'h '+Math.floor((s%3600)/60)+'m';
-}
-function fmtDate(ts) {
-  return ts ? new Date(ts*1000).toLocaleString('id-ID') : '-';
 }
 function showToast(msg, type) {
   const t = document.getElementById('toast');
@@ -526,14 +747,15 @@ function closeModal() {
   document.getElementById('modal-overlay').classList.remove('show');
 }
 document.getElementById('modal-overlay').addEventListener('click', e => { if (e.target===e.currentTarget) closeModal(); });
-
 function clearLogs() {
   document.getElementById('log-panel').innerHTML = '<span class="log-info">Logs cleared.</span>';
   document.getElementById('file-progress-wrapper').innerHTML = '';
   fileProgressState = {};
 }
 
-// ── WEBSOCKET ─────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+//  WEBSOCKET
+// ══════════════════════════════════════════════════════════
 function connectWebSocket(projectId) {
   if (ws) { ws.close(); ws = null; }
   if (!projectId) return;
@@ -541,15 +763,14 @@ function connectWebSocket(projectId) {
   ws = new WebSocket(`${proto}//${location.host}/ws/${projectId}`);
   ws.onopen = () => {
     document.getElementById('ws-indicator').className = 'ws-indicator connected';
-    document.getElementById('ws-status').textContent  = 'Live';
-    setInterval(() => { if (ws?.readyState === 1) ws.send('ping'); }, 30000);
+    document.getElementById('ws-status').textContent = 'Live';
   };
   ws.onmessage = e => {
     try { handleWsMessage(JSON.parse(e.data)); } catch(_) {}
   };
   ws.onclose = () => {
     document.getElementById('ws-indicator').className = 'ws-indicator disconnected';
-    document.getElementById('ws-status').textContent  = 'Offline';
+    document.getElementById('ws-status').textContent = 'Offline';
     if (currentProjectId && isProcessing) {
       clearTimeout(wsReconnectTimer);
       wsReconnectTimer = setTimeout(() => connectWebSocket(currentProjectId), 3000);
@@ -560,114 +781,617 @@ function connectWebSocket(projectId) {
 function handleWsMessage(data) {
   if (data.type === 'log') {
     parseLogForFileProgress(data.message);
-  } else if (data.type === 'runlog') {
-    const panel = document.getElementById('run-log-panel');
-    if (panel) {
-      panel.innerHTML += `<div class="${getRunLogClass(data.line)}">${esc(data.line)}</div>`;
-      panel.scrollTop = panel.scrollHeight;
-    }
+    appendLog(data.message);
   } else if (data.type === 'status') {
     const msgMap = { done:'✅ Selesai!', error:'❌ Error!', cancelled:'🛑 Dibatalkan' };
     const typeMap = { done:'ok', error:'err', cancelled:'info' };
     if (msgMap[data.status]) showToast(msgMap[data.status], typeMap[data.status]);
+  } else if (data.type === 'figma') {
+    if (data.action === 'connected') {
+      updateFigmaStatus(true);
+      showToast('🎨 Figma MCP Connected!', 'ok');
+    }
   }
 }
 
+function appendLog(line) {
+  const panel = document.getElementById('log-panel');
+  const cls = getLogClass(line);
+  const div = document.createElement('div');
+  div.className = cls;
+  div.textContent = line;
+  panel.appendChild(div);
+  panel.scrollTop = panel.scrollHeight;
+}
+
 function getLogClass(line) {
-  const checks = [
-    ['⏳','log-loading'],['✅','log-success'],['❌','log-error'],
-    ['⚠️','log-warning'],['🔧','log-fix'],['📄','log-file'],
-    ['📁','log-folder'],['🎉','log-done'],['ℹ️','log-info'],
-    ['🔄','log-lanjut'],['✨','log-cache'],['🧪','log-run'],
-  ];
-  for (const [emoji, cls] of checks) if (line.includes(emoji)) return cls;
+  if (line.includes('🎨') || line.includes('figma') || line.includes('Figma')) return 'log-figma';
+  if (line.includes('⏳') || line.includes('loading')) return 'log-loading';
+  if (line.includes('✅') || line.includes('✓') || line.includes('sukses')) return 'log-success';
+  if (line.includes('❌') || line.includes('✗') || line.includes('error')) return 'log-error';
+  if (line.includes('⚠️') || line.includes('warning')) return 'log-warning';
+  if (line.includes('🎉') || line.includes('selesai')) return 'log-done';
   return 'log-info';
 }
 
-function getRunLogClass(line) {
-  if (line.startsWith('[SYSTEM]')) return 'log-sys';
-  if (/error|traceback|exception|failed/i.test(line)) return 'log-error';
-  if (/warning|warn/i.test(line)) return 'log-warning';
-  if (/success|ready|started|running|listening|startup complete/i.test(line)) return 'log-success';
-  return 'log-info';
-}
-
-// ── FILE PROGRESS PARSER ──────────────────────────────────
+// ══════════════════════════════════════════════════════════
+//  FILE PROGRESS
+// ══════════════════════════════════════════════════════════
 function parseLogForFileProgress(line) {
-  // [3/9] main.py...
   const m1 = line.match(/\[(\d+)\/(\d+)\]\s+(\S+)\.\.\./);
-  if (m1) { fileProgressState[m1[3]] = 'loading'; return; }
-
-  // ✓ 4500 chars (12.3s)
+  if (m1) { fileProgressState[m1[3]] = 'loading'; renderFileProgress(); return; }
   const m2 = line.match(/✓\s+(\d+)\s+chars\s+\(([\d.]+)s\)/);
   if (m2) {
     for (const [f, st] of Object.entries(fileProgressState)) {
       if (st === 'loading') { fileProgressState[f] = {status:'done', chars:m2[1], time:m2[2]}; break; }
     }
-    return;
+    renderFileProgress(); return;
   }
-
-  // 📝 Pakai fallback template / Pakai template fallback
   if (line.includes('📝') || line.includes('fallback')) {
     for (const [f, st] of Object.entries(fileProgressState)) {
-      if (st === 'loading') { fileProgressState[f] = {status:'fallback', chars:'FB', time:'0.0'}; break; }
+      if (st === 'loading') { fileProgressState[f] = {status:'done', chars:'FB', time:'0.0'}; break; }
     }
-    return;
+    renderFileProgress(); return;
   }
-
-  // ✗ Gagal
-  if (line.includes('✗ Gagal')) {
+  if (line.includes('✗') || line.includes('Gagal')) {
     for (const [f, st] of Object.entries(fileProgressState)) {
       if (st === 'loading') { fileProgressState[f] = 'failed'; break; }
     }
-    return;
+    renderFileProgress(); return;
   }
-
-  // Struktur: 9 file → reset
-  if (/Struktur:\s+\d+\s+file/.test(line)) { fileProgressState = {}; }
+  if (/Struktur:/.test(line)) { fileProgressState = {}; }
 }
 
-function renderFileProgress(files) {
+function renderFileProgress() {
   const wrapper = document.getElementById('file-progress-wrapper');
-  if (!wrapper || !files || !Object.keys(files).length) {
-    if (wrapper) wrapper.innerHTML = '';
+  const keys = Object.keys(fileProgressState);
+  if (!keys.length) { wrapper.innerHTML = ''; return; }
+  let doneCount = 0;
+  const items = keys.map(file => {
+    const st = fileProgressState[file];
+    let icon, cls, time = '';
+    if (st === 'loading') { icon = '<div class="spinner-mini"></div>'; cls = 'loading'; }
+    else if (st === 'failed') { icon = '❌'; cls = 'failed'; }
+    else if (typeof st === 'object' && st.status === 'done') {
+      icon = '✅'; cls = 'done'; doneCount++;
+      time = `<span class="time">${st.time}s · ${st.chars}c</span>`;
+    } else { icon = '⚪'; cls = 'pending'; }
+    return `<div class="file-progress-item ${cls}"><span class="icon">${icon}</span><span>${iconFile(file)} ${esc(file)}</span>${time}</div>`;
+  }).join('');
+  wrapper.innerHTML = `<div class="file-progress"><h3>📦 File Progress <span style="font-size:.7rem;color:#4ade80">${doneCount}/${keys.length}</span></h3><div class="file-progress-list">${items}</div></div>`;
+}
+
+// ══════════════════════════════════════════════════════════
+//  FIGMA / DESIGN UPLOAD
+// ══════════════════════════════════════════════════════════
+function initFigma() {
+  const uploadZone = document.getElementById('upload-zone');
+  const fileInput = document.getElementById('design-file-input');
+
+  uploadZone.addEventListener('click', () => fileInput.click());
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) handleDesignFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', e => { if (e.target.files.length) handleDesignFile(e.target.files[0]); });
+
+  document.getElementById('btn-load-figma').addEventListener('click', loadFigmaFromUrl);
+  document.getElementById('btn-load-image-url').addEventListener('click', loadImageFromUrl);
+  document.getElementById('btn-figma-generate').addEventListener('click', generateWithDesign);
+  document.getElementById('btn-figma-header').addEventListener('click', () => { switchToTab('tab-design'); switchMode('mode-figma'); });
+
+  // Merge options
+  document.querySelectorAll('.merge-option').forEach(el => {
+    el.addEventListener('click', () => {
+      document.querySelectorAll('.merge-option').forEach(o => o.classList.remove('selected'));
+      el.classList.add('selected');
+      selectedMergeMode = el.dataset.mode;
+    });
+  });
+
+  checkFigmaStatus();
+  loadProjectSelect();
+}
+
+function switchMode(modeId) {
+  document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(modeId)?.classList.add('active');
+  document.querySelector(`[data-mode="${modeId}"]`)?.classList.add('active');
+}
+
+async function checkFigmaStatus() {
+  const el = document.getElementById('figma-conn-status');
+  try {
+    const resp = await fetch('/figma/status', { signal: AbortSignal.timeout(3000) });
+    if (resp.ok) {
+      const data = await resp.json();
+      updateFigmaStatus(data.connected);
+    } else { updateFigmaStatus(false); }
+  } catch(_) { updateFigmaStatus(false); }
+}
+
+function updateFigmaStatus(connected) {
+  const el = document.getElementById('figma-conn-status');
+  if (connected) {
+    el.innerHTML = '<span class="status-dot online"></span><span class="figma-connected">✓ Terhubung ke Figma MCP</span>';
+  } else {
+    el.innerHTML = '<span class="status-dot offline"></span><span class="figma-disconnected">✗ Figma MCP tidak terhubung (upload manual tersedia)</span>';
+  }
+}
+
+async function loadProjectSelect() {
+  try {
+    const data = await fetch('/list-projects').then(r => r.json());
+    const sel = document.getElementById('figma-target-project');
+    sel.innerHTML = '<option value="">-- Buat project baru --</option>';
+    (data.projects || []).forEach(p => {
+      sel.innerHTML += `<option value="${escAttr(p.nama)}">${esc(p.nama)} (${esc(p.tech_stack)})</option>`;
+    });
+  } catch(_) {}
+}
+
+// ── Handle uploaded design file ───────────────────────────
+function handleDesignFile(file) {
+  if (!file.type.startsWith('image/') && !file.name.endsWith('.svg')) {
+    showToast('File harus gambar (PNG, JPG, SVG)', 'err');
+    return;
+  }
+  if (file.size > 10 * 1024 * 1024) {
+    showToast('File terlalu besar (max 10MB)', 'err');
     return;
   }
 
-  let doneCount = 0;
-  const items = Object.entries(files).map(([file, state]) => {
-    let iconHtml, itemClass, timeHtml = '';
-    if (state === 'loading') {
-      iconHtml = '<div class="spinner-mini"></div>'; itemClass = 'loading';
-    } else if (state === 'failed') {
-      iconHtml = '❌'; itemClass = 'failed';
-    } else if (typeof state === 'object' && state.status === 'done') {
-      iconHtml = '✅'; itemClass = 'done'; doneCount++;
-      timeHtml = `<span class="time">${state.time}s · ${state.chars} chars</span>`;
-    } else if (typeof state === 'object' && state.status === 'fallback') {
-      iconHtml = '📝'; itemClass = 'fallback'; doneCount++;
-      timeHtml = `<span class="time">Fallback template</span>`;
-    } else {
-      iconHtml = '⚪'; itemClass = 'pending';
-    }
-    return `<div class="file-progress-item ${itemClass}">
-      <span class="icon">${iconHtml}</span>
-      <span>${iconFile(file)} ${esc(file)}</span>
-      ${timeHtml}
-    </div>`;
-  }).join('');
-
-  const total = Object.keys(files).length;
-  wrapper.innerHTML = `
-    <div class="file-progress">
-      <h3>📦 Progress Generate File
-        <span style="font-size:.7rem;color:#4ade80;font-weight:normal">${doneCount}/${total} selesai</span>
-      </h3>
-      <div class="file-progress-list">${items}</div>
-    </div>`;
+  const reader = new FileReader();
+  reader.onload = e => {
+    uploadedDesign = { type: 'file', data: e.target.result, name: file.name };
+    showUploadedDesign(e.target.result);
+    showToast(`✅ Design "${file.name}" dimuat`, 'ok');
+    document.getElementById('design-badge').style.display = 'inline-block';
+  };
+  reader.readAsDataURL(file);
 }
 
-// ── CHIPS ─────────────────────────────────────────────────
+function loadImageFromUrl() {
+  const url = document.getElementById('design-image-url').value.trim();
+  if (!url) { showToast('Masukkan URL gambar!', 'err'); return; }
+  uploadedDesign = { type: 'url', data: url, name: url.split('/').pop() || 'design' };
+  showUploadedDesign(url);
+  showToast('✅ Design dari URL dimuat', 'ok');
+  document.getElementById('design-badge').style.display = 'inline-block';
+}
+
+async function loadFigmaFromUrl() {
+  const url = document.getElementById('figma-url').value.trim();
+  if (!url) { showToast('Masukkan URL Figma!', 'err'); return; }
+
+  showToast('⏳ Memuat dari Figma...', 'info');
+  try {
+    const resp = await fetch('/figma/screenshot', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ url: url })
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      if (data.image_url) {
+        uploadedDesign = { type: 'figma', data: data.image_url, name: 'Figma Design', figma_url: url };
+        showUploadedDesign(data.image_url);
+        showToast('✅ Figma design dimuat!', 'ok');
+        document.getElementById('design-badge').style.display = 'inline-block';
+      }
+    } else {
+      showToast('❌ Gagal memuat dari Figma (gunakan upload manual)', 'err');
+    }
+  } catch(_) {
+    showToast('⚠️ Figma MCP tidak tersedia. Gunakan upload manual.', 'info');
+  }
+}
+
+function showUploadedDesign(src) {
+  const preview = document.getElementById('uploaded-design-preview');
+  const img = document.getElementById('uploaded-design-img');
+  img.src = src;
+  preview.style.display = 'block';
+  document.getElementById('upload-zone').style.display = 'none';
+
+  // Also update design comparison tab
+  const origWrap = document.getElementById('original-design-wrap');
+  origWrap.innerHTML = `<img src="${escAttr(src)}" style="width:100%;height:auto;object-fit:contain;max-height:280px"/>`;
+}
+
+function clearUploadedDesign() {
+  uploadedDesign = null;
+  document.getElementById('uploaded-design-preview').style.display = 'none';
+  document.getElementById('upload-zone').style.display = 'block';
+  document.getElementById('design-file-input').value = '';
+  document.getElementById('design-badge').style.display = 'none';
+  const origWrap = document.getElementById('original-design-wrap');
+  origWrap.innerHTML = '<div class="empty" style="padding:20px"><p style="font-size:.78rem">Upload desain di tab Figma</p></div>';
+  showToast('🗑️ Design dihapus', 'info');
+}
+
+function toggleDesignOverlay() {
+  const overlay = document.getElementById('design-overlay');
+  overlay.classList.toggle('active');
+}
+
+// ── Generate with design merge ────────────────────────────
+async function generateWithDesign() {
+  const targetProject = document.getElementById('figma-target-project').value;
+  
+  if (!uploadedDesign && !targetProject) {
+    showToast('Upload desain atau pilih project!', 'err');
+    return;
+  }
+
+  progressMode = 'figma';
+  document.getElementById('pw-figma').style.display = 'block';
+  document.getElementById('pb-figma').style.width = '5%';
+  document.getElementById('btn-figma-generate').disabled = true;
+  switchToTab('tab-log');
+  fileProgressState = {};
+  document.getElementById('log-panel').innerHTML = '<div class="log-loading">⏳ Memulai proses merge desain...</div>';
+
+  const formData = new FormData();
+  
+  if (uploadedDesign) {
+    if (uploadedDesign.type === 'file') {
+      // Convert dataURL to blob
+      const blob = await fetch(uploadedDesign.data).then(r => r.blob());
+      formData.append('design_file', blob, uploadedDesign.name);
+    } else {
+      formData.append('design_url', uploadedDesign.data);
+    }
+    formData.append('design_type', uploadedDesign.type);
+  }
+  
+  formData.append('merge_mode', selectedMergeMode);
+  formData.append('target_project', targetProject);
+  formData.append('figma_url', document.getElementById('figma-url').value || '');
+
+  try {
+    const resp = await fetch('/figma-merge', { method: 'POST', body: formData });
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error || 'HTTP ' + resp.status);
+    }
+    const json = await resp.json();
+    currentProjectId = json.project_id;
+    isProcessing = true;
+    connectWebSocket(currentProjectId);
+    showToast(`🚀 Merge "${json.nama}" dimulai!`, 'ok');
+    mulaiPolling();
+  } catch(e) {
+    showToast('❌ ' + e.message, 'err');
+    document.getElementById('pw-figma').style.display = 'none';
+    document.getElementById('btn-figma-generate').disabled = false;
+  }
+}
+
+async function syncDesignToPreview() {
+  if (!currentProjectId) { showToast('Generate project dulu!', 'err'); return; }
+  if (!uploadedDesign) { showToast('Upload desain dulu!', 'err'); return; }
+  showToast('🔄 Sync design...', 'info');
+  try {
+    const resp = await fetch('/figma-sync-design', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ project_id: currentProjectId, design_url: uploadedDesign.data })
+    });
+    if (resp.ok) {
+      showToast('✅ Design synced!', 'ok');
+      if (currentPreviewUrl) reloadPreview();
+    }
+  } catch(e) { showToast('❌ ' + e.message, 'err'); }
+}
+
+async function exportMergedCode() {
+  if (!currentProjectId) { showToast('Generate project dulu!', 'err'); return; }
+  location.href = '/download/' + currentProjectId;
+  showToast('📥 Exporting...', 'ok');
+}
+
+// ══════════════════════════════════════════════════════════
+//  UPLOAD & MERGE CODE
+// ══════════════════════════════════════════════════════════
+let uploadedCodeFiles = [];  // [{name, path, content, size, type}]
+let uploadMergeStrategy = 'smart';
+
+function initUpload() {
+  const uploadZone = document.getElementById('code-upload-zone');
+  const fileInput = document.getElementById('code-file-input');
+  const folderInput = document.getElementById('code-folder-input');
+
+  uploadZone.addEventListener('click', () => fileInput.click());
+  uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+  uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+  uploadZone.addEventListener('drop', e => {
+    e.preventDefault();
+    uploadZone.classList.remove('dragover');
+    handleDroppedItems(e.dataTransfer.items);
+  });
+
+  fileInput.addEventListener('change', e => { handleFileList(e.target.files); });
+  folderInput.addEventListener('change', e => { handleFileList(e.target.files); });
+
+  document.getElementById('btn-upload-merge').addEventListener('click', generateWithUploadedCode);
+
+  // Load project list for upload target
+  loadUploadProjectSelect();
+}
+
+function selectMergeStrategy(el, strategy) {
+  document.querySelectorAll('#mode-upload .merge-option').forEach(o => o.classList.remove('selected'));
+  el.classList.add('selected');
+  uploadMergeStrategy = strategy;
+}
+
+async function handleDroppedItems(items) {
+  const files = [];
+  const entries = [];
+  
+  for (const item of items) {
+    if (item.kind === 'file') {
+      const entry = item.webkitGetAsEntry ? item.webkitGetAsEntry() : null;
+      if (entry) {
+        entries.push(entry);
+      } else {
+        const file = item.getAsFile();
+        if (file) files.push(file);
+      }
+    }
+  }
+
+  // Process entries recursively (handles folders)
+  for (const entry of entries) {
+    await readEntryRecursive(entry, '', files);
+  }
+
+  if (files.length) handleFileList(files);
+}
+
+function readEntryRecursive(entry, basePath, files) {
+  return new Promise(resolve => {
+    if (entry.isFile) {
+      entry.file(file => {
+        // Create a new File with the relative path
+        const newFile = new File([file], basePath + file.name, { type: file.type });
+        files.push(newFile);
+        resolve();
+      });
+    } else if (entry.isDirectory) {
+      const reader = entry.createReader();
+      reader.readEntries(async entries => {
+        for (const e of entries) {
+          await readEntryRecursive(e, basePath + entry.name + '/', files);
+        }
+        resolve();
+      });
+    } else {
+      resolve();
+    }
+  });
+}
+
+async function handleFileList(fileList) {
+  const files = Array.from(fileList);
+  if (!files.length) return;
+
+  showToast(`⏳ Membaca ${files.length} file...`, 'info');
+
+  const readPromises = files.map(file => {
+    return new Promise((resolve) => {
+      // Skip very large files (>5MB text, >50MB binary)
+      if (file.size > 50 * 1024 * 1024) {
+        resolve({ name: file.name, path: file.webkitRelativePath || file.name, content: '[File terlalu besar]', size: file.size, type: 'skipped' });
+        return;
+      }
+
+      const isBinary = isBinaryFile(file.name);
+      if (isBinary) {
+        // For binary files (images, zip, etc), store as dataURL
+        const reader = new FileReader();
+        reader.onload = e => {
+          resolve({
+            name: file.name,
+            path: file.webkitRelativePath || file.name,
+            content: e.target.result,
+            size: file.size,
+            type: 'binary',
+            mimeType: file.type
+          });
+        };
+        reader.onerror = () => resolve({ name: file.name, path: file.webkitRelativePath || file.name, content: '[Error reading]', size: file.size, type: 'error' });
+        reader.readAsDataURL(file);
+      } else {
+        // For text files, read as text
+        const reader = new FileReader();
+        reader.onload = e => {
+          resolve({
+            name: file.name,
+            path: file.webkitRelativePath || file.name,
+            content: e.target.result,
+            size: file.size,
+            type: 'text'
+          });
+        };
+        reader.onerror = () => resolve({ name: file.name, path: file.webkitRelativePath || file.name, content: '[Error reading]', size: file.size, type: 'error' });
+        reader.readAsText(file);
+      }
+    });
+  });
+
+  uploadedCodeFiles = await Promise.all(readPromises);
+  renderUploadedCodeList();
+  showToast(`✅ ${uploadedCodeFiles.length} file dimuat`, 'ok');
+}
+
+function isBinaryFile(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  const binaryExts = ['png','jpg','jpeg','gif','bmp','webp','ico','svg','zip','tar','gz','rar','7z','pdf','doc','docx','xls','xlsx','ppt','pptx','mp3','mp4','avi','mov','wav','ogg','woff','woff2','ttf','eot','pyc','pyo','so','dll','exe','bin'];
+  return binaryExts.includes(ext);
+}
+
+function renderUploadedCodeList() {
+  const listEl = document.getElementById('uploaded-code-list');
+  const treeEl = document.getElementById('uploaded-files-tree');
+  const countEl = document.getElementById('uploaded-count');
+  const sizeEl = document.getElementById('uploaded-total-size');
+  const fileCountEl = document.getElementById('uploaded-file-count');
+
+  if (!uploadedCodeFiles.length) {
+    listEl.style.display = 'none';
+    return;
+  }
+
+  listEl.style.display = 'block';
+  countEl.textContent = uploadedCodeFiles.length;
+  fileCountEl.textContent = uploadedCodeFiles.length;
+
+  const totalSize = uploadedCodeFiles.reduce((acc, f) => acc + f.size, 0);
+  sizeEl.textContent = fmtSize(totalSize);
+
+  // Build tree structure
+  const tree = buildFileTree(uploadedCodeFiles);
+  treeEl.innerHTML = renderFileTreeNode(tree, '');
+}
+
+function buildFileTree(files) {
+  const tree = {};
+  files.forEach(f => {
+    const parts = f.path.split('/');
+    let current = tree;
+    parts.forEach((part, i) => {
+      if (i === parts.length - 1) {
+        current[part] = { file: f };
+      } else {
+        if (!current[part]) current[part] = {};
+        current = current[part];
+      }
+    });
+  });
+  return tree;
+}
+
+function renderFileTreeNode(node, indent) {
+  let html = '';
+  const entries = Object.entries(node).sort(([a, va], [b, vb]) => {
+    const aIsDir = !va.file;
+    const bIsDir = !vb.file;
+    if (aIsDir && !bIsDir) return -1;
+    if (!aIsDir && bIsDir) return 1;
+    return a.localeCompare(b);
+  });
+
+  entries.forEach(([name, val]) => {
+    if (val.file) {
+      const f = val.file;
+      const icon = f.type === 'binary' ? '📦' : f.type === 'skipped' ? '⏭️' : iconFile(name);
+      const statusColor = f.type === 'error' ? '#f87171' : f.type === 'skipped' ? '#fbbf24' : '#4ade80';
+      html += `<div style="padding:2px 0;color:#93c5fd;display:flex;align-items:center;gap:6px">
+        <span style="color:#475569">${indent}</span>
+        <span>${icon}</span>
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(name)}</span>
+        <span style="font-size:.65rem;color:#64748b">${fmtSize(f.size)}</span>
+        <span style="width:6px;height:6px;background:${statusColor};border-radius:50%;flex-shrink:0"></span>
+      </div>`;
+    } else {
+      html += `<div style="padding:2px 0;color:#818cf8;font-weight:600">
+        <span style="color:#475569">${indent}</span>
+        <span>📁 ${esc(name)}/</span>
+      </div>`;
+      html += renderFileTreeNode(val, indent + '  ');
+    }
+  });
+  return html;
+}
+
+function clearUploadedCode() {
+  uploadedCodeFiles = [];
+  document.getElementById('code-file-input').value = '';
+  document.getElementById('code-folder-input').value = '';
+  document.getElementById('uploaded-code-list').style.display = 'none';
+  document.getElementById('uploaded-files-tree').innerHTML = '';
+  showToast('🗑️ Upload dihapus', 'info');
+}
+
+async function loadUploadProjectSelect() {
+  try {
+    const data = await fetch('/list-projects').then(r => r.json());
+    const sel = document.getElementById('upload-target-project');
+    sel.innerHTML = '<option value="">-- Buat project baru dari upload --</option>';
+    (data.projects || []).forEach(p => {
+      sel.innerHTML += `<option value="${escAttr(p.nama)}">📁 ${esc(p.nama)} (${esc(p.tech_stack)})</option>`;
+    });
+  } catch(_) {}
+}
+
+async function generateWithUploadedCode() {
+  if (!uploadedCodeFiles.length) {
+    showToast('Upload file terlebih dahulu!', 'err');
+    return;
+  }
+
+  const targetProject = document.getElementById('upload-target-project').value;
+  const instruksi = document.getElementById('upload-merge-instruksi').value.trim();
+
+  progressMode = 'upload';
+  document.getElementById('pw-upload').style.display = 'block';
+  document.getElementById('pb-upload').style.width = '5%';
+  document.getElementById('btn-upload-merge').disabled = true;
+  switchToTab('tab-log');
+  fileProgressState = {};
+  document.getElementById('log-panel').innerHTML = '<div class="log-loading">⏳ Memuat & merge file...</div>';
+
+  const formData = new FormData();
+
+  // Add each file
+  const fileDataForJson = [];
+  for (const f of uploadedCodeFiles) {
+    if (f.type === 'binary' && f.content.startsWith('data:')) {
+      // Convert dataURL to blob for binary files
+      const blob = await fetch(f.content).then(r => r.blob());
+      formData.append('files', blob, f.path);
+    } else if (f.type === 'text') {
+      // For text files, send as blob with correct path
+      const blob = new Blob([f.content], { type: 'text/plain' });
+      formData.append('files', blob, f.path);
+    }
+    fileDataForJson.push({ path: f.path, type: f.type, size: f.size });
+  }
+
+  formData.append('files_info', JSON.stringify(fileDataForJson));
+  formData.append('strategy', uploadMergeStrategy);
+  formData.append('target_project', targetProject);
+  formData.append('instruksi', instruksi);
+  formData.append('file_count', uploadedCodeFiles.length);
+
+  try {
+    const resp = await fetch('/upload-merge', { method: 'POST', body: formData });
+    if (!resp.ok) {
+      const err = await resp.json();
+      throw new Error(err.error || 'HTTP ' + resp.status);
+    }
+    const json = await resp.json();
+    currentProjectId = json.project_id;
+    isProcessing = true;
+    connectWebSocket(currentProjectId);
+    showToast(`🚀 Merge "${json.nama}" dimulai! (${uploadedCodeFiles.length} file)`, 'ok');
+    mulaiPolling();
+  } catch(e) {
+    showToast('❌ ' + e.message, 'err');
+    document.getElementById('pw-upload').style.display = 'none';
+    document.getElementById('btn-upload-merge').disabled = false;
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+//  CHIPS
+// ══════════════════════════════════════════════════════════
 function initChips() {
   const baruEl = document.getElementById('chips-baru');
   baruEl.innerHTML = CHIPS_BARU.map(c =>
@@ -691,77 +1415,77 @@ function initChips() {
   });
 }
 
-// ── MODE & TAB SWITCH ─────────────────────────────────────
-document.querySelector('.mode-tabs').addEventListener('click', e => {
-  const tab = e.target.closest('.mode-tab');
-  if (!tab) return;
-  const modeId = tab.dataset.mode;
-  document.querySelectorAll('.mode-panel').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.mode-tab').forEach(t => t.classList.remove('active'));
-  document.getElementById(modeId).classList.add('active');
-  tab.classList.add('active');
-  if (modeId === 'mode-lanjut') muatProjectList();
+// ══════════════════════════════════════════════════════════
+//  TAB & MODE SWITCH
+// ══════════════════════════════════════════════════════════
+document.querySelectorAll('.mode-tabs').forEach(tabsEl => {
+  tabsEl.addEventListener('click', e => {
+    const tab = e.target.closest('.mode-tab');
+    if (!tab) return;
+    switchMode(tab.dataset.mode);
+    if (tab.dataset.mode === 'mode-lanjut') muatProjectList();
+    if (tab.dataset.mode === 'mode-figma') { initFigma(); loadProjectSelect(); }
+    if (tab.dataset.mode === 'mode-upload') { initUpload(); loadUploadProjectSelect(); }
+  });
 });
 
 document.getElementById('main-tabs').addEventListener('click', e => {
   const tab = e.target.closest('.tab');
   if (tab) switchToTab(tab.dataset.tab);
 });
+document.getElementById('btn-stats').addEventListener('click', () => switchToTab('tab-stats'));
 document.getElementById('btn-key-header').addEventListener('click', () => switchToTab('tab-keys'));
 document.getElementById('btn-test-ai').addEventListener('click', testAI);
-document.getElementById('btn-stats').addEventListener('click', () => switchToTab('tab-stats'));
-document.getElementById('btn-backup').addEventListener('click', () => switchToTab('tab-backup'));
 
 function switchToTab(tabId) {
   document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   document.getElementById(tabId)?.classList.add('active');
   document.querySelector(`[data-tab="${tabId}"]`)?.classList.add('active');
-  if (tabId === 'tab-keys')    muatKeyStatus();
-  if (tabId === 'tab-run')     mulaiRunPolling();
-  if (tabId === 'tab-preview') refreshPreviewInfo();
-  if (tabId === 'tab-stats')   mulaiStatsPolling();
-  if (tabId === 'tab-backup')  muatBackups();
+  if (tabId === 'tab-keys') muatKeyStatus();
+  if (tabId === 'tab-stats') loadStats();
+  if (tabId === 'tab-preview') refreshPreview();
+  if (tabId === 'tab-run') mulaiRunPolling();
 }
 
-// ── SERVER STATUS ─────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+//  SERVER STATUS
+// ══════════════════════════════════════════════════════════
 async function cekServer() {
   const el = document.getElementById('server-status');
   try {
     const resp = await fetch('/key-status', { signal: AbortSignal.timeout(5000) });
     if (resp.ok) {
       const data = await resp.json();
-      el.innerHTML = `<span class="status-dot online"></span><span style="font-size:.75rem">${(data.keys||[]).length} Key aktif</span>`;
+      el.innerHTML = `<span class="status-dot online"></span><span style="font-size:.75rem">${(data.keys||[]).length} Key</span>`;
     } else throw new Error();
   } catch(_) {
     el.innerHTML = '<span class="status-dot offline"></span><span style="font-size:.75rem">Offline</span>';
   }
 }
 
-// ── TEST AI ───────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+//  TEST AI
+// ══════════════════════════════════════════════════════════
 async function testAI() {
   switchToTab('tab-keys');
   const el = document.getElementById('key-panel');
-  el.innerHTML = '<div class="empty"><p>🧪 Testing semua API Key...</p></div>';
+  el.innerHTML = '<div class="empty"><p>🧪 Testing API Keys...</p></div>';
   try {
     const data = await fetch('/test-ai').then(r => r.json());
     const keys = data.keys || [];
-    const rows = keys.map(k => {
-      // v3.0 returns status '✅' or '❌'; v2.x uses text with 'sukses'
-      const ok = k.status === '✅' || k.status.includes('sukses');
-      return ok
-        ? `<div class="test-ok">✅ [${k.index}] ${esc(k.model)} → "${esc(k.reply)}"</div>`
-        : `<div class="test-fail">❌ [${k.index}] ${esc(k.model)} → ${esc(k.error||k.status)}</div>`;
-    }).join('');
-    el.innerHTML = `<div class="info-card"><h3>🧪 Hasil Test AI</h3><div class="test-result">${rows}</div></div>`;
-    const ok = keys.filter(k => k.status === '✅' || k.status.includes('sukses')).length;
+    el.innerHTML = `<div class="info-card"><h3>🧪 Test Result</h3><div style="background:#020617;border-radius:8px;padding:12px;font-family:monospace;font-size:.76rem">${keys.map(k => {
+      const ok = k.status === '✅' || (k.status||'').includes('sukses');
+      return `<div style="color:${ok?'#4ade80':'#f87171'}">${ok?'✅':'❌'} [${k.index}] ${esc(k.model)} → ${ok?'"'+esc(k.reply)+'"':esc(k.error||k.status)}</div>`;
+    }).join('')}</div></div>`;
+    const ok = keys.filter(k => k.status === '✅' || (k.status||'').includes('sukses')).length;
     showToast(`Test: ${ok}/${keys.length} OK`, ok > 0 ? 'ok' : 'err');
-  } catch(e) {
-    el.innerHTML = `<div class="empty"><p>❌ ${esc(String(e))}</p></div>`;
-  }
+  } catch(e) { el.innerHTML = `<div class="empty"><p>❌ ${esc(String(e))}</p></div>`; }
 }
 
-// ── PROJECT LIST ──────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+//  PROJECT LIST
+// ══════════════════════════════════════════════════════════
 async function muatProjectList() {
   const el = document.getElementById('project-list');
   el.innerHTML = '<div class="empty"><p>⏳ Memuat...</p></div>';
@@ -769,46 +1493,42 @@ async function muatProjectList() {
     const data = await fetch('/list-projects').then(r => r.json());
     const list = data.projects || [];
     if (!list.length) { el.innerHTML = '<div class="empty"><p>Belum ada project.</p></div>'; return; }
-
-    el.innerHTML = list.map(p => `
-      <div class="project-card" data-nama="${escAttr(p.nama)}" title="${escAttr(p.deskripsi)}">
-        <button class="del-btn" data-del="${escAttr(p.nama)}">🗑️</button>
-        <div class="pname">
-          ${p.is_running ? '<span class="live-dot"></span>' : ''}📁 ${esc(p.nama)}
+    el.innerHTML = list.map(p => 
+      `<div class="project-card" style="background:#0f172a;border:1px solid #334155;border-radius:8px;padding:9px 11px;cursor:pointer;transition:.15s;position:relative" data-nama="${escAttr(p.nama)}">
+        <button class="del-btn" data-del="${escAttr(p.nama)}" style="position:absolute;top:5px;right:5px;background:#dc2626;color:#fff;border:none;border-radius:4px;padding:2px 6px;font-size:.65rem;cursor:pointer;opacity:0;transition:.2s">🗑️</button>
+        <div style="font-size:.83rem;font-weight:700;color:#93c5fd;display:flex;align-items:center;gap:6px">
+          ${p.is_running ? '<span style="width:6px;height:6px;background:#22c55e;border-radius:50%;box-shadow:0 0 4px #22c55e"></span>' : ''}📁 ${esc(p.nama)}
         </div>
-        <div class="ptech">${esc(p.tech_stack)} · ${esc(p.project_type||'script')}</div>
-        <div class="pfiles">${p.file_count} file · ${esc(p.run_cmd)}</div>
+        <div style="font-size:.7rem;color:#475569;margin-top:2px">${esc(p.tech_stack)} · ${p.file_count} file</div>
       </div>`).join('');
 
-    el.addEventListener('click', e => {
-      const del = e.target.closest('.del-btn');
-      if (del) {
-        e.stopPropagation();
-        const nama = del.dataset.del;
-        showModal('Hapus Project?', `Yakin hapus "${nama}"? Akan di-backup otomatis.`, async () => {
-          const r = await fetch(`/project/${encodeURIComponent(nama)}`, {method:'DELETE'});
-          if (r.ok) { showToast('✅ Dihapus (backup dibuat)', 'ok'); muatProjectList(); }
-          else showToast('❌ Gagal', 'err');
-        });
-        return;
-      }
-      const card = e.target.closest('.project-card');
-      if (!card) return;
-      document.getElementById('nama-lanjut').value = card.dataset.nama;
-      el.querySelectorAll('.project-card').forEach(c => c.classList.remove('selected'));
-      card.classList.add('selected');
+    el.querySelectorAll('.project-card').forEach(card => {
+      card.addEventListener('click', e => {
+        if (e.target.closest('.del-btn')) {
+          e.stopPropagation();
+          const nama = e.target.closest('.del-btn').dataset.del;
+          showModal('Hapus Project?', `Yakin hapus "${nama}"?`, async () => {
+            const r = await fetch(`/project/${encodeURIComponent(nama)}`, {method:'DELETE'});
+            if (r.ok) { showToast('✅ Dihapus', 'ok'); muatProjectList(); loadProjectSelect(); }
+          });
+          return;
+        }
+        document.getElementById('nama-lanjut').value = card.dataset.nama;
+        el.querySelectorAll('.project-card').forEach(c => c.style.borderColor = '#334155');
+        card.style.borderColor = '#6366f1';
+      });
     });
-  } catch(e) {
-    el.innerHTML = `<div class="empty"><p>❌ ${esc(String(e))}</p></div>`;
-  }
+  } catch(e) { el.innerHTML = `<div class="empty"><p>❌ ${esc(String(e))}</p></div>`; }
 }
 
-// ── BUAT / LANJUT PROJECT ─────────────────────────────────
+// ══════════════════════════════════════════════════════════
+//  BUAT / LANJUT PROJECT
+// ══════════════════════════════════════════════════════════
 document.getElementById('btn-buat').addEventListener('click', async () => {
   const deskripsi = document.getElementById('deskripsi').value.trim();
   const nama = document.getElementById('nama').value.trim();
   if (!deskripsi) { showToast('Masukkan deskripsi!', 'err'); return; }
-  if (!nama)      { showToast('Masukkan nama!', 'err'); return; }
+  if (!nama) { showToast('Masukkan nama!', 'err'); return; }
   progressMode = 'baru';
   resetUI('baru');
   const fd = new FormData();
@@ -816,7 +1536,7 @@ document.getElementById('btn-buat').addEventListener('click', async () => {
   fd.append('nama', nama);
   try {
     const resp = await fetch('/buat-project', {method:'POST', body:fd});
-    if (!resp.ok) { const e = await resp.json(); throw new Error(e.error||'HTTP '+resp.status); }
+    if (!resp.ok) { const e = await resp.json(); throw new Error(e.error || 'HTTP '+resp.status); }
     const json = await resp.json();
     currentProjectId = json.project_id;
     isProcessing = true;
@@ -829,7 +1549,7 @@ document.getElementById('btn-buat').addEventListener('click', async () => {
 document.getElementById('btn-lanjut').addEventListener('click', async () => {
   const nama = document.getElementById('nama-lanjut').value.trim();
   const permintaan = document.getElementById('permintaan').value.trim();
-  if (!nama)       { showToast('Pilih project!', 'err'); return; }
+  if (!nama) { showToast('Pilih project!', 'err'); return; }
   if (!permintaan) { showToast('Masukkan permintaan!', 'err'); return; }
   progressMode = 'lanjut';
   resetUI('lanjut');
@@ -838,7 +1558,7 @@ document.getElementById('btn-lanjut').addEventListener('click', async () => {
   fd.append('permintaan', permintaan);
   try {
     const resp = await fetch('/lanjut-project', {method:'POST', body:fd});
-    if (!resp.ok) { const e = await resp.json(); throw new Error(e.error||'HTTP '+resp.status); }
+    if (!resp.ok) { const e = await resp.json(); throw new Error(e.error || 'HTTP '+resp.status); }
     const json = await resp.json();
     currentProjectId = json.project_id;
     isProcessing = true;
@@ -852,39 +1572,33 @@ function resetUI(mode) {
   fileProgressState = {};
   document.getElementById('file-progress-wrapper').innerHTML = '';
   document.getElementById('log-panel').innerHTML = '<div class="log-loading">⏳ Memulai proses...</div>';
-  document.getElementById('file-list').innerHTML = '<div class="empty"><div class="icon">⏳</div><p>Menunggu...</p></div>';
-  document.getElementById('pw-'+mode).style.display = 'block';
-  document.getElementById('pb-'+mode).style.width = '5%';
-  document.getElementById(mode==='baru'?'btn-buat':'btn-lanjut').disabled = true;
+  const pwEl = document.getElementById('pw-'+mode);
+  if (pwEl) { pwEl.style.display = 'block'; }
+  const pbEl = document.getElementById('pb-'+mode);
+  if (pbEl) { pbEl.style.width = '5%'; }
+  const btnMap = {baru:'btn-buat', lanjut:'btn-lanjut', figma:'btn-figma-generate', upload:'btn-upload-merge'};
+  const btnEl = document.getElementById(btnMap[mode]);
+  if (btnEl) btnEl.disabled = true;
   progressVal = 5;
   switchToTab('tab-log');
 }
 function resetBtn() {
-  document.getElementById('btn-buat').disabled  = false;
+  document.getElementById('btn-buat').disabled = false;
   document.getElementById('btn-lanjut').disabled = false;
-  document.getElementById('pw-baru').style.display  = 'none';
+  document.getElementById('btn-figma-generate').disabled = false;
+  const uploadBtn = document.getElementById('btn-upload-merge');
+  if (uploadBtn) uploadBtn.disabled = false;
+  document.getElementById('pw-baru').style.display = 'none';
   document.getElementById('pw-lanjut').style.display = 'none';
+  document.getElementById('pw-figma').style.display = 'none';
+  const pwUpload = document.getElementById('pw-upload');
+  if (pwUpload) pwUpload.style.display = 'none';
   isProcessing = false;
 }
 
-// ── CANCEL ────────────────────────────────────────────────
-async function cancelProject() {
-  if (!currentProjectId) return;
-  showModal('Batalkan Proses?',
-    'Yakin batalkan? Server akan berhenti setelah file yang sedang diproses selesai.',
-    async () => {
-      const btn = document.querySelector('.cancel-floating .btn');
-      if (btn) { btn.disabled = true; btn.textContent = '🛑 Membatalkan...'; }
-      try {
-        const r = await fetch('/cancel/'+currentProjectId, {method:'POST'});
-        const d = await r.json();
-        if (d.success) showToast('🛑 Cancel dikirim', 'info');
-        else { showToast('❌ '+(d.error||'Failed'), 'err'); if (btn) { btn.disabled=false; btn.textContent='🛑 Batalkan Proses'; } }
-      } catch(e) { showToast('❌ '+e, 'err'); }
-    });
-}
-
-// ── POLLING ───────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+//  POLLING
+// ══════════════════════════════════════════════════════════
 function mulaiPolling() {
   clearInterval(pollingInterval);
   pollingInterval = setInterval(polling, 1500);
@@ -898,25 +1612,23 @@ async function polling() {
     const data = await resp.json();
 
     (data.logs||[]).forEach(parseLogForFileProgress);
-    renderFileProgress(fileProgressState);
+    renderFileProgress();
     renderLog(data.logs||[], data.status==='loading');
     renderInfo(data);
 
-    const runBadge  = document.getElementById('run-badge');
-    const prevBadge = document.getElementById('preview-badge');
-    const alive = data.running?.alive;
-    runBadge.style.display  = alive ? 'inline-block' : 'none';
-    prevBadge.style.display = (alive && data.running?.url) ? 'inline-block' : 'none';
+    document.getElementById('preview-badge').style.display = (data.running?.alive && data.running?.url) ? 'inline-block' : 'none';
 
     if (data.status === 'loading') {
       progressVal = Math.min(progressVal + 1.2, 88);
-      document.getElementById('pb-'+progressMode).style.width = progressVal+'%';
+      const bar = document.getElementById('pb-'+progressMode);
+      if (bar) bar.style.width = progressVal+'%';
     }
 
     if (['done','error','cancelled'].includes(data.status)) {
       clearInterval(pollingInterval); pollingInterval = null;
       isProcessing = false;
-      document.getElementById('pb-'+progressMode).style.width = '100%';
+      const bar = document.getElementById('pb-'+progressMode);
+      if (bar) bar.style.width = '100%';
       resetBtn();
       const toastMap = { done:['✅ Selesai!','ok'], cancelled:['🛑 Dibatalkan','info'], error:['❌ Gagal.','err'] };
       showToast(...(toastMap[data.status]||['Done','ok']));
@@ -924,42 +1636,45 @@ async function polling() {
         const fd = await fetch('/files/'+currentProjectId).then(r=>r.json());
         renderFiles(fd.files||[]);
       } catch(_) {}
-      setTimeout(() => { document.getElementById('pw-'+progressMode).style.display='none'; }, 2500);
+      setTimeout(() => { const pw = document.getElementById('pw-'+progressMode); if(pw) pw.style.display='none'; }, 2500);
     }
   } catch(e) { console.error(e); }
 }
 
-// ── RENDER LOG ────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+//  RENDER LOG
+// ══════════════════════════════════════════════════════════
 function renderLog(logs, isLoading) {
   const panel = document.getElementById('log-panel');
   if (!logs.length) { panel.innerHTML='<span class="log-info">Menunggu proses...</span>'; return; }
-  let html = logs.map(l=>`<div class="${getLogClass(l)}">${esc(l)}</div>`).join('');
+  let html = logs.map(l => `<div class="${getLogClass(l)}">${esc(l)}</div>`).join('');
   if (isLoading) {
     html += `<div class="cancel-floating">
-      <button class="btn btn-red" onclick="cancelProject()">🛑 Batalkan Proses</button>
-      <p style="font-size:.7rem;color:#64748b;margin-top:8px">Cancel setelah file saat ini selesai</p>
+      <button class="btn btn-red" onclick="cancelProject()" style="max-width:280px;display:inline-block">🛑 Batalkan Proses</button>
     </div>`;
   }
   panel.innerHTML = html;
   panel.scrollTop = panel.scrollHeight;
 }
 
-// ── RENDER FILES ──────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+//  RENDER FILES
+// ══════════════════════════════════════════════════════════
 function renderFiles(files) {
   const el = document.getElementById('file-list');
   if (!files?.length) {
     el.innerHTML = '<div class="empty"><div class="icon">📂</div><p>Belum ada file.</p></div>';
     return;
   }
-  el.innerHTML = '<div class="file-tree">' + files.map((f,i) => `
-    <div class="file-item">
-      <div class="file-header" data-idx="${i}">
+  el.innerHTML = '<div class="file-tree">' + files.map((f,i) => 
+    `<div class="file-item">
+      <div class="file-header" data-idx="${i}" onclick="toggleFileCode(${i})">
         <span>${iconFile(f.path)}</span>
         <span>${esc(f.path)}</span>
         <span class="file-size">${fmtSize(f.size)}</span>
         <div class="file-actions">
-          <button class="edit" data-idx="${i}">✏️</button>
-          <button class="del" data-path="${escAttr(f.path)}">🗑️</button>
+          <button class="edit" onclick="event.stopPropagation();openEditor(${i})">✏️</button>
+          <button class="del" onclick="event.stopPropagation();deleteFile('${escAttr(f.path)}')">🗑️</button>
         </div>
       </div>
       <pre class="file-code" id="fcode-${i}">${esc(f.content)}</pre>
@@ -971,117 +1686,92 @@ function renderFiles(files) {
         </div>
       </div>
     </div>`).join('') + '</div>';
-
-  el.addEventListener('click', e => {
-    if (e.target.classList.contains('edit')) {
-      e.stopPropagation();
-      const idx = e.target.dataset.idx;
-      document.getElementById('fcode-'+idx).style.display = 'none';
-      document.getElementById('feditor-'+idx).style.display = 'block';
-      return;
-    }
-    if (e.target.classList.contains('del')) {
-      e.stopPropagation();
-      const path = e.target.dataset.path;
-      showModal('Hapus File?', `Yakin hapus "${path}"?`, async () => {
-        const r = await fetch(`/files/${currentProjectId}/delete?path=${encodeURIComponent(path)}`,{method:'DELETE'});
-        if (r.ok) { showToast('✅ Dihapus','ok'); const d=await fetch('/files/'+currentProjectId).then(r=>r.json()); renderFiles(d.files||[]); }
-        else showToast('❌ Gagal','err');
-      });
-      return;
-    }
-    const hdr = e.target.closest('.file-header');
-    if (hdr) { const c=document.getElementById('fcode-'+hdr.dataset.idx); if(c) c.style.display=c.style.display==='block'?'none':'block'; }
-  });
 }
 
+function toggleFileCode(idx) {
+  const c = document.getElementById('fcode-'+idx);
+  if (c) c.style.display = c.style.display==='block' ? 'none' : 'block';
+}
+function openEditor(idx) {
+  document.getElementById('fcode-'+idx).style.display = 'none';
+  document.getElementById('feditor-'+idx).style.display = 'block';
+}
 function cancelEdit(idx) {
   document.getElementById('feditor-'+idx).style.display = 'none';
-  document.getElementById('fcode-'+idx).style.display   = 'block';
+  document.getElementById('fcode-'+idx).style.display = 'block';
 }
 async function saveEdit(idx, path) {
   const content = document.getElementById('fedit-ta-'+idx).value;
   const fd = new FormData(); fd.append('path',path); fd.append('content',content);
   try {
-    const r = await fetch(`/files/${currentProjectId}/save`,{method:'POST',body:fd});
+    const r = await fetch(`/files/${currentProjectId}/save`, {method:'POST',body:fd});
     if (r.ok) {
-      showToast('✅ Disimpan (backup dibuat)','ok'); cancelEdit(idx);
+      showToast('✅ Disimpan','ok'); cancelEdit(idx);
       const d = await fetch('/files/'+currentProjectId).then(r=>r.json());
       renderFiles(d.files||[]);
     } else showToast('❌ Gagal','err');
   } catch(e) { showToast('❌ '+e,'err'); }
 }
+async function deleteFile(path) {
+  showModal('Hapus File?', `Yakin hapus "${path}"?`, async () => {
+    const r = await fetch(`/files/${currentProjectId}/delete?path=${encodeURIComponent(path)}`, {method:'DELETE'});
+    if (r.ok) { showToast('✅ Dihapus','ok'); const d=await fetch('/files/'+currentProjectId).then(r=>r.json()); renderFiles(d.files||[]); }
+    else showToast('❌ Gagal','err');
+  });
+}
 
-// ── RENDER INFO ───────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+//  RENDER INFO
+// ══════════════════════════════════════════════════════════
 function renderInfo(data) {
   const el = document.getElementById('info-panel');
-  const badgeMap = {
-    loading: ['badge-loading','⏳ Diproses'],
-    done:    ['badge-done','✅ Selesai'],
-    error:   ['badge-error','❌ Gagal'],
-    cancelled:['badge-cancelled','🛑 Dibatalkan'],
-  };
+  const badgeMap = { loading:['badge-loading','⏳ Diproses'], done:['badge-done','✅ Selesai'], error:['badge-error','❌ Gagal'], cancelled:['badge-stopped','🛑 Dibatalkan'] };
   const [badgeCls, badgeTxt] = badgeMap[data.status] || ['badge-loading', data.status];
 
   let runningHtml = '';
   if (data.status === 'done') {
     if (data.running?.alive) {
-      const url   = data.running.url;
+      const url = data.running.url;
       const isWeb = url && ['fastapi','flask'].includes(data.running.type);
-      runningHtml = `
-        <div class="running-card">
-          <div class="r-title"><span class="badge badge-running">● RUNNING</span> Project berjalan</div>
-          ${isWeb ? `<a href="${escAttr(url)}" target="_blank" class="r-url">🌐 ${esc(url)}</a>`
-                  : `<div style="color:#94a3b8;font-size:.8rem;margin-bottom:8px">Tipe CLI/Script — lihat tab ▶️ Run</div>`}
-          <div class="r-info">
-            <span>⏱️ <b>${fmtUptime(data.running.uptime)}</b></span>
-            <span>🔌 <b>${data.running.port}</b></span>
-            <span>📦 <b>${esc(data.running.type||'script')}</b></span>
-          </div>
-          <div class="btn-group-4" style="margin-top:10px">
-            ${isWeb ? `<button class="btn btn-blue btn-sm" onclick="openPreview()">🖥️ Preview</button>`
-                    : `<button class="btn btn-blue btn-sm" onclick="switchToTab('tab-run')">📟 Log</button>`}
-            <button class="btn btn-yellow btn-sm" onclick="restartProject()">🔄 Restart</button>
-            <button class="btn btn-red btn-sm"    onclick="stopProject()">⏹️ Stop</button>
-            <button class="btn btn-gray btn-sm"   onclick="downloadProject()">📥 ZIP</button>
-          </div>
-        </div>`;
+      runningHtml = `<div class="running-card">
+        <div class="r-title"><span class="badge badge-running">● RUNNING</span> Project berjalan</div>
+        ${isWeb ? `<a href="${escAttr(url)}" target="_blank" class="r-url">🌐 ${esc(url)}</a>` : `<div style="color:#94a3b8;font-size:.8rem;margin-bottom:8px">CLI/Script — lihat tab Run</div>`}
+        <div class="r-info"><span>⏱️ <b>${fmtUptime(data.running.uptime)}</b></span><span>🔌 <b>${data.running.port}</b></span></div>
+        <div class="btn-group-3" style="margin-top:10px">
+          ${isWeb ? `<button class="btn btn-blue btn-sm" onclick="openPreview()">🖥️ Preview</button>` : `<span></span>`}
+          <button class="btn btn-yellow btn-sm" onclick="stopProject()">⏹️ Stop</button>
+          <button class="btn btn-gray btn-sm" onclick="downloadProject()">📥 ZIP</button>
+        </div>
+      </div>`;
     } else {
-      runningHtml = `
-        <div class="info-card">
-          <h3>🚀 Jalankan Project</h3>
-          <p style="font-size:.78rem;color:#94a3b8;margin-bottom:12px">Preview otomatis terbuka setelah RUN.</p>
-          <div class="btn-group">
-            <button class="btn btn-green" onclick="runProject()">▶️ RUN Project</button>
-            <button class="btn btn-gray"  onclick="downloadProject()">📥 Download ZIP</button>
-          </div>
-        </div>`;
+      runningHtml = `<div class="info-card">
+        <h3>🚀 Jalankan Project</h3>
+        <div class="btn-group">
+          <button class="btn btn-green" onclick="runProject()">▶️ RUN</button>
+          <button class="btn btn-gray" onclick="downloadProject()">📥 ZIP</button>
+        </div>
+      </div>`;
     }
   }
 
-  el.innerHTML = `
-    ${runningHtml}
+  el.innerHTML = `${runningHtml}
     <div class="info-card">
       <h3>📋 Info Project</h3>
       <div class="info-row"><span class="info-label">Status</span><span class="badge ${badgeCls}">${badgeTxt}</span></div>
       <div class="info-row"><span class="info-label">Nama</span><span class="info-value">${esc(data.nama||'-')}</span></div>
       <div class="info-row"><span class="info-label">Deskripsi</span><span class="info-value">${esc(data.desc||'-')}</span></div>
-      <div class="info-row"><span class="info-label">Tech Stack</span><span class="info-value">${esc(data.tech||'-')}</span></div>
-      <div class="info-row"><span class="info-label">Tipe</span><span class="info-value">${esc(data.project_type||'script')}</span></div>
+      <div class="info-row"><span class="info-label">Tech</span><span class="info-value">${esc(data.tech||'-')}</span></div>
       <div class="info-row"><span class="info-label">Files</span><span class="info-value">${(data.files||[]).length} file</span></div>
-      <div class="info-row"><span class="info-label">Lokasi</span><span class="info-value">${esc(data.folder||'-')}</span></div>
     </div>
     <div class="info-card">
       <h3>⚡ Run Command</h3>
       <div class="cmd-box">${esc(data.run_cmd||'Belum tersedia')}</div>
-    </div>
-    ${data.error ? `<div class="info-card">
-      <h3>❌ Error Detail</h3>
-      <div class="cmd-box" style="color:#f87171;white-space:pre-wrap">${esc(data.error)}</div>
-    </div>` : ''}`;
+    </div>`;
 }
 
-// ── RUN / STOP / RESTART / DOWNLOAD ──────────────────────
+// ══════════════════════════════════════════════════════════
+//  RUN / STOP / DOWNLOAD
+// ══════════════════════════════════════════════════════════
 async function runProject() {
   if (!currentProjectId) { showToast('No project','err'); return; }
   showToast('🚀 Memulai...','info');
@@ -1090,24 +1780,10 @@ async function runProject() {
     if (data.sukses) {
       showToast(`✅ Port ${data.port}!`,'ok');
       if (data.url) {
-        showToast('⏳ Tunggu server siap (3s)...','info');
-        setTimeout(() => { loadPreview(data.url,data.port,data.type); switchToTab('tab-preview'); }, 3000);
+        showToast('⏳ Tunggu server siap...','info');
+        setTimeout(() => { loadPreview(data.url); switchToTab('tab-preview'); }, 3000);
       } else { switchToTab('tab-run'); mulaiRunPolling(); }
-    } else {
-      showToast('❌ '+(data.error||'Failed'),'err');
-      switchToTab('tab-run');
-      renderRunLog({logs:data.logs||[], alive:false, exit_code:-1});
-    }
-  } catch(e) { showToast('❌ '+e,'err'); }
-}
-
-async function restartProject() {
-  if (!currentProjectId) return;
-  showToast('🔄 Restart...','info');
-  try {
-    const data = await fetch('/restart/'+currentProjectId,{method:'POST'}).then(r=>r.json());
-    if (data.sukses) { showToast(`✅ Restart OK (port ${data.port})`,'ok'); if (data.url) setTimeout(reloadPreview,3000); }
-    else showToast('❌ '+(data.error||'Failed'),'err');
+    } else { showToast('❌ '+(data.error||'Failed'),'err'); }
   } catch(e) { showToast('❌ '+e,'err'); }
 }
 
@@ -1115,313 +1791,173 @@ async function stopProject() {
   if (!currentProjectId) return;
   await fetch('/stop/'+currentProjectId,{method:'POST'});
   showToast('⏹️ Dihentikan','ok');
-  hentikanRunPolling();
   clearPreview();
-  setTimeout(() => { if (!pollingInterval) polling(); }, 500);
 }
 
 function downloadProject() {
-  if (!currentProjectId) { showToast('No project','err'); return; }
+  if (!currentProjectId) return;
   location.href = '/download/'+currentProjectId;
   showToast('📥 Download...','ok');
 }
 
-// ── PREVIEW ───────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+//  CANCEL
+// ══════════════════════════════════════════════════════════
+async function cancelProject() {
+  if (!currentProjectId) return;
+  showModal('Batalkan Proses?', 'Yakin batalkan?', async () => {
+    try {
+      const r = await fetch('/cancel/'+currentProjectId, {method:'POST'});
+      const d = await r.json();
+      if (d.success) showToast('🛑 Cancel dikirim', 'info');
+      else showToast('❌ '+(d.error||'Failed'), 'err');
+    } catch(e) { showToast('❌ '+e, 'err'); }
+  });
+}
+
+// ══════════════════════════════════════════════════════════
+//  PREVIEW
+// ══════════════════════════════════════════════════════════
 function openPreview() { switchToTab('tab-preview'); }
 
-async function refreshPreviewInfo() {
+async function refreshPreview() {
   if (!currentProjectId) return;
   try {
     const data = await fetch('/status/'+currentProjectId).then(r=>r.json());
-    if (data.running?.alive && data.running?.url) {
-      if (!currentPreviewUrl) loadPreview(data.running.url, data.running.port, data.running.type||'fastapi');
-    } else if (!currentPreviewUrl) {
-      showPreviewEmpty();
+    if (data.running?.alive && data.running?.url && !currentPreviewUrl) {
+      loadPreview(data.running.url);
     }
   } catch(_) {}
 }
 
-function loadPreview(url, port, type) {
+function loadPreview(url) {
   currentPreviewUrl = url;
   const el = document.getElementById('preview-panel');
   const displayUrl = url.startsWith('/') ? location.origin+url : url;
   el.innerHTML = `
     <div class="preview-toolbar">
-      <button class="preview-btn" onclick="reloadPreview()" title="Reload">🔄</button>
-      <button class="preview-btn" onclick="previewGoHome()" title="Home">🏠</button>
-      <input type="text" class="preview-url" id="preview-url-input" value="${escAttr(displayUrl)}"
-             onkeydown="if(event.key==='Enter') navigatePreview(this.value)"/>
-      <button class="preview-btn" onclick="navigatePreview(document.getElementById('preview-url-input').value)">➡️</button>
-      <button class="preview-btn ${previewMode==='desktop'?'active':''}" onclick="setPreviewMode('desktop',event)">🖥️</button>
-      <button class="preview-btn ${previewMode==='tablet'?'active':''}"  onclick="setPreviewMode('tablet',event)">📱</button>
-      <button class="preview-btn ${previewMode==='mobile'?'active':''}"  onclick="setPreviewMode('mobile',event)">📱</button>
-      <button class="preview-btn" onclick="openInNewTab()">🔗</button>
+      <button class="preview-btn" onclick="reloadPreview()">🔄</button>
+      <button class="preview-btn" onclick="if(document.getElementById('preview-iframe'))document.getElementById('preview-iframe').src=currentPreviewUrl">🏠</button>
+      <input type="text" class="preview-url" id="preview-url-input" value="${escAttr(displayUrl)}" onkeydown="if(event.key==='Enter')document.getElementById('preview-iframe').src=this.value"/>
+      <button class="preview-btn ${previewMode==='desktop'?'active':''}" onclick="setPreviewMode('desktop')">🖥️</button>
+      <button class="preview-btn ${previewMode==='tablet'?'active':''}" onclick="setPreviewMode('tablet')">📱</button>
+      <button class="preview-btn ${previewMode==='mobile'?'active':''}" onclick="setPreviewMode('mobile')">📱</button>
+      <button class="preview-btn" onclick="window.open(currentPreviewUrl,'_blank')">🔗</button>
       <button class="preview-btn danger" onclick="stopProject()">⏹️</button>
     </div>
     <div class="preview-frame-wrap">
-      <div class="preview-loading" id="preview-loading">
-        <div class="spinner"></div><span>Memuat preview...</span>
-      </div>
-      <iframe id="preview-iframe" class="preview-iframe ${previewMode!=='desktop'?previewMode:''}"
-              src="${escAttr(url)}" onload="onPreviewLoad()" onerror="onPreviewError()"></iframe>
+      <iframe id="preview-iframe" class="preview-iframe ${previewMode!=='desktop'?previewMode:''}" src="${escAttr(url)}"></iframe>
     </div>`;
-  setTimeout(() => {
-    const l = document.getElementById('preview-loading');
-    if (l && l.style.display !== 'none') l.innerHTML = '<span style="color:#f87171">⚠️ Timeout — coba reload</span>';
-  }, 15000);
 }
-
-function onPreviewLoad()  { const l=document.getElementById('preview-loading'); if(l) l.style.display='none'; }
-function onPreviewError() { const l=document.getElementById('preview-loading'); if(l) l.innerHTML='<span style="color:#f87171">❌ Gagal</span>'; }
 
 function reloadPreview() {
   const iframe = document.getElementById('preview-iframe');
-  const l = document.getElementById('preview-loading');
-  if (l) { l.style.display='flex'; l.innerHTML='<div class="spinner"></div><span>Reload...</span>'; }
   if (iframe) { const src=iframe.src; iframe.src='about:blank'; setTimeout(()=>{iframe.src=src;},100); }
 }
-function previewGoHome() {
-  const iframe=document.getElementById('preview-iframe');
-  const inp=document.getElementById('preview-url-input');
-  if (iframe) iframe.src=currentPreviewUrl;
-  if (inp) inp.value=location.origin+currentPreviewUrl;
-}
-function navigatePreview(newUrl) {
-  const iframe=document.getElementById('preview-iframe');
-  if (!iframe||!newUrl) return;
-  iframe.src = newUrl.startsWith('http') ? newUrl : newUrl;
-}
-function openInNewTab() { if (currentPreviewUrl) window.open(currentPreviewUrl,'_blank'); }
-function setPreviewMode(mode, ev) {
+function setPreviewMode(mode) {
   previewMode = mode;
-  const iframe=document.getElementById('preview-iframe');
-  if (iframe) iframe.className='preview-iframe'+(mode!=='desktop'?' '+mode:'');
-  document.querySelectorAll('.preview-toolbar .preview-btn').forEach(b=>b.classList.remove('active'));
-  ev?.target?.classList.add('active');
+  const iframe = document.getElementById('preview-iframe');
+  if (iframe) iframe.className = 'preview-iframe'+(mode!=='desktop'?' '+mode:'');
+  document.querySelectorAll('.preview-toolbar .preview-btn').forEach(b => b.classList.remove('active'));
+  if (event?.target) event.target.classList.add('active');
 }
-function clearPreview() { currentPreviewUrl=null; showPreviewEmpty(); }
-function showPreviewEmpty() {
-  const el=document.getElementById('preview-panel');
-  el.innerHTML=`<div class="empty" style="margin:auto"><div class="icon">🖥️</div><p>Preview muncul setelah RUN.</p>
-    ${currentProjectId?'<button class="btn btn-green" style="margin-top:20px;max-width:200px" onclick="runProject()">▶️ RUN Sekarang</button>':''}</div>`;
-}
+function clearPreview() { currentPreviewUrl=null; }
 
-// ── RUN POLLING ───────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+//  RUN POLLING
+// ══════════════════════════════════════════════════════════
+let runPollingInterval = null;
 function mulaiRunPolling() {
   clearInterval(runPollingInterval);
   pollRunLogs();
   runPollingInterval = setInterval(pollRunLogs, 2000);
 }
-function hentikanRunPolling() { clearInterval(runPollingInterval); runPollingInterval=null; }
-
 async function pollRunLogs() {
   if (!currentProjectId) return;
   try {
     const data = await fetch('/run-logs/'+currentProjectId).then(r=>r.json());
     renderRunLog(data);
-    document.getElementById('run-badge').style.display   = data.alive ? 'inline-block' : 'none';
-    document.getElementById('preview-badge').style.display = (data.alive&&data.url) ? 'inline-block' : 'none';
   } catch(_) {}
 }
-
 function renderRunLog(data) {
   const el = document.getElementById('run-panel');
   const logs = data.logs||[];
   if (!logs.length && !data.alive) {
-    el.innerHTML='<div class="empty"><div class="icon">▶️</div><p>Belum ada project running.</p></div>';
+    el.innerHTML='<div class="empty"><div class="icon">▶️</div><p>Belum running.</p></div>';
     return;
   }
-  const statusBadge = data.alive
-    ? '<span class="badge badge-running">● RUNNING</span>'
-    : `<span class="badge badge-stopped">⏹️ STOPPED${data.exit_code!=null?' (exit '+data.exit_code+')':''}</span>`;
-  const controlBtn = data.alive
-    ? `<div class="btn-group-3">
-        ${data.url?`<button class="btn btn-blue" onclick="openPreview()">🖥️ Preview</button>`:'<span></span>'}
-        <button class="btn btn-yellow" onclick="restartProject()">🔄 Restart</button>
-        <button class="btn btn-red"    onclick="stopProject()">⏹️ STOP</button>
-       </div>`
-    : `<button class="btn btn-green" onclick="runProject()">▶️ START</button>`;
-
-  el.innerHTML = `
-    <div class="info-card">
-      <h3>▶️ Runtime Info</h3>
-      <div class="info-row"><span class="info-label">Status</span><span>${statusBadge}</span></div>
-      <div class="info-row"><span class="info-label">Port</span><span class="info-value">${data.port||'-'}</span></div>
-      <div class="info-row"><span class="info-label">Uptime</span><span class="info-value">${data.uptime!=null?fmtUptime(data.uptime):'-'}</span></div>
-      <div class="info-row"><span class="info-label">Tipe</span><span class="info-value">${esc(data.type||'-')}</span></div>
-      <div class="info-row"><span class="info-label">Command</span><span class="info-value" style="font-family:monospace;color:#4ade80">${esc(data.run_cmd||'-')}</span></div>
-      ${data.url&&data.alive?`<div class="info-row"><span class="info-label">URL</span><a href="${escAttr(data.url)}" target="_blank" style="color:#38bdf8;font-family:monospace">${esc(data.url)}</a></div>`:''}
-      <div style="margin-top:12px">${controlBtn}</div>
-    </div>
-    <div class="info-card">
-      <h3>📟 Live Output <span style="font-size:.7rem;color:#4ade80;font-weight:normal">● Live</span></h3>
-      <div id="run-log-panel">${logs.map(l=>`<div class="${getRunLogClass(l)}">${esc(l)}</div>`).join('')||'<span class="log-info">Menunggu...</span>'}</div>
-    </div>`;
+  const badge = data.alive ? '<span class="badge badge-running">● RUNNING</span>' : '<span class="badge badge-stopped">⏹️ STOPPED</span>';
+  el.innerHTML = `<div class="info-card">
+    <h3>▶️ Runtime</h3>
+    <div class="info-row"><span class="info-label">Status</span><span>${badge}</span></div>
+    <div class="info-row"><span class="info-label">Port</span><span class="info-value">${data.port||'-'}</span></div>
+    <div class="info-row"><span class="info-label">Uptime</span><span class="info-value">${data.uptime!=null?fmtUptime(data.uptime):'-'}</span></div>
+    ${data.alive ? `<div style="margin-top:10px"><button class="btn btn-red" onclick="stopProject()">⏹️ STOP</button></div>` : `<div style="margin-top:10px"><button class="btn btn-green" onclick="runProject()">▶️ START</button></div>`}
+  </div>
+  <div class="info-card">
+    <h3>📟 Output</h3>
+    <div id="run-log-panel" style="background:#020617;border-radius:8px;padding:12px;font-family:monospace;font-size:.76rem;max-height:300px;overflow-y:auto">${logs.map(l=>`<div class="${getLogClass(l)}">${esc(l)}</div>`).join('')||'<span class="log-info">Menunggu...</span>'}</div>
+  </div>`;
   const p=document.getElementById('run-log-panel');
   if(p) p.scrollTop=p.scrollHeight;
 }
 
-// ── STATS ─────────────────────────────────────────────────
-function mulaiStatsPolling() {
-  loadStats();
-  clearInterval(statsPollingInterval);
-  statsPollingInterval = setInterval(loadStats, 5000);
-}
-
+// ══════════════════════════════════════════════════════════
+//  STATS
+// ══════════════════════════════════════════════════════════
 async function loadStats() {
   const el = document.getElementById('stats-panel');
   try {
     const data = await fetch('/stats').then(r=>r.json());
-    const req=data.requests||{}, cache=data.cache||{}, proj=data.projects||{}, sys=data.system||{};
+    const req=data.requests||{}, proj=data.projects||{};
     const rate = req.total>0 ? Math.round((req.success/req.total)*100) : 0;
-    el.innerHTML = `
-      <div class="info-card">
-        <h3>📊 Realtime Statistics <span style="font-size:.7rem;color:#4ade80;font-weight:normal">● Auto-refresh 5s</span></h3>
-      </div>
-      <div class="stats-grid">
-        <div class="stat-card info"><div class="icon">📞</div><div class="value">${req.total||0}</div><div class="label">Total Requests</div></div>
-        <div class="stat-card success"><div class="icon">✅</div><div class="value">${req.success||0}</div><div class="label">Success</div></div>
-        <div class="stat-card error"><div class="icon">❌</div><div class="value">${req.failed||0}</div><div class="label">Failed</div></div>
-        <div class="stat-card ${rate>=80?'success':rate>=50?'warn':'error'}"><div class="icon">📈</div><div class="value">${rate}%</div><div class="label">Success Rate</div></div>
-      </div>
-      <div class="stats-grid">
-        <div class="stat-card warn"><div class="icon">✨</div><div class="value">${req.cache_hits||0}</div><div class="label">Cache Hits</div></div>
-        <div class="stat-card info"><div class="icon">🗄️</div><div class="value">${cache.size||0}/${cache.max||0}</div><div class="label">Cache Size</div></div>
-        <div class="stat-card info"><div class="icon">⏱️</div><div class="value">${req.avg_time||0}s</div><div class="label">Avg Response</div></div>
-      </div>
-      <div class="stats-grid">
-        <div class="stat-card info"><div class="icon">📁</div><div class="value">${proj.total||0}</div><div class="label">Total Projects</div></div>
-        <div class="stat-card success"><div class="icon">🟢</div><div class="value">${proj.running||0}</div><div class="label">Running Now</div></div>
-        <div class="stat-card warn"><div class="icon">💾</div><div class="value">${proj.backups||0}</div><div class="label">Backups</div></div>
-      </div>
-      <div class="info-card">
-        <h3>⚙️ System Config</h3>
-        <div class="info-row"><span class="info-label">Port Range</span><span class="info-value">${esc(sys.port_range||'-')}</span></div>
-        <div class="info-row"><span class="info-label">Rate Limit</span><span class="info-value">${esc(sys.rate_limit||'-')}</span></div>
-        <div class="info-row"><span class="info-label">Cache TTL</span><span class="info-value">${esc(sys.cache_ttl||'-')}</span></div>
-      </div>
-      <div class="info-card">
-        <h3>🛠️ Actions</h3>
-        <div class="btn-group">
-          <button class="btn btn-red" onclick="clearCache()">🗑️ Clear Cache</button>
-          <button class="btn btn-blue" onclick="checkHealth()">💚 Health Check</button>
-        </div>
-      </div>`;
+    el.innerHTML = `<div class="stats-grid">
+      <div class="stat-card info"><div class="icon">📞</div><div class="value">${req.total||0}</div><div class="label">Requests</div></div>
+      <div class="stat-card success"><div class="icon">✅</div><div class="value">${req.success||0}</div><div class="label">Success</div></div>
+      <div class="stat-card error"><div class="icon">❌</div><div class="value">${req.failed||0}</div><div class="label">Failed</div></div>
+      <div class="stat-card ${rate>=80?'success':'warn'}"><div class="icon">📈</div><div class="value">${rate}%</div><div class="label">Rate</div></div>
+      <div class="stat-card info"><div class="icon">📁</div><div class="value">${proj.total||0}</div><div class="label">Projects</div></div>
+      <div class="stat-card success"><div class="icon">🟢</div><div class="value">${proj.running||0}</div><div class="label">Running</div></div>
+    </div>`;
   } catch(e) { el.innerHTML=`<div class="empty"><p>❌ ${esc(String(e))}</p></div>`; }
 }
 
-async function clearCache() {
-  const d = await fetch('/cache/clear',{method:'POST'}).then(r=>r.json());
-  showToast(`✅ Cleared: ${d.cleared}`,'ok');
-  loadStats();
-}
-async function checkHealth() {
-  showToast('💚 Checking...','info');
-  try {
-    const d = await fetch('/health-upstream').then(r=>r.json());
-    const ok = d.keys.filter(k=>k.status.includes('healthy')).length;
-    showToast(`${ok}/${d.keys.length} healthy`, ok>0?'ok':'err');
-  } catch(_) { showToast('❌ Failed','err'); }
-}
-
-// ── BACKUP ────────────────────────────────────────────────
-async function muatBackups() {
-  const el = document.getElementById('backup-panel');
-  el.innerHTML = '<div class="empty"><p>⏳ Loading...</p></div>';
-  try {
-    const data = await fetch('/backups').then(r=>r.json());
-    const list = data.backups||[];
-    if (!list.length) {
-      el.innerHTML = `
-        <div class="info-card">
-          <h3>💾 Backup System</h3>
-          <p style="font-size:.85rem;color:#94a3b8">Backup dibuat otomatis saat:</p>
-          <ul style="font-size:.8rem;color:#94a3b8;margin-top:8px;padding-left:20px;line-height:1.8">
-            <li>Sebelum "Lanjutkan" project</li>
-            <li>Sebelum edit file manual</li>
-            <li>Sebelum hapus project</li>
-          </ul>
-        </div>
-        <div class="empty"><div class="icon">💾</div><p>Belum ada backup.</p></div>`;
-      return;
-    }
-    el.innerHTML = `
-      <div class="info-card"><h3>💾 ${list.length} Backup</h3></div>
-      ${list.map(b=>`
-        <div class="backup-card">
-          <div class="backup-icon">📦</div>
-          <div class="backup-info">
-            <div class="bname">${esc(b.name)}</div>
-            <div class="bmeta">📁 ${esc(b.project)} · ${fmtSize(b.size)} · ${fmtDate(b.created)}</div>
-          </div>
-          <div class="backup-actions">
-            <button class="btn btn-blue btn-sm" onclick="restoreBackup('${escAttr(b.name)}')">♻️</button>
-            <button class="btn btn-red  btn-sm" onclick="deleteBackup('${escAttr(b.name)}')">🗑️</button>
-          </div>
-        </div>`).join('')}`;
-  } catch(e) { el.innerHTML=`<div class="empty"><p>❌ ${esc(String(e))}</p></div>`; }
-}
-
-async function restoreBackup(name) {
-  showModal('Restore Backup?', `Restore "${name}"?`, async () => {
-    const d = await fetch(`/restore/${encodeURIComponent(name)}`,{method:'POST'}).then(r=>r.json());
-    if (d.success) { showToast('✅ Restored','ok'); muatBackups(); }
-    else showToast('❌ '+d.error,'err');
-  });
-}
-async function deleteBackup(name) {
-  showModal('Hapus Backup?', `Hapus "${name}"?`, async () => {
-    const r = await fetch(`/backups/${encodeURIComponent(name)}`,{method:'DELETE'});
-    if (r.ok) { showToast('✅ Deleted','ok'); muatBackups(); }
-    else showToast('❌ Failed','err');
-  });
-}
-
-// ── KEY STATUS ────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+//  KEY STATUS
+// ══════════════════════════════════════════════════════════
 async function muatKeyStatus() {
   const el = document.getElementById('key-panel');
   el.innerHTML = '<div class="empty"><p>⏳ Loading...</p></div>';
   try {
     const data = await fetch('/key-status').then(r=>r.json());
     const keys = data.keys||[];
-    el.innerHTML = `
-      <div class="info-card">
-        <h3>🔑 API Keys — ${keys.length} Total</h3>
-        <p style="font-size:.75rem;color:#64748b">Active: Index ${data.current_index} · Smart routing</p>
-      </div>
+    el.innerHTML = `<div class="info-card"><h3>🔑 API Keys — ${keys.length}</h3><p style="font-size:.75rem;color:#64748b">Active: Index ${data.current_index}</p></div>
       ${keys.map(k=>{
         const dot = k.error_count===0?'green':k.error_count>=3?'red':'yellow';
-        return `
-          <div class="key-card ${k.active?'active-key':''}">
-            <div class="key-header">
-              <div class="key-dot ${dot}"></div>
-              <div class="key-info">
-                <div class="kmodel">${esc(k.model)} ${k.active?'<span style="color:#4ade80;font-size:.7rem">← ACTIVE</span>':''}</div>
-                <div class="kurl">${esc(k.base_url)}</div>
-                <div class="khint">Key: ${esc(k.api_key_hint)}</div>
-              </div>
-            </div>
-            <div class="key-metrics">
-              <div class="key-metric"><div class="val val-ok">${k.success_count||0}</div><div class="lbl">Success</div></div>
-              <div class="key-metric"><div class="val val-err">${k.error_count||0}</div><div class="lbl">Errors</div></div>
-              <div class="key-metric"><div class="val val-info">${k.avg_time||0}s</div><div class="lbl">Avg Time</div></div>
-            </div>
-            ${k.last_error?`<div style="font-size:.7rem;color:#f87171;margin-top:8px;padding-top:8px;border-top:1px solid #334155">⚠️ ${esc(k.last_error)}</div>`:''}
-          </div>`;
+        return `<div class="key-card ${k.active?'active-key':''}">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+            <div class="key-dot ${dot}"></div>
+            <div><div style="font-size:.82rem;color:#93c5fd;font-weight:600">${esc(k.model)} ${k.active?'<span style="color:#4ade80;font-size:.7rem">← ACTIVE</span>':''}</div>
+            <div style="font-size:.72rem;color:#64748b">${esc(k.base_url)}</div>
+            <div style="font-size:.7rem;color:#475569;font-family:monospace">Key: ${esc(k.api_key_hint)}</div></div>
+          </div>
+          <div class="key-metrics">
+            <div class="key-metric"><div class="val val-ok">${k.success_count||0}</div><div class="lbl">Success</div></div>
+            <div class="key-metric"><div class="val val-err">${k.error_count||0}</div><div class="lbl">Errors</div></div>
+            <div class="key-metric"><div class="val val-info">${k.avg_time||0}s</div><div class="lbl">Avg</div></div>
+          </div>
+        </div>`;
       }).join('')}
-      <button class="btn btn-red" id="btn-reset-key" style="margin-top:8px">🔄 Reset Counter</button>`;
-    document.getElementById('btn-reset-key').addEventListener('click', async () => {
-      await fetch('/key-reset',{method:'POST'});
-      showToast('Reset!','ok');
-      muatKeyStatus();
-    });
+      <button class="btn btn-red" style="margin-top:8px" onclick="fetch('/key-reset',{method:'POST'}).then(()=>showToast('Reset!','ok')).then(muatKeyStatus)">🔄 Reset Counter</button>`;
   } catch(e) { el.innerHTML=`<div class="empty"><p>❌ ${esc(String(e))}</p></div>`; }
 }
 
-// ── INIT ──────────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════════════════
 initChips();
 cekServer();
 setInterval(cekServer, 30000);
 </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'a1d5e113eb2fce2b',t:'MTc4NDQyMzc3MA=='};var a=document.createElement('script');a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
