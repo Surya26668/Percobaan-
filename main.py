@@ -97,7 +97,7 @@ BACKUPS_DIR.mkdir(exist_ok=True)
 Path("templates").mkdir(exist_ok=True)
 
 REQUEST_TIMEOUT             = 180
-MAX_FILES_PER_PROJ          = 1
+MAX_FILES_PER_PROJ          = 100
 MAX_LINES_PER_FILE          = 1000   # ✅ Turun dari 300 → file lebih kecil, lebih cepat
 
 # ✅ UPSTREAM TUNING — fix circuit terlalu sensitif
