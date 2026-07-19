@@ -99,15 +99,15 @@ BACKUPS_DIR.mkdir(exist_ok=True)
 Path("templates").mkdir(exist_ok=True)
 
 REQUEST_TIMEOUT             = 180
-MAX_FILES_PER_PROJ          = 50
-MAX_LINES_PER_FILE          = 250   # ✅ Turun dari 300 → file lebih kecil, lebih cepat
+MAX_FILES_PER_PROJ          = 1
+MAX_LINES_PER_FILE          = 1000   # ✅ Turun dari 300 → file lebih kecil, lebih cepat
 
 # ✅ UPSTREAM TUNING — fix circuit terlalu sensitif
 UPSTREAM_MAX_RETRY          = 4     # naik dari 3 → lebih sabar sebelum menyerah
 UPSTREAM_WAIT_BASE          = 8     # detik, exponential base
 UPSTREAM_MAX_WAIT           = 45    # cap maksimum wait per retry
-CIRCUIT_BREAKER_THRESHOLD   = 5     # ✅ naik dari 3 → butuh 5 failure exhausted sebelum circuit open
-CIRCUIT_BREAKER_TIMEOUT     = 60    # ✅ turun dari 120 → lebih cepat recover
+CIRCUIT_BREAKER_THRESHOLD   = 100     # ✅ naik dari 3 → butuh 5 failure exhausted sebelum circuit open
+CIRCUIT_BREAKER_TIMEOUT     = 300    # ✅ turun dari 120 → lebih cepat recover
 MAX_FILE_RETRY              = 2     # ✅ BARU: retry per-file jika upstream error
 MAX_UPSTREAM_FAIL_PER_BUILD = 3     # ✅ naik dari 2 → lebih toleran sebelum skip sisanya
 
