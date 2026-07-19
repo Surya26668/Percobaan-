@@ -5,7 +5,7 @@ services:
     buildCommand: pip install -r requirements.txt
     startCommand: ./start.sh 
     envVars:
-      - key: API_KEY_1
+      - key: API_KEY_1 
         sync: false
       - key: BASE_URL
         value: https://ai.bluepack.my.id/anthropic
